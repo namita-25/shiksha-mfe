@@ -1,4 +1,4 @@
-import { get, post } from '@shared-lib';
+import { get, post, patch } from '@shared-lib';
 import axios from 'axios';
 import API_ENDPOINTS from 'mfes/youthNet/src/utils/API/APIEndpoints';
 import { Role, Status } from 'mfes/youthNet/src/utils/app.constant';
@@ -8,6 +8,11 @@ const MENTOR_DETAILS = {
   MENTOR_NAME: 'Mentor',
   MENTOR_OPTIONS: ['Shivan Mathur', 'Vivek kasture', 'Rohan Nene', 'Sanket Jadhav'],
 };
+export interface UserDetailParam {
+  userData?: object;
+
+  customFields?: any;
+}
 export interface userListParam {
   limit?: number;
   //  page: number;
@@ -121,7 +126,6 @@ return response;
       let selectedMentorData = selectedMentorDataString ? JSON.parse(selectedMentorDataString) : null;
   
       if (selectedMentorData && selectedMentorData.userId == userId) {
-        console.log("true")
         // If selected mentor data matches, use it
         userData = selectedMentorData;
       } else {
@@ -147,3 +151,27 @@ return response;
     }
   };
   
+  export const createUser = async (userData: any): Promise<any> => {
+    const apiUrl: string = API_ENDPOINTS.accountCreate
+    try {
+      const response = await post(apiUrl, userData);
+      return response?.data?.result;
+    } catch (error) {
+      console.error("error in getting cohort list", error);
+      throw error;
+    }
+  };
+  export const updateUser = async (
+    userId: string,
+    { userData, customFields }: UserDetailParam
+  ): Promise<any> => {
+    const apiUrl: string = API_ENDPOINTS.userUpdate(userId)
+  
+    try {
+      const response = await patch(apiUrl, { userData, customFields });
+      return response;
+    } catch (error) {
+      console.error("error in fetching user details", error);
+      return error;
+    }
+  };

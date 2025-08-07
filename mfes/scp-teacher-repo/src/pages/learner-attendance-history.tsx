@@ -20,6 +20,7 @@ import { useRouter } from 'next/router';
 import { accessControl } from '../../app.config';
 import { useDirection } from '../hooks/useDirection';
 import useStore from '@/store/store';
+import { Role } from '@/utils/app.constant';
 
 type LearnerAttendanceData = {
   [date: string]: {
@@ -129,7 +130,7 @@ const LearnerAttendanceHistory = () => {
               // contextId: classId,
               fromDate: fromDateFormatted,
               toDate: toDateFormatted,
-              scope: 'student',
+              scope: Role.STUDENT,
               userId: userId,
             },
           };
@@ -154,11 +155,13 @@ const LearnerAttendanceHistory = () => {
                 {}
               );
               setLearnerAttendance(attendanceData);
-              const extractedData = filteredAttendanceStats.map((item: { attendanceDate: any; contextId: any; }) => ({
-                attendanceDate: item.attendanceDate,
-                contextId: item.contextId
-              }));
-              setExtractedAttendanceDates(extractedData)
+              const extractedData = filteredAttendanceStats.map(
+                (item: { attendanceDate: any; contextId: any }) => ({
+                  attendanceDate: item.attendanceDate,
+                  contextId: item.contextId,
+                })
+              );
+              setExtractedAttendanceDates(extractedData);
             }
           }
           setLoading(false);
@@ -262,7 +265,7 @@ const LearnerAttendanceHistory = () => {
         }
         handleClose={handleModalClose}
         onAttendanceUpdate={() => setAttendanceUpdated(!attendanceUpdated)}
-        attendanceDates = {extractedAttendanceDates}
+        attendanceDates={extractedAttendanceDates}
       />
     </Box>
   );

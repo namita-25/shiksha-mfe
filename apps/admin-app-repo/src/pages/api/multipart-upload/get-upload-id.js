@@ -1,7 +1,4 @@
-import {
-  S3Client,
-  CreateMultipartUploadCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client, CreateMultipartUploadCommand } from '@aws-sdk/client-s3';
 
 // Initialize AWS S3 client
 const s3Client = new S3Client({
@@ -15,7 +12,7 @@ const s3Client = new S3Client({
 const bucketName = process.env.AWS_BUCKET_NAME;
 
 export default async function handler(req, res) {
-  if (req.method === "POST") {
+  if (req.method === 'POST') {
     try {
       const { keyPath, type } = req.body;
 
@@ -30,10 +27,10 @@ export default async function handler(req, res) {
 
       res.status(200).json({ uploadId });
     } catch (error) {
-      console.error("Error creating upload ID:", error);
+      console.error('Error creating upload ID:', error);
       res.status(500).json({ error: error.message });
     }
   } else {
-    res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }

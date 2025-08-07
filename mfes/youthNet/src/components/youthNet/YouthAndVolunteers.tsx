@@ -11,37 +11,48 @@ import {
 import RegistrationStatistics from './RegistrationStatistics';
 import {  getVillages, getYouthDataByDate } from '../../services/youthNet/Dashboard/UserServices';
 import { useTranslation } from 'next-i18next';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import { categorizeUsers } from '../../utils/Helper';
 
 interface Props {
   selectOptions: { label: string; value: string }[];
   data?: string;
-  userId:string
+  userId:string;
+  managedVillageCount?:any
 }
 
-const YouthAndVolunteers: React.FC<Props> = ({ selectOptions, data , userId}) => {
+const YouthAndVolunteers: React.FC<Props> = ({ selectOptions,managedVillageCount, data , userId}) => {
   const [selectedValue, setSelectedValue] = useState<string>(
     selectOptions[0]?.value || ''
   );
   const { t } = useTranslation();
  const [youthCount, setYouthCount] = useState<number>(0);
+ const [volunteerCount, setVolunteerCount] = useState<number>(0);
+
   const handleChange = (event: SelectChangeEvent<string>) => {
     setSelectedValue(event.target.value);
   };
   useEffect(() => {
     const getYouthData = async () => {
       try {
-        let fromDate;
+        let fromDate = new Date(2024, 3, 1);
             const villages=await getVillages(userId)
             const villageIds=villages?.map((item: any) => item.id) || []
-       const toDate = new Date();
+       let toDate ;
         if (selectedValue === 'today') {
-         fromDate = new Date(2024, 3, 1)
+          toDate = new Date();
         }
         if(selectedValue === 'month') {
-         fromDate = new Date(toDate.getFullYear(), toDate.getMonth() - 1, toDate.getDate())
+        const date = new Date();
+
+       //  fromDate = new Date(toDate.getFullYear(), toDate.getMonth() - 1, toDate.getDate())
+          toDate = new Date(date.getFullYear(), date.getMonth(), 0);
+
         }
         if(selectedValue==='year') {
-           fromDate = new Date(toDate.getFullYear() - 1, toDate.getMonth(), toDate.getDate())
+          // fromDate = new Date(toDate.getFullYear() - 1, toDate.getMonth(), toDate.getDate())
+          toDate = new Date(new Date().getFullYear(), 0, 0);
+
 
         }
         if(fromDate && toDate)
@@ -51,11 +62,15 @@ const YouthAndVolunteers: React.FC<Props> = ({ selectOptions, data , userId}) =>
           villageIds
         );
         console.log(response?.getUserDetails);
-        setYouthCount(response?.totalCount);
+        const { volunteerUsers, youthUsers } = categorizeUsers(response?.getUserDetails)
+     setYouthCount(youthUsers?.length)
+     setVolunteerCount(volunteerUsers?.length)
 
       }
 
       } catch (error) {
+        setYouthCount(0)
+        setVolunteerCount(0)
         console.log(error);
       }
       // setUserData(data);
@@ -92,11 +107,20 @@ if(userId && userId!=="")
           ))}
         </Select>
       </FormControl>
+      <Box display={'flex'} flexDirection="row" gap="10px">
       <Typography variant="body1" style={{ fontWeight: 300, color: 'black' }}>
-        {t('YOUTHNET_DASHBOARD.YOUTH_COUNT', {count: youthCount})}
+         {managedVillageCount} { managedVillageCount>=1 ? t('YOUTHNET_DASHBOARD.VILLAGE'): t('YOUTHNET_DASHBOARD.VILLAGES')}
+      </Typography>
+      <FiberManualRecordIcon 
+      sx={{ color: '#B1AAA2', width: 12, height: 12  , marginTop:"8px"}} 
+    />
+      <Typography variant="body1" style={{ fontWeight: 300, color: 'black' }}>
+        {t('YOUTHNET_DASHBOARD.YOUTH_VOLUNTEER_COUNT', {count: youthCount+volunteerCount})}
 
       </Typography>
-      {data && (
+      </Box>
+    
+      { (
         <Box p={2}>
           <Grid container spacing={2}>
             <Grid item xs={6}>
@@ -106,13 +130,14 @@ if(userId && userId!=="")
                 subtile={'Youth'}
               />
             </Grid>
-            {/* <Grid item xs={6}>
+            <Grid item xs={6}>
               <RegistrationStatistics
                 avatar={true}
-                statistic={4}
+                statistic={volunteerCount}
                 subtile={'Volunteer'}
+                isVolunteer={true}
               />
-            </Grid> */}
+            </Grid>
           </Grid>
         </Box>
       )}

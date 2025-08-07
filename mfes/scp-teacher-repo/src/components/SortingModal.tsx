@@ -170,6 +170,7 @@ const SortingModal: React.FC<sortCardProps> = ({
       heading={routeName === '/board-enrollment' || '/attendance-overview' ? t('COMMON.FILTERS') : t('COMMON.SORT_BY')}
       handlePrimaryAction={handleApplySort}
       btnText={t('COMMON.APPLY')}
+      routeName={routeName}
     >
       <Divider
         style={{

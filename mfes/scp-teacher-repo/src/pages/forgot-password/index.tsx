@@ -8,7 +8,7 @@ import {
   Divider,
   IconButton,
   InputAdornment,
-  TextField
+  TextField,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'next-i18next';
@@ -54,7 +54,7 @@ const ForgotPassword = () => {
 
       setSuccessMessage(true);
     } catch (error: any) {
-      showToastMessage(error.response.data.params.err, 'error');
+      showToastMessage(error?.response?.data?.params?.err, 'error');
     }
   };
 

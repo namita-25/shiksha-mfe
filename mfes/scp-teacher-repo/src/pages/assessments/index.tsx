@@ -13,11 +13,7 @@ import {
 import { getMyCohortMemberList } from '@/services/MyClassDetailsService';
 import { getAssessmentType, toPascalCase } from '@/utils/Helper';
 import { ICohort } from '@/utils/Interfaces';
-import {
-  AssessmentStatus,
-  Role,
-  Status
-} from '@/utils/app.constant';
+import { AssessmentStatus, Role, Status } from '@/utils/app.constant';
 import withAccessControl from '@/utils/hoc/withAccessControl';
 import ArrowDropDownSharpIcon from '@mui/icons-material/ArrowDropDownSharp';
 import {
@@ -80,6 +76,17 @@ const Assessments = () => {
     totalCount: 0,
   });
 
+  const [selectedSortOption, setSelectedSortOption] = useState<{
+    sortByKey: string;
+    sortByValue: string;
+  } | null>(() => {
+    if (typeof window !== 'undefined') {
+      const savedSort = localStorage.getItem('assessmentSortOption');
+      return savedSort ? JSON.parse(savedSort) : null;
+    }
+    return null;
+  });
+
   const { query } = router;
 
   useEffect(() => {
@@ -111,13 +118,19 @@ const Assessments = () => {
           page: 0,
           filters,
         });
+        console.log('response', response);
         const resp = response?.result?.userDetails;
 
         if (resp) {
           const userDetails = resp.map((user: any) => ({
             ...user,
-            name: toPascalCase(user?.firstName || '') + ' ' + (user?.lastName ? toPascalCase(user.lastName) : ""), userId: user.userId,
+            name:
+              toPascalCase(user?.firstName || '') +
+              ' ' +
+              (user?.lastName ? toPascalCase(user.lastName) : ''),
+            userId: user.userId,
           }));
+
           setCohortMembers(userDetails);
         }
       } catch (error) {
@@ -139,7 +152,7 @@ const Assessments = () => {
       }, 0);
     }
   }, [classId]);
-
+  console.log('hii');
 
   useEffect(() => {
     const getDoIdForAssessmentReport = async (
@@ -151,7 +164,7 @@ const Assessments = () => {
       const filters = {
         program: Program,
         board: [selectedBoard],
-        state: selectedState,
+        //  state: selectedState,
         status: ['Live'],
         assessmentType: getAssessmentType(assessmentType),
         primaryCategory: ['Practice Question Set'],
@@ -164,11 +177,8 @@ const Assessments = () => {
           setFilteredLearnerList([]);
           setAssessmentList([]);
 
-          const searchResults = await queryClient.fetchQuery({
-            queryKey: ['contentSearch', { filters }],
-            queryFn: () => getDoIdForAssessmentDetails({ filters }),
-          });
-
+          const searchResults = await getDoIdForAssessmentDetails({ filters });
+          console.log('searchResults', searchResults);
           if (searchResults?.responseCode === 'OK') {
             const result = searchResults?.result;
             if (result) {
@@ -185,9 +195,7 @@ const Assessments = () => {
                 setAssessmentList([]);
               }
             } else {
-              console.log(
-                'NO Result found from getDoIdForAssessmentDetails '
-              );
+              console.log('NO Result found from getDoIdForAssessmentDetails ');
             }
           }
         } else {
@@ -215,34 +223,31 @@ const Assessments = () => {
 
       if (!cohort?.customField) return;
 
-      const selectedState = cohort.customField.find(
-        (item: any) => item.label === 'STATES'
-      )?.value;
+      const selectedState =
+        cohort.customField.find((item: any) => item.label === 'STATE')
+          ?.selectedValues?.[0]?.value || '';
 
-      const selectedBoard = cohort.customField.find(
-        (item: any) => item.label === 'BOARD'
-      )?.value;
+      const selectedBoard =
+        cohort.customField.find((item: any) => item.label === 'BOARD')
+          ?.selectedValues?.[0] || '';
 
       setCenterData({ state: selectedState, board: selectedBoard });
 
       setLearnerList([]);
       setFilteredLearnerList([]);
       setAssessmentList([]);
-
-      if (selectedState && selectedBoard) {
+      console.log('selectedState', selectedBoard);
+      if (selectedBoard) {
         getDoIdForAssessmentReport(selectedState, selectedBoard);
       }
     }
-
-
   }, [assessmentType, classId, cohortsData]);
-
   useEffect(() => {
     const getAssessmentsForLearners = async () => {
       try {
         const options = {
           userId: cohortMembers?.map((user: any) => user.userId),
-          courseId: assessmentList, // temporary added here assessmentList(contentId)... if assessment is done then need to pass actual course id and unit id here
+          courseId: assessmentList,
           unitId: assessmentList,
           contentId: assessmentList,
         };
@@ -267,8 +272,49 @@ const Assessments = () => {
             }
             return user;
           });
+          console.log('userList', userList);
           setLearnerList(userList);
           setFilteredLearnerList(userList);
+
+          // Apply saved sort if exists
+          if (selectedSortOption) {
+            const sortedList = [...userList];
+            switch (selectedSortOption.sortByKey) {
+              case 'attendanceStatus':
+                const statusOrder: any = { ...DEFAULT_STATUS_ORDER };
+                if (selectedSortOption.sortByValue) {
+                  statusOrder[selectedSortOption.sortByValue] = -1;
+                  let orderIndex = 0;
+                  for (const key in statusOrder) {
+                    if (key !== selectedSortOption.sortByValue) {
+                      statusOrder[key] = orderIndex++;
+                    }
+                  }
+                }
+                sortedList.sort(
+                  (a: any, b: any) =>
+                    statusOrder[a.status] - statusOrder[b.status]
+                );
+                break;
+              case 'marksObtained':
+                sortedList.sort(
+                  (a: any, b: any) =>
+                    Number(a.percentage) - Number(b.percentage)
+                );
+                if (selectedSortOption.sortByValue === 'asc') {
+                  sortedList.reverse();
+                }
+                break;
+              case 'names':
+                if (selectedSortOption.sortByValue === 'A_To_Z') {
+                  sortedList.sort((a, b) => a.name.localeCompare(b.name));
+                } else {
+                  sortedList.sort((a, b) => b.name.localeCompare(a.name));
+                }
+                break;
+            }
+            setFilteredLearnerList(sortedList);
+          }
         }
 
         setTestCompletionCount({
@@ -284,7 +330,7 @@ const Assessments = () => {
     if (assessmentList?.length && cohortMembers?.length) {
       getAssessmentsForLearners();
     }
-  }, [assessmentList, cohortMembers]);
+  }, [assessmentList, cohortMembers, selectedSortOption]);
 
   const resetValues = () => {
     setFilteredLearnerList([]);
@@ -347,7 +393,7 @@ const Assessments = () => {
   };
 
   const sortByNames = (order: string) => {
-    const list = [...learnerList];
+    const list = [...filteredLearnerList];
     if (order === 'A_To_Z') {
       list.sort((a, b) => a.name.localeCompare(b.name));
     } else {
@@ -361,7 +407,11 @@ const Assessments = () => {
     sortByKey: string;
     sortByValue: string;
   }) => {
+    console.log(selectedValue.sortByValue);
     setModalOpen(false);
+    setSelectedSortOption(selectedValue);
+    // Save to localStorage
+    localStorage.setItem('assessmentSortOption', JSON.stringify(selectedValue));
 
     switch (selectedValue.sortByKey) {
       case 'attendanceStatus':
@@ -376,20 +426,57 @@ const Assessments = () => {
     }
   };
 
+  // Add effect to apply saved sort when component mounts
+  useEffect(() => {
+    if (selectedSortOption) {
+      switch (selectedSortOption.sortByKey) {
+        case 'attendanceStatus':
+          sortByStatus(selectedSortOption.sortByValue);
+          break;
+        case 'marksObtained':
+          sortByMarks(selectedSortOption.sortByValue);
+          break;
+        case 'names':
+          sortByNames(selectedSortOption.sortByValue);
+          break;
+      }
+    }
+  }, [classId, assessmentType]); // Re-apply sort when class or assessment type changes
+
   const handleAssessmentTypeChange = (newType: string) => {
     setAssessmentType(newType);
 
     const queryParams = { ...query };
     if (newType === 'post') queryParams.type = 'post';
-    if (newType === 'other') queryParams.type = 'other';
+    else if (newType === 'other') queryParams.type = 'other';
     else delete queryParams.type;
-
-    router.push({ pathname: router.pathname, query: queryParams }, undefined, { shallow: true });
+    router.push({ pathname: router.pathname, query: queryParams }, undefined, {
+      shallow: true,
+    });
   };
 
   useEffect(() => {
-    setAssessmentType(query.type === 'post' ? 'post' : (query.type === 'other' ? 'other' : 'pre'));
+    setAssessmentType(
+      query.type === 'post' ? 'post' : query.type === 'other' ? 'other' : 'pre'
+    );
   }, [query.type]);
+
+  // Add effect to handle route changes
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      if (!url.startsWith('/scp-teacher-repo/assessments')) {
+        // Clear sort filter when navigating away from assessments
+        localStorage.removeItem('assessmentSortOption');
+        setSelectedSortOption(null);
+      }
+    };
+
+    router.events.on('routeChangeStart', handleRouteChange);
+
+    return () => {
+      router.events.off('routeChangeStart', handleRouteChange);
+    };
+  }, [router]);
 
   return (
     <>
@@ -397,9 +484,9 @@ const Assessments = () => {
         <Header />
       </Box>
 
-      {loading &&
-        <Loader showBackdrop={true} loadingText={t("COMMON.LOADING")} />
-      }
+      {loading && (
+        <Loader showBackdrop={true} loadingText={t('COMMON.LOADING')} />
+      )}
 
       <Box
         sx={{
@@ -440,7 +527,7 @@ const Assessments = () => {
         </Grid>
         <Grid item xs={12} md={6}>
           <Box sx={{ mt: 2, px: '20px', width: '100%' }}>
-            <FormControl fullWidth>
+            <FormControl sx={{ marginTop: '24px' }} fullWidth>
               <InputLabel
                 style={{
                   color: theme?.palette?.warning['A200'],
@@ -490,24 +577,27 @@ const Assessments = () => {
         </Box>
       )}
 
-      {!isLoading && (!assessmentList?.length || !filteredLearnerList?.length) && centerData?.board && <NoDataFound />}
+      {!isLoading &&
+        (!assessmentList?.length || !filteredLearnerList?.length) &&
+        centerData?.board && <NoDataFound />}
 
-
-      { !isLoading && (!assessmentList?.length || !filteredLearnerList?.length) && !centerData?.board &&
-        (<Box
-        sx={{
-          background: theme.palette.action.selected,
-          py: 0.5,
-          borderRadius: 2,
-          m: 2.5,
-          p: 2,
-        }}
-      >
-        <Typography variant="h2" sx={{ ml: 2 }}>
-          {t('COMMON.NO_ASSIGNED_BOARDS')}
-        </Typography>
-        </Box>)
-      }
+      {!isLoading &&
+        (!assessmentList?.length || !filteredLearnerList?.length) &&
+        !centerData?.board && (
+          <Box
+            sx={{
+              background: theme.palette.action.selected,
+              py: 0.5,
+              borderRadius: 2,
+              m: 2.5,
+              p: 2,
+            }}
+          >
+            <Typography variant="h2" sx={{ ml: 2 }}>
+              {t('COMMON.NO_ASSIGNED_BOARDS')}
+            </Typography>
+          </Box>
+        )}
 
       {!isLoading &&
         // !!assessmentList?.length &&
@@ -534,7 +624,9 @@ const Assessments = () => {
             >
               {testCompletionCount?.totalCount > 0 && (
                 <span>
-                  {`${testCompletionCount.completionCount} ${t('ASSESSMENTS.OUT_OF')} ${testCompletionCount.totalCount}`}{' '}
+                  {`${testCompletionCount.completionCount} ${t(
+                    'ASSESSMENTS.OUT_OF'
+                  )} ${testCompletionCount.totalCount}`}{' '}
                   {t('ASSESSMENTS.COMPLETED_THE_ASSESSMENT')}
                 </span>
               )}
@@ -580,16 +672,16 @@ const Assessments = () => {
         </Box>
       )}
 
-      {modalOpen &&
+      {modalOpen && (
         <AssessmentSortModal
           open={modalOpen}
           onClose={handleCloseModal}
           modalTitle={t('COMMON.SORT_BY')}
           btnText={t('COMMON.APPLY')}
           onFilterApply={handleSorting}
+          selectedOption={selectedSortOption || undefined}
         />
-      }
-
+      )}
     </>
   );
 };

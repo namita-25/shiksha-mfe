@@ -48,6 +48,8 @@ const SunbirdPlayers = ({ "player-config": playerConfig }: PlayerProps) => {
     case "application/pdf":
       return <SunbirdPdfPlayer playerConfig={playerConfig} />;
     case "video/mp4":
+    case 'audio/mp3':
+    case 'audio/wav':
       return <SunbirdVideoPlayer playerConfig={playerConfig} />;
     case "application/vnd.sunbird.questionset":
       return <SunbirdQuMLPlayer playerConfig={playerConfig} />;

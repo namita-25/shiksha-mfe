@@ -73,10 +73,9 @@ const Foundation = () => {
 
         const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
         const boardField = userInfo?.customFields?.find((field: any) => field.label === "BOARD");
-        const boardValue = boardField ? boardField.value : null;
+        const userBoards = boardField ? boardField.selectedValues : null;
 
-        if (boardValue !== null) {
-          const userBoards = boardValue.split(",");
+        if (userBoards !== null) {
           if (userBoards && boardNames) {
           const normalizedUserBoards = userBoards.map((board: string) => board.toLowerCase());       
             const matchingBoards = boardNames.filter((board: { name: string; }) =>

@@ -21,11 +21,16 @@ import YouthAndVolunteers from '../components/youthNet/YouthAndVolunteers';
 import VillageNewRegistration from '../components/youthNet/VillageNewRegistration';
 import { UserList } from '../components/youthNet/UserCard';
 import Dropdown from '../components/youthNet/DropDown';
-import { fetchUserData,  fetchUserList,  getUserDetails, getVillages, getYouthDataByDate } from '../services/youthNet/Dashboard/UserServices';
+import {
+  fetchUserData,
+  fetchUserList,
+  getUserDetails,
+  getVillages,
+  getYouthDataByDate,
+} from '../services/youthNet/Dashboard/UserServices';
 import Loader from '../components/Loader';
 import { filterUsersByAge, getLoggedInUserRole } from '../utils/Helper';
 import { Role, Status } from '../utils/app.constant';
-
 
 const Index = () => {
   const { t } = useTranslation();
@@ -33,7 +38,8 @@ const Index = () => {
   const [isSurveyAvailable, setIsSurveyAvailable] = useState<boolean>(false);
   const [villageCount, setVillageCount] = useState<number>(0);
   const [registeredVillages, setRegisteredVillages] = useState<any>([]);
-  const [todaysRegistrationCount, setTodaysRegistrationCount] = useState<number>(0);
+  const [todaysRegistrationCount, setTodaysRegistrationCount] =
+    useState<number>(0);
   const [aboveEighteenUsers, setAboveEighteenUsers] = useState<any>([]);
   const [belowEighteenUsers, setBelowEighteenUsers] = useState<any>([]);
   const [surveymodalOpen, setSurveyModalOpen] = useState<boolean>(false);
@@ -42,8 +48,7 @@ const Index = () => {
   const [belmodalOpen, setBelModalOpen] = useState<boolean>(false);
   const [vilmodalOpen, setVilModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<any>([]);
-  const [selectedMentorId, setSelectedMentorId] = useState<any>("");
-
+  const [selectedMentorId, setSelectedMentorId] = useState<any>('');
 
   useEffect(() => {
     const getSurveyData = async () => {
@@ -57,142 +62,166 @@ const Index = () => {
 
   useEffect(() => {
     const getMentorData = async () => {
-      const filters={
-            role:Role.INSTRUCTOR,
-            status:[Status.ACTIVE],
-          }
-      const data = await fetchUserData()
-    //  setUserData(data);
+      const filters = {
+        role: Role.INSTRUCTOR,
+        status: [Status.ACTIVE],
+      };
+      const data = await fetchUserData();
+      //  setUserData(data);
     };
-    if(YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole())
-    getMentorData();
+    if (YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()) getMentorData();
   }, []);
   const getMentorDistrictData = async () => {
-    const userId=localStorage.getItem('userId')
-    if(userId)
-    {
+    const userId = localStorage.getItem('userId');
+    if (userId) {
       const data = await getUserDetails(userId, true);
       const result = data?.userData?.customFields?.find(
         (item: any) => item.label === 'DISTRICT'
       );
-      const districtId=result?.selectedValues[0]?.id;
-      const filters={
-        role:Role?.INSTRUCTOR,
-        status:[Status.ACTIVE],
-        district:[districtId],
-      }
-       const responce=await fetchUserList({filters})
-       const transformedData = responce?.getUserDetails.map((user: any) => ({
+      const districtId = result?.selectedValues?.[0]?.id;
+      const filters = {
+        role: Role?.INSTRUCTOR,
+        status: [Status.ACTIVE],
+        district: [districtId],
+      };
+      const responce = await fetchUserList({ filters });
+      const transformedData = responce?.getUserDetails?.map((user: any) => ({
         id: user.userId,
-        name: user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName
+        name: user.lastName
+          ? `${user.firstName} ${user.lastName}`
+          : user.firstName,
       }));
-       setUserData(transformedData)
-       let userDataString = localStorage.getItem('userData');
-       let userData: any = userDataString ? JSON.parse(userDataString) : null;
-       userData.customFields = data.userData.customFields;
-       localStorage.setItem('userData', JSON.stringify(userData));
-       setSelectedMentorId(responce?.getUserDetails[0]?.userId)
-
+      setUserData(transformedData);
+      let userDataString = localStorage.getItem('userData');
+      let userData: any = userDataString ? JSON.parse(userDataString) : null;
+      userData.customFields = data.userData.customFields;
+      localStorage.setItem('userData', JSON.stringify(userData));
+      setSelectedMentorId(responce?.getUserDetails?.[0]?.userId);
     }
-   
-      
-    }
-    // setUserData(data);
-     const onUserClick=(userId: any)=>
-    {
-      router.push(`/user-profile/${userId}`);
-  
-    }
+  };
+  // setUserData(data);
+  const onUserClick = (userId: any) => {
+    router.push(`/user-profile/${userId}`);
+  };
   useEffect(() => {
-    if(YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole())
-    getMentorDistrictData()
-   
+    if (YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole())
+      getMentorDistrictData();
   }, []);
   useEffect(() => {
     const getYouthData = async (userId: any) => {
       try {
-      
-const villages=await getVillages(userId)
-console.log(villages)
+        const villages = await getVillages(userId);
+        console.log(villages);
 
-if(userId===localStorage.getItem('userId'))
-{
-  const updatedData = (villages)?.map(({ id, value }: any) => ({ Id: id, name: value }));
+        if (userId === localStorage.getItem('userId')) {
+          const updatedData = villages?.map(({ id, value }: any) => ({
+            Id: id,
+            name: value,
+          }));
 
-  localStorage.setItem('villageData', JSON.stringify(updatedData))
-}
-const villageIds=villages?.map((item: any) => item.id) || []
-setVillageCount(villageIds?.length)
-        const response = await getYouthDataByDate(new Date(), new Date(), villageIds);
-        if(response?.totalCount)
-        setTodaysRegistrationCount(response?.totalCount);
-        //  const youthData=response.getUserDetails.find((item:any)=>{
-        //    return item.role==="Content creator"
-        //  })
-        const youthData = filterUsersByAge(response.getUserDetails);
-        const transformedAbove18 = youthData?.above18.map((user: any) => {
-          let name = user.firstName || "";
-          if (user.lastName) {
-              name += ` ${user.lastName}`;
-          }
-          return {
-              Id: user.userId,
-              name: name.trim() ,
-              dob:user?.dob ,
-            firstName:user?.firstName,
-            lastName:user?.lastName// Ensures there are no extra spaces if lastName is missing
-          };
-      });
-      const transformedBelow18 = youthData?.below18.map((user: any) => {
-        let name = user.firstName || "";
-        if (user.lastName) {
-            name += ` ${user.lastName}`;
+          localStorage.setItem('villageData', JSON.stringify(updatedData));
         }
-        return {
-            Id: user.userId,
-            name: name.trim(),
-            dob:user.dob ,
-            firstName:user?.firstName,
-            lastName:user?.lastName// Ensures there are no extra spaces if lastName is missing
-        };
-    });
-        setAboveEighteenUsers(transformedAbove18);
-        setBelowEighteenUsers(transformedBelow18);
-        console.log(youthData?.below18);
-        //  console.log(users)
-        let users = response.getUserDetails;
-        const villageSet = new Set();
+        const villageIds = villages?.map((item: any) => item.id) || [];
+        setVillageCount(villageIds?.length);
+        const response = await getYouthDataByDate(
+          new Date(),
+          new Date(),
+          villageIds
+        );
+        if (response?.totalCount) {
+          setTodaysRegistrationCount(response?.totalCount);
+          //  const youthData=response.getUserDetails.find((item:any)=>{
+          //    return item.role==="Content creator"
+          //  })
+          const youthData = filterUsersByAge(response.getUserDetails);
+          //console.log()
 
-        const villageMap = new Map<number, string>();
+          const transformedAbove18 = youthData?.above18.map((user: any) => {
+            let name = user.firstName || '';
+            if (user.lastName) {
+              name += ` ${user.lastName}`;
+            }
+            const villageResult = user.customFields?.find(
+              (item: any) => item.label === 'VILLAGE'
+            );
+            const villageValues = villageResult?.selectedValues.map(
+              (village: any) => village.value
+            );
 
-        users.forEach((user: any) => {
-          if (user.customFields) {
-            user.customFields.forEach((field: any) => {
-              if (field.label === 'VILLAGE') {
-                field.selectedValues.forEach((value: any) => {
-                  villageMap.set(value.id, value.value); // Ensures unique villages by ID
-                });
-              }
-            });
-          }
-        });
+            return {
+              Id: user.userId,
+              name: name.trim(),
+              dob: user?.dob,
+              firstName: user?.firstName,
+              lastName: user?.lastName,
+              villageNames: villageValues,
+            };
+          });
+          const transformedBelow18 = youthData?.below18.map((user: any) => {
+            let name = user.firstName || '';
+            if (user.lastName) {
+              name += ` ${user.lastName}`;
+            }
+            const villageResult = user.customFields?.find(
+              (item: any) => item.label === 'VILLAGE'
+            );
+            const villageValues = villageResult?.selectedValues.map(
+              (village: any) => village.value
+            );
+            return {
+              Id: user.userId,
+              name: name.trim(),
+              dob: user.dob,
+              firstName: user?.firstName,
+              lastName: user?.lastName,
+              villageNames: villageValues,
+            };
+          });
+          setAboveEighteenUsers(transformedAbove18);
+          setBelowEighteenUsers(transformedBelow18);
+          console.log(youthData?.below18);
+          //  console.log(users)
+          let users = response.getUserDetails;
+          const villageSet = new Set();
 
-        const uniqueVillages = Array.from(villageMap, ([id, value]) => ({
-          id,
-          value,
-        }));
-        setRegisteredVillages(uniqueVillages);
+          const villageMap = new Map<number, string>();
+
+          users.forEach((user: any) => {
+            if (user.customFields) {
+              user.customFields.forEach((field: any) => {
+                if (field.label === 'VILLAGE') {
+                  field.selectedValues.forEach((value: any) => {
+                    villageMap.set(value.id, value.value);
+                    //  userVillageMap[user.userId] = value.value; // Ensures unique villages by ID
+                  });
+                }
+              });
+            }
+          });
+          const uniqueVillages = Array.from(villageMap, ([id, value]) => ({
+            id,
+            value,
+          }));
+          setRegisteredVillages(uniqueVillages);
+        } else {
+          setTodaysRegistrationCount(0);
+          setRegisteredVillages([]);
+          setAboveEighteenUsers([]);
+          setBelowEighteenUsers([]);
+        }
       } catch (error) {
         console.log(error);
       }
       // setUserData(data);
     };
-    if(YOUTHNET_USER_ROLE.INSTRUCTOR === getLoggedInUserRole())
-    getYouthData(localStorage.getItem('userId'));
-    if(YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole() && selectedMentorId!=="")
+    if (YOUTHNET_USER_ROLE.INSTRUCTOR === getLoggedInUserRole())
+      getYouthData(localStorage.getItem('userId'));
+    if (
+      YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole() &&
+      selectedMentorId !== ''
+    )
       getYouthData(selectedMentorId);
-
-    }, [selectedMentorId]);
+  }, [selectedMentorId]);
   const handleModalClose = () => {
     setModalOpen(false),
       setBelModalOpen(false),
@@ -207,16 +236,13 @@ setVillageCount(villageIds?.length)
   const handleClick = (type: string) => {
     switch (type) {
       case 'above':
-        if(aboveEighteenUsers.length!==0)
-        setAbvModalOpen(true);
+        if (aboveEighteenUsers.length !== 0) setAbvModalOpen(true);
         break;
       case 'below':
-        if(belowEighteenUsers.length!==0)
-        setBelModalOpen(true);
+        if (belowEighteenUsers.length !== 0) setBelModalOpen(true);
         break;
       case 'village':
-        if(registeredVillages.length!== 0)
-        setVilModalOpen(true);
+        if (registeredVillages.length !== 0) setVilModalOpen(true);
         break;
       default:
         console.log('Unknown action');
@@ -240,12 +266,13 @@ setVillageCount(villageIds?.length)
         >
           {true ? (
             <Dropdown
-              name={"Mentor"}
+              name={'Mentor'}
               values={userData}
               defaultValue={userData?.[0]?.id}
               onSelect={(value) => {
-                localStorage.setItem('selectedMentoruserId',value)
-                setSelectedMentorId(value)}}
+                localStorage.setItem('selectedMentoruserId', value);
+                setSelectedMentorId(value);
+              }}
             />
           ) : (
             <Loader showBackdrop={true} />
@@ -257,23 +284,29 @@ setVillageCount(villageIds?.length)
           <Box mt={2}>
             <Typography>
               {t(`YOUTHNET_DASHBOARD.MANAGES`)} {villageCount}{' '}
-              {t(`YOUTHNET_DASHBOARD.VILLAGES`)}
+              {villageCount >= 1
+                ? t(`YOUTHNET_DASHBOARD.VILLAGE`)
+                : t(`YOUTHNET_DASHBOARD.VILLAGES`)}
             </Typography>
           </Box>
         ) : (
           <Typography>
-            {t('YOUTHNET_DASHBOARD.VILLAGES_MANAGED_BY_YOU', {
-              totalVillageCount: villageCount,
-            })}
+            {t(
+              villageCount <= 1
+                ? 'YOUTHNET_DASHBOARD.VILLAGE_MANAGED_BY_YOU'
+                : 'YOUTHNET_DASHBOARD.VILLAGES_MANAGED_BY_YOU',
+              { totalVillageCount: villageCount }
+            )}
           </Typography>
-           
-
         )}
       </Box>
 
       <Box pl={2} pr={2} mt={2}>
-        <RegistrationStatistics title= { t('YOUTHNET_DASHBOARD.TODAYS_NEW_REGISTRATION', {totalCount: todaysRegistrationCount,})} 
-            />
+        <RegistrationStatistics
+          title={t('YOUTHNET_DASHBOARD.TODAYS_NEW_REGISTRATION', {
+            totalCount: todaysRegistrationCount,
+          })}
+        />
       </Box>
       <Box p={2}>
         <Grid container spacing={2}>
@@ -281,40 +314,60 @@ setVillageCount(villageIds?.length)
             <RegistrationStatistics
               onPrimaryClick={() => handleClick('above')}
               cardTitle={'Above 18 y/o'}
-              statistic={aboveEighteenUsers.length}
+              statistic={aboveEighteenUsers?.length}
             />
           </Grid>
           <Grid item xs={4}>
             <RegistrationStatistics
               onPrimaryClick={() => handleClick('below')}
               cardTitle={'Below 18 y/o'}
-              statistic={belowEighteenUsers.length}
+              statistic={belowEighteenUsers?.length}
             />
           </Grid>
           <Grid item xs={4}>
             <RegistrationStatistics
               onPrimaryClick={() => handleClick('village')}
               cardTitle={'From'}
-              statistic={registeredVillages.length +" villages"} 
+              statistic={
+                registeredVillages.length <= 1
+                  ? `${registeredVillages.length} ${t(
+                      'YOUTHNET_USERS_AND_VILLAGES.VILLAGE'
+                    )}`
+                  : `${registeredVillages.length} ${t(
+                      'YOUTHNET_USERS_AND_VILLAGES.VILLAGES'
+                    )}`
+              }
             />
           </Grid>
         </Grid>
       </Box>
       <Box>
-        <MonthlyRegistrationsChart userId={ YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()?selectedMentorId:localStorage.getItem('userId')|| ""} />
+        <MonthlyRegistrationsChart
+          userId={
+            YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()
+              ? selectedMentorId
+              : localStorage.getItem('userId') || ''
+          }
+        />
       </Box>
       <Box>
         <YouthAndVolunteers
           selectOptions={[
-            { label:t('YOUTHNET_DASHBOARD.AS_OF_TODAY'), value: 'today' },
-            { label:t('YOUTHNET_DASHBOARD.AS_OF_LAST_SIX_MONTH'), value: 'month' },
+            { label: t('YOUTHNET_DASHBOARD.AS_OF_TODAY'), value: 'today' },
+            {
+              label: t('YOUTHNET_DASHBOARD.AS_OF_LAST_SIX_MONTH'),
+              value: 'month',
+            },
             { label: t('YOUTHNET_DASHBOARD.AS_OF_LAST_YEAR'), value: 'year' },
-
           ]}
-          data="577 Youth & Volunteers"
-          userId={YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()?selectedMentorId:localStorage.getItem('userId')|| ""}
+          data=""
+          userId={
+            YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()
+              ? selectedMentorId
+              : localStorage.getItem('userId') || ''
+          }
+          managedVillageCount={villageCount}
         />
-        
       </Box>
       {/* <SimpleModal
         modalTitle={t('YOUTHNET_SURVEY.NEW_SURVEY')}
@@ -362,7 +415,11 @@ setVillageCount(villageIds?.length)
         onClose={handleModalClose}
       >
         {' '}
-        <UserList users={aboveEighteenUsers} layout="list"  onUserClick={onUserClick}/>
+        <UserList
+          users={aboveEighteenUsers}
+          layout="list"
+          onUserClick={onUserClick}
+        />
       </SimpleModal>
 
       <SimpleModal
@@ -371,7 +428,11 @@ setVillageCount(villageIds?.length)
         onClose={handleModalClose}
       >
         {' '}
-        <UserList users={belowEighteenUsers} layout="list" onUserClick={onUserClick} />
+        <UserList
+          users={belowEighteenUsers}
+          layout="list"
+          onUserClick={onUserClick}
+        />
       </SimpleModal>
       <SimpleModal
         modalTitle={t('YOUTHNET_DASHBOARD.VLLAGE_18')}

@@ -152,7 +152,8 @@
     "LESS_THAN": "Less than {{range}} %",
     "MODIFY_CENTER_ATTENDANCE": "Modify Center Attendance",
     "NO_VILLAGES": "No Villages",
-    "ALL_VILLAGES": "All Villages"
+    "ALL_VILLAGES": "All Villages",
+    "FAQS": "FAQ's"
   },
   "LOGIN_PAGE": {
     "USERNAME": "Username",
@@ -345,6 +346,7 @@
     "STEP_9": "Access the full academic year’s course plan for each subject, along with resources like videos and documents for every topic. Track your teaching progress by updating topic completion status.",
     "STEP_10": "View detailed scores and summaries of Pre and Post tests for each learner. Track which students have completed, are in progress or yet to start the test.",
     "STEP_11": "Track and update each learner’s board exam enrollment status",
+    "STEP_12": "Whenever you run into a problem while using the app, raise a support request by describing the problem and adding screenshots or attachments. Our team will review and take action.",
     "PREVIOUS": "Previous",
     "NEXT": "Next",
     "SKIP": "Skip",
@@ -673,6 +675,7 @@
   },
   "YOUTHNET_DASHBOARD": {
     "VILLAGES_MANAGED_BY_YOU": "Villages Managed by you : {{totalVillageCount}}",
+    "VILLAGE_MANAGED_BY_YOU": "Village Managed by you : {{totalVillageCount}}",
     "MONTHLY_REGISTRATIONS_OVERVIEW": "Monthly Registrations Overview",
     "CLOSED_ON": "Closed on",
     "ABOVE_18": "Over 18 Registrations",
@@ -690,5 +693,9 @@
   "YOUTHNET_CAMP_DETAILS": {
     "SUBMISSION": "Submission",
     "SUMMARY": "Summary"
+  },
+  "MENTOR": {
+    "MENTOR_CREATED_SUCCESSFULLY": "The mentor account has been created successfully, and the credentials have been sent",
+    "MENTOR_CREATED_FAILED": "Failed to create mentor account"
   }
 }

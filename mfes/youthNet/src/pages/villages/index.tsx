@@ -50,20 +50,51 @@ import { useDirection } from '../../hooks/useDirection';
 import GenericForm from '../../components/youthNet/GenericForm';
 import ExamplePage from '../../components/youthNet/BlockItem';
 import VillageSelector from '../../components/youthNet/VillageSelector';
-import { filterData, getAge, getLoggedInUserRole, getVillageUserCounts } from '../../utils/Helper';
+import {
+  filterData,
+  getAge,
+  getLoggedInUserRole,
+  getVillageUserCounts,
+} from '../../utils/Helper';
 import { fetchUserList } from '../../services/youthNet/Dashboard/UserServices';
-import { cohortHierarchy, Role, SortOrder, Status } from '../../utils/app.constant';
+import {
+  cohortHierarchy,
+  Role,
+  SortOrder,
+  Status,
+  VolunteerField,
+} from '../../utils/app.constant';
+import { editEditUser } from '../../services/ProfileService';
+import { showToastMessage } from '@/components/Toastify';
+import MentorAssignment from '../../components/youthNet/MentorForm/MentorAssignment';
+import useSubmittedButtonStore from '../../store/useSubmittedButtonStore';
+import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
+import PersonPinIcon from '@mui/icons-material/PersonPin';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const Index = () => {
   const { isRTL } = useDirection();
   const { t } = useTranslation();
   const theme = useTheme<any>();
   const router = useRouter();
+  const { villageId, tab, blockId } = router.query;
+  // const blockId: blockResult?.selectedValues[0]?.id
   const [value, setValue] = useState<number>(
-    YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole() ? 1 : 2
+    tab
+      ? Number(tab)
+      : YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()
+      ? 1
+      : 2
   );
   const [searchInput, setSearchInput] = useState('');
   const [toggledUser, setToggledUser] = useState('');
+  const [selectedToggledUserId, setselectedToggledUserId] = useState('');
+  const [formData, setFormData] = useState<any>();
+  const [showAssignmentScreen, setShowAssignmentScreen] =
+    useState<boolean>(false);
+  const submittedButtonStatus = useSubmittedButtonStore(
+    (state: any) => state.submittedButtonStatus
+  );
   const [openMentorDrawer, setOpenMentorDrawer] = useState(false);
   const [toggledMentor, setToggledMentor] = useState('');
   const [openDrawer, setOpenDrawer] = useState(false);
@@ -75,31 +106,41 @@ const Index = () => {
   const [mentorCount, setMentorCount] = useState(0);
   const [villageList, setVillageList] = useState<any>([]);
   const [mentorList, setMentorList] = useState<any>([]);
-  const [villageListWithUsers, setVillageListWithUsers] = useState<any>([]);  
+  const [villageListWithUsers, setVillageListWithUsers] = useState<any>([]);
   const [youthList, setYouthList] = useState<any>([]);
   const [filteredmentorList, setFilteredmentorList] = useState<any>([]);
-  const [filteredvillageListWithUsers, setFilteredVillageListWithUsers] = useState<any>([]);  
+  const [filteredvillageListWithUsers, setFilteredVillageListWithUsers] =
+    useState<any>([]);
   const [filteredyouthList, setFilteredYouthList] = useState<any>([]);
-   const [openDelete, setOpenDelete] = useState(false);
+  const [openDelete, setOpenDelete] = useState(false);
   const [selectedMentorId, setSelectedMentorId] = useState('');
   const [districtData, setDistrictData] = useState<any>(null);
+  const [blockData, setBlockData] = useState<any>(null);
+
   const [selectedValue, setSelectedValue] = useState<any>();
-  const [selectedBlockValue, setSelectedBlockValue] = useState<any>('');
-  const [selectedVillageValue, setSelectedVillageValue] = useState<any>('');
+  const [selectedBlockValue, setSelectedBlockValue] = useState<any>(
+    blockId ? blockId : ''
+  );
+  const [selectedVillageValue, setSelectedVillageValue] = useState<any>(
+    villageId ? villageId : ''
+  );
   const [selectedDistrictValue, setSelectedDistrictValue] = useState<any>('');
+  const [isVolunteerFieldId, setIsVolunteerFieldId] = useState<any>('');
+
   const [loading, setLoading] = useState<boolean>(false);
 
- const [appliedFilters, setAppliedFilters] = useState({
+  const [appliedFilters, setAppliedFilters] = useState({
     centerType: '',
     sortOrder: '',
   });
-  const [blockData, setBlockData] = useState<any>(null);
-  
+
   useEffect(() => {
+
     const getData = async () => {
+      try{
       let userDataString = localStorage.getItem('userData');
       let userData: any = userDataString ? JSON.parse(userDataString) : null;
-      const districtResult = userData.customFields.find(
+      const districtResult = userData?.customFields?.find(
         (item: any) => item.label === cohortHierarchy.DISTRICT
       );
       console.log(districtResult?.selectedValues);
@@ -110,8 +151,8 @@ const Index = () => {
         })
       );
       setDistrictData(transformedData);
-      setSelectedDistrictValue(transformedData[0]?.id);
-      const controllingfieldfk = transformedData[0]?.id?.toString();
+      setSelectedDistrictValue(transformedData?.[0]?.id);
+      const controllingfieldfk = [transformedData?.[0]?.id?.toString()];
       const fieldName = 'block';
       const blockResponce = await getStateBlockDistrictList({
         controllingfieldfk,
@@ -126,137 +167,170 @@ const Index = () => {
         })
       );
       setBlockData(transformedBlockData);
-      setSelectedBlockValue(transformedBlockData[0]?.id);
+      setSelectedBlockValue(blockId ? blockId : transformedBlockData[0]?.id);
+    } catch (error) {
+      console.error('Error fetching district and block data:', error);
+     // setDistrictData([]);
+      setBlockData([]);}
     };
     getData();
-  }, []);
+  }, [blockId, villageId]);
   useEffect(() => {
-    const getSortedData = (data: any, sortOrderType: any) => {
-      switch (sortOrderType) {
-        case SortOrder.ASC:
-          return [...data].sort((a, b) => a.name.localeCompare(b.name));
-        case SortOrder.DESC:
-          return [...data].sort((a, b) => b.name.localeCompare(a.name));
-        case SortOrder.NEW_REGISTRATION_LOW_TO_HIGH:
-          return [...data].sort((a, b) => b.newRegistrations - a.newRegistrations);
-        case SortOrder.NEW_REGISTRATION_HIGH_TO_LOW:
-          return [...data].sort((a, b) => a.newRegistrations - b.newRegistrations);
-        case SortOrder.TOTAL_COUNT_LOW_TO_HIGH:
-          return [...data].sort((a, b) => a.totalCount - b.totalCount);
-        case SortOrder.TOTAL_COUNT_HIGH_TO_LOW:
-          return [...data].sort((a, b) => b.totalCount - a.totalCount);
-        case SortOrder.AGE_LOW_TO_HIGH:
-          return [...data].sort((a, b) => a.age - b.age);
-        case SortOrder.AGE_HIGH_TO_LOW:
-          return [...data].sort((a, b) => b.age - a.age);
-        case SortOrder.OLD_JOINER_FIRST:
-          return [...data].sort((a, b) => new Date(a.joinOn).getTime() - new Date(b.joinOn).getTime());
-        case SortOrder.NEW_JOINER_FIRST:
-          return [...data].sort((a, b) => new Date(b.joinOn).getTime() - new Date(a.joinOn).getTime());
-        default:
-          return data;
+    try {
+      const getSortedData = (data: any, sortOrderType: any) => {
+        setLoading(true);
+
+        switch (sortOrderType) {
+          case SortOrder.ASC:
+            return [...data].sort((a, b) => a.name.localeCompare(b.name));
+          case SortOrder.DESC:
+            return [...data].sort((a, b) => b.name.localeCompare(a.name));
+          case SortOrder.NEW_REGISTRATION_LOW_TO_HIGH:
+            return [...data].sort(
+                            (a, b) => a.newRegistrations - b.newRegistrations
+
+            );
+          case SortOrder.NEW_REGISTRATION_HIGH_TO_LOW:
+            return [...data].sort(
+              (a, b) => b.newRegistrations - a.newRegistrations
+            );
+          case SortOrder.TOTAL_COUNT_LOW_TO_HIGH:
+            return [...data].sort((a, b) => a.totalCount - b.totalCount);
+          case SortOrder.TOTAL_COUNT_HIGH_TO_LOW:
+            return [...data].sort((a, b) => b.totalCount - a.totalCount);
+          case SortOrder.AGE_LOW_TO_HIGH:
+            return [...data].sort((a, b) => a.age - b.age);
+          case SortOrder.AGE_HIGH_TO_LOW:
+            return [...data].sort((a, b) => b.age - a.age);
+          case SortOrder.OLD_JOINER_FIRST:
+            return [...data].sort(
+              (a, b) =>
+                new Date(a.joinOn).getTime() - new Date(b.joinOn).getTime()
+            );
+          case SortOrder.NEW_JOINER_FIRST:
+            return [...data].sort(
+              (a, b) =>
+                new Date(b.joinOn).getTime() - new Date(a.joinOn).getTime()
+            );
+          default:
+            return data;
+        }
+      };
+
+      let filteredData = [];
+      if (value === 1) {
+        filteredData = filterData(mentorList, searchInput);
+        const data = getSortedData(filteredData, appliedFilters?.sortOrder);
+        setFilteredmentorList(
+          getSortedData(filteredData, appliedFilters?.sortOrder)
+        );
+        setMentorCount(data.length);
+      } else if (value === 2) {
+        filteredData = filterData(villageListWithUsers, searchInput);
+        const data = getSortedData(filteredData, appliedFilters?.sortOrder);
+        setFilteredVillageListWithUsers(
+          getSortedData(filteredData, appliedFilters?.sortOrder)
+        );
+        setVillageCount(data.length);
+      } else if (value === 3) {
+        filteredData = filterData(youthList, searchInput);
+        setFilteredYouthList(
+          getSortedData(filteredData, appliedFilters?.sortOrder)
+        );
       }
-    };
-  
-    let filteredData = [];
-    if (value === 1) {
-      filteredData = filterData(mentorList, searchInput);
-      setFilteredmentorList(getSortedData(filteredData, appliedFilters?.sortOrder));
-    } else if (value === 2) {
-      filteredData = filterData(villageListWithUsers, searchInput);
-      setFilteredVillageListWithUsers(getSortedData(filteredData, appliedFilters?.sortOrder));
-    } else if (value === 3) {
-      filteredData = filterData(youthList, searchInput);
-      setFilteredYouthList(getSortedData(filteredData, appliedFilters?.sortOrder));
+      setLoading(false);
+    } catch (e) {
+      setLoading(false);
     }
   }, [searchInput, appliedFilters, value]);
-  
+
   useEffect(() => {
     const getYouthData = async () => {
-      try{
-        setLoading(true)
+      try {
+        setLoading(true);
         const filters = {
-        village: [selectedVillageValue],
-        role: Role.LEARNER,
-        status: [Status.ACTIVE],
-      };
+          village: [selectedVillageValue],
+          role: Role.LEARNER,
+          status: [Status.ACTIVE],
+        };
 
-      const result = await fetchUserList({ filters });
-      if(result.getUserDetails)
-      {
-        const transformedYouthData = result?.getUserDetails.map(
-          (user: any) => {
-            let name = user.firstName || '';
-            const villageField = user.customFields.find(
-              (field: any) => field.label === cohortHierarchy.BLOCK
-            );
-            const blockField = user.customFields.find(
-              (field: any) => field.label === cohortHierarchy.BLOCK
-            );
-            console.log(blockField?.selectedValues);
-            const blockValues = blockField?.selectedValues.map(
-              (block: any) => block.value
-            );
+        const result = await fetchUserList({ filters });
+        if (result.getUserDetails) {
+          const transformedYouthData = result?.getUserDetails.map(
+            (user: any) => {
+              let name = user.firstName || '';
+              const villageField = user?.customFields?.find(
+                (field: any) => field?.label === cohortHierarchy.BLOCK
+              );
+              const blockField = user?.customFields?.find(
+                (field: any) => field?.label === cohortHierarchy.BLOCK
+              );
+              const isVolunteer = user?.customFields?.find(
+                (field: any) => field.label === VolunteerField.IS_VOLUNTEER
+              );
+              setIsVolunteerFieldId(isVolunteer?.fieldId);
+              const blockValues = blockField?.selectedValues.map(
+                (block: any) => block.value
+              );
 
-            if (user.lastName) {
-              name += ` ${user.lastName}`;
+              if (user.lastName) {
+                name += ` ${user.lastName}`;
+              }
+              let formattedDate;
+              let isToday = false;
+              if (user.createdAt) {
+                const date = new Date(user.createdAt);
+                const today = new Date();
+                isToday =
+                  date.getUTCFullYear() === today.getUTCFullYear() &&
+                  date.getUTCMonth() === today.getUTCMonth() &&
+                  date.getUTCDate() === today.getUTCDate();
+                const options: Intl.DateTimeFormatOptions = {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                };
+
+                formattedDate = date.toLocaleDateString('en-GB', options);
+              }
+              return {
+                Id: user.userId,
+                name: name.trim(),
+                firstName: user?.firstName,
+                dob: user?.dob,
+                lastName: user?.lastName,
+                joinOn: formattedDate,
+                isNew: isToday,
+                age: getAge(user?.dob),
+                showMore: true,
+                isVolunteer:
+                  isVolunteer?.selectedValues[0] || VolunteerField?.NO,
+              };
             }
-            let formattedDate;
-            let isToday=false
-            if(user.createdAt)
-            {
-              const date = new Date(user.createdAt);
-              const today = new Date(); 
-               isToday =
-    date.getUTCFullYear() === today.getUTCFullYear() &&
-    date.getUTCMonth() === today.getUTCMonth() &&
-    date.getUTCDate() === today.getUTCDate();
-        const options: Intl.DateTimeFormatOptions = { 
-          day: "2-digit", 
-          month: "short", 
-          year: "numeric" 
-      };
-      
-       formattedDate = date.toLocaleDateString("en-GB", options);     
-        }
-            return {
-              Id: user.userId,
-              name: name.trim(),
-              firstName: user?.firstName,
-              dob:user?.dob,
-              lastName: user?.lastName,
-              joinOn:formattedDate,
-              isNew:isToday,
-              age:getAge(user?.dob)
-            };
-          }
-        );
-        const ascending = [...transformedYouthData].sort((a, b) => a.name.localeCompare(b.name));
+          );
+          const ascending = [...transformedYouthData].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
 
-         setYouthList(ascending);
-         setFilteredYouthList(ascending)
+          setYouthList(ascending);
+          setFilteredYouthList(ascending);
+        } else {
+          setYouthList([]);
+          setFilteredYouthList([]);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-      else
-      {
-        setYouthList([]);
-        setFilteredYouthList([])
-      }
-      }
-     catch(e)
-     {
-      console.error(e)
-     }
-     finally{
-     setLoading(false)
-     }
-    }
-  if (value === 3 && selectedVillageValue !== '') getYouthData();
+    };
+    if (value === 3 && selectedVillageValue !== '') getYouthData();
   }, [value, selectedVillageValue]);
   useEffect(() => {
     const getMentorData = async () => {
       try {
         if (selectedDistrictValue !== '' && value === 1) {
-          setLoading(true)
+          setLoading(true);
           const filters = {
             district: [selectedDistrictValue],
             role: Role.INSTRUCTOR,
@@ -266,14 +340,16 @@ const Index = () => {
           const transformedMentorData = result?.getUserDetails.map(
             (user: any) => {
               let name = user.firstName || '';
-              const villageField = user.customFields.find(
-                (field: any) => field.label === cohortHierarchy.BLOCK
+              const villageField = user?.customFields?.find(
+                (field: any) => field.label === cohortHierarchy.VILLAGE
               );
-              const blockField = user.customFields.find(
+              const blockField = user?.customFields?.find(
                 (field: any) => field.label === cohortHierarchy.BLOCK
               );
               const blockValues = blockField?.selectedValues.map(
-                (block: any) => block.value
+                (block: any) => {
+                  block.value;
+                }
               );
 
               if (user.lastName) {
@@ -291,41 +367,42 @@ const Index = () => {
             }
           );
           // const filteredMentoList= filterData( transformedMentorData , searchInput)
-          const ascending = [...transformedMentorData].sort((a, b) => a.name.localeCompare(b.name));
+          const ascending = [...transformedMentorData].sort((a, b) =>
+            a.name.localeCompare(b.name)
+          );
           setMentorList(ascending);
 
-          setFilteredmentorList(ascending)
+          setFilteredmentorList(ascending);
           setMentorCount(transformedMentorData.length);
         }
       } catch (e) {
-        console.log(e)
-      }
-      finally{
-        setLoading(false)
+        console.log(e);
+      } finally {
+        setLoading(false);
       }
     };
-    if(value === 1)
-    getMentorData();
-  }, [selectedDistrictValue,  value]);
+    if (value === 1) getMentorData();
+  }, [selectedDistrictValue, value, submittedButtonStatus]);
   const handleLocationClick = (Id: any, name: any) => {
+    console.log(selectedBlockValue);
+
     router.push({
       pathname: `/villageDetails/${name}`,
-      query: { id: Id },
+      query: { id: Id, blockId: selectedBlockValue, tab: value },
     });
   };
 
   useEffect(() => {
     const getVillageYouthData = async () => {
       try {
-        setLoading(true)
+        setLoading(true);
         let userDataString = localStorage.getItem('userData');
         let userData: any = userDataString ? JSON.parse(userDataString) : null;
         let blockIds: any;
         if (YOUTHNET_USER_ROLE.INSTRUCTOR === getLoggedInUserRole()) {
-          const blockResult = userData.customFields.find(
+          const blockResult = userData?.customFields?.find(
             (item: any) => item.label === 'BLOCK'
           );
-          console.log(villageList);
           blockIds =
             blockResult?.selectedValues?.map((item: any) => item.id) || [];
         } else if (selectedBlockValue !== '') {
@@ -338,27 +415,32 @@ const Index = () => {
         };
 
         const result = await fetchUserList({ filters });
-        console.log(result);
         let villagewithUser;
         villagewithUser = getVillageUserCounts(result, villageList);
-        const ascending = [...villagewithUser].sort((a, b) => a.name.localeCompare(b.name));
+        const ascending = [...villagewithUser].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
 
         setVillageListWithUsers([...ascending]);
 
-        setFilteredVillageListWithUsers([...ascending])
+        setFilteredVillageListWithUsers([...ascending]);
       } catch (e) {
         setVillageListWithUsers([]);
-        setFilteredVillageListWithUsers([])
+        setFilteredVillageListWithUsers([]);
         console.log(e);
-      }
-      finally{
-        setLoading(false)
+      } finally {
+        setLoading(false);
       }
     };
-    //const userId=localStorage.getItem('userId')
     if (villageList?.length !== 0) getVillageYouthData();
   }, [villageList, selectedBlockValue]);
+  //   useEffect(() => {
+  //     setSelectedVillageValue(villageId);
+  //     setSelectedBlockValue(blockId)
 
+  //   }
+
+  // , [blockId, villageId]);
   useEffect(() => {
     const getVillageList = async () => {
       try {
@@ -368,11 +450,17 @@ const Index = () => {
             ? JSON.parse(villageDataString)
             : null;
           setVillageList(villageData);
-          setSelectedVillageValue(villageData[0]?.Id);
+          if (selectedBlockValue === blockId) {
+            setSelectedVillageValue(villageId);
+          } else {
+            if (YOUTHNET_USER_ROLE.INSTRUCTOR === getLoggedInUserRole())
+              setSelectedVillageValue(villageId);
+            else setSelectedVillageValue(villageData[0]?.Id);
+          }
 
           setVillageCount(villageData.length);
         } else if (selectedBlockValue !== '') {
-          const controllingfieldfk = selectedBlockValue?.toString();
+          const controllingfieldfk = [selectedBlockValue?.toString()];
           const fieldName = 'village';
           const villageResponce = await getStateBlockDistrictList({
             controllingfieldfk,
@@ -388,7 +476,13 @@ const Index = () => {
           setVillageCount(transformedVillageData.length);
 
           setVillageList(transformedVillageData);
-          setSelectedVillageValue(transformedVillageData[0]?.Id);
+          if (selectedBlockValue === blockId) {
+            setSelectedVillageValue(villageId);
+          } else {
+            if (YOUTHNET_USER_ROLE.INSTRUCTOR === getLoggedInUserRole())
+              setSelectedVillageValue(villageId);
+            else setSelectedVillageValue(transformedVillageData[0]?.Id);
+          }
         }
       } catch (error) {
         console.log(error);
@@ -396,28 +490,98 @@ const Index = () => {
     };
 
     getVillageList();
-  }, [selectedBlockValue]);
+  }, [selectedBlockValue, blockId, villageId]);
   useEffect(() => {
-    setValue(YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole() ? 1 : 2);
+    setValue(
+      tab
+        ? Number(tab)
+        : YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()
+        ? 1
+        : 2
+    );
   }, []);
-
+  const FormSubmitFunction = async (formData: any, payload: any) => {
+    setFormData(formData);
+    setShowAssignmentScreen(true);
+  };
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
-    setSearchInput('')
-    const centerType=""
-    const sortOrder=""
+    setSearchInput('');
+    const centerType = '';
+    const sortOrder = '';
     setAppliedFilters({ centerType, sortOrder });
   };
 
   const handleUserClick = (userId: any) => {
-    // console.log('Clicked user:', name);
-    router.push(`/user-profile/${userId}`);
+    router.push({
+      pathname: `/user-profile/${userId}`,
+      query: {
+        tab: value,
+        blockId: selectedBlockValue,
+        villageId: selectedVillageValue,
+      },
+    });
   };
 
-  const handleToggledUserClick = (name: any) => {
-    console.log('Toggled user:', name);
+  const handleToggledUserClick = (name: any, Id?: any) => {
     setToggledUser(name);
+    setselectedToggledUserId(Id);
     setOpenDrawer((prev) => !prev);
+  };
+  const handlemarkAsVolunteer = async () => {
+    try {
+      if (selectedToggledUserId !== '') {
+        const userId = selectedToggledUserId;
+        const userDetails = {
+          userData: {},
+          customFields: [
+            {
+              fieldId:
+                isVolunteerFieldId || '59716ca7-37af-4527-a1ad-ce0f1dabeb00',
+              value: 'yes',
+            },
+          ],
+        };
+
+        const response = await editEditUser(userId, userDetails);
+        console.log(filteredyouthList);
+
+        const updateIsVolunteer = (
+          array: any[],
+          targetId: any,
+          newValue: any
+        ) => {
+          return array.map((item) =>
+            item.Id === targetId ? { ...item, isVolunteer: newValue } : item
+          );
+        };
+
+        const updatedYouthList = updateIsVolunteer(
+          youthList,
+          selectedToggledUserId,
+          VolunteerField.YES
+        );
+        const updatedFilteredList = updateIsVolunteer(
+          filteredyouthList,
+          selectedToggledUserId,
+          VolunteerField.YES
+        );
+
+        setYouthList(updatedYouthList);
+        setFilteredYouthList(updatedFilteredList);
+        showToastMessage(
+          t('YOUTHNET_DASHBOARD.MARK_AS_VOLUNTEER_SUCCESSFULLY'),
+          'success'
+        );
+      }
+    } catch (e) {
+      showToastMessage(
+        t('YOUTHNET_DASHBOARD.MARK_AS_VOLUNTEER_FAILED'),
+        'error'
+      );
+
+      console.log(e);
+    }
   };
 
   const handleToggledMentorClick = (name: any) => {
@@ -428,6 +592,7 @@ const Index = () => {
   const handleToggleClose = () => {
     setOpenDrawer(false);
     setOpenMentorDrawer(false);
+    setselectedToggledUserId('');
   };
 
   const onClose = () => {
@@ -436,15 +601,19 @@ const Index = () => {
     setOpenReassignVillage(false);
     setAddNew(false);
     setCount(0);
+    setShowAssignmentScreen(false);
+    setFormData({});
   };
 
-  const handleButtonClick = (actionType: string) => {
+  const handleButtonClick = async (actionType: string) => {
     console.log(actionType);
 
     switch (actionType) {
-      case BOTTOM_DRAWER_CONSTANTS.MARK_VOLUNTEER:
+      case BOTTOM_DRAWER_CONSTANTS.MARK_VOLUNTEER: {
         setOpenDrawer(false);
+        await handlemarkAsVolunteer();
         break;
+      }
 
       case BOTTOM_DRAWER_CONSTANTS.ADD_REASSIGN:
         setOpenMentorDrawer(false);
@@ -478,20 +647,23 @@ const Index = () => {
     {
       label: t('YOUTHNET_USERS_AND_VILLAGES.ADD_OR_REASSIGN_VILLAGES'),
       action: BOTTOM_DRAWER_CONSTANTS.ADD_REASSIGN,
+      icon: <HolidayVillageIcon />,
     },
     {
       label: t('YOUTHNET_USERS_AND_VILLAGES.REQUEST_TO_REASSIGN_DISTRICT'),
       action: BOTTOM_DRAWER_CONSTANTS.REQUEST_REASSIGN,
+      icon: <PersonPinIcon />,
     },
     {
       label: t('YOUTHNET_USERS_AND_VILLAGES.DELETE_USER_PERMANENTLY'),
       action: BOTTOM_DRAWER_CONSTANTS.DELETE,
+      icon: <DeleteIcon />,
     },
   ];
 
-  const Mentorbuttons = mentorActions.map(({ label, action }) => ({
+  const Mentorbuttons = mentorActions.map(({ label, action, icon }) => ({
     label,
-    icon: <SwapHorizIcon />,
+    icon,
     onClick: () => handleButtonClick(action),
   }));
 
@@ -522,6 +694,7 @@ const Index = () => {
 
   const handleOpenNew = () => {
     setAddNew(true);
+    //router.push(`/add-mentor`);
   };
 
   const handleNext = () => {
@@ -584,6 +757,7 @@ const Index = () => {
             <Box
               display={'flex'}
               flexDirection={'row'}
+              alignItems={'center'}
               sx={{
                 p: '20px',
               }}
@@ -591,7 +765,7 @@ const Index = () => {
               <Box
                 sx={{
                   width: '100%',
-                  mr: '20px',
+                  // mr: '20px',
                 }}
               >
                 {districtData ? (
@@ -600,6 +774,7 @@ const Index = () => {
                     values={districtData}
                     defaultValue={districtData[0]?.id}
                     onSelect={(value) => console.log('Selected:', value)}
+                    label={t('YOUTHNET_USERS_AND_VILLAGES.DISTRICTS')}
                   />
                 ) : (
                   <Loader showBackdrop={true} />
@@ -610,6 +785,7 @@ const Index = () => {
             <Box
               display={'flex'}
               flexDirection={'row'}
+              alignItems={'center'}
               sx={{
                 pr: '20px',
               }}
@@ -620,14 +796,20 @@ const Index = () => {
                 placeholder={t('YOUTHNET_USERS_AND_VILLAGES.SEARCH_MENTORS')}
                 fullWidth={true}
               />
-              <SortBy 
-              appliedFilters={appliedFilters}
-              setAppliedFilters={setAppliedFilters}
-              sortingContent={Role.INSTRUCTOR}
+              <SortBy
+                appliedFilters={appliedFilters}
+                setAppliedFilters={setAppliedFilters}
+                sortingContent={Role.INSTRUCTOR}
               />
             </Box>
 
-            {/* <Box mt={'18px'} px={'18px'} ml={'10px'}>
+            <Box
+              mt={'18px'}
+              px={'18px'}
+              ml={'10px'}
+              display={'flex'}
+              justifyContent={'flex-end'}
+            >
               <Button
                 sx={{
                   border: `1px solid ${theme.palette.error.contrastText}`,
@@ -647,7 +829,7 @@ const Index = () => {
               >
                 {t('COMMON.ADD_NEW')}
               </Button>
-            </Box> */}
+            </Box>
 
             <Box>
               <Box display={'flex'} justifyContent={'space-between'}>
@@ -655,7 +837,7 @@ const Index = () => {
                   sx={{
                     fontSize: '16px',
                     color: 'black',
-                    margin: '20px',
+                    margin: '0 20px',
                   }}
                 >
                   {mentorCount} {''}
@@ -690,32 +872,30 @@ const Index = () => {
                 px: '20px',
               }}
             >
-              {!loading && filteredmentorList.length!==0 ?(<UserList
-                layout="list"
-                users={filteredmentorList}
-                onUserClick={handleUserClick}
-                onToggleUserClick={handleToggledMentorClick}
-              />):
-              (filteredmentorList.length===0?
-               ( <>
-             
-               <Typography
+              {filteredmentorList.length !== 0 ? (
+                <UserList
+                  layout="list"
+                  users={filteredmentorList}
+                  onUserClick={handleUserClick}
+                  onToggleUserClick={handleToggledMentorClick}
+                />
+              ) : filteredmentorList.length === 0 && !loading ? (
+                <>
+                  <Typography
                     sx={{
                       fontSize: '14px',
                       fontWeight: 400,
                       color: theme.palette.warning['300'],
                       marginTop: '10px',
-                      marginLeft:"15%"
+                      marginLeft: '15%',
                     }}
                   >
                     {t('YOUTHNET_USERS_AND_VILLAGES.NO_DATA_FOUND')}
-                    </Typography> 
-
-               </>)
-              : (<Loader showBackdrop={true} />)
-
-              )
-             }
+                  </Typography>
+                </>
+              ) : (
+                <Loader showBackdrop={true} />
+              )}
             </Box>
             <BottomDrawer
               open={openMentorDrawer}
@@ -861,11 +1041,12 @@ const Index = () => {
               onClose={onClose}
               showFooter={true}
               modalTitle={'New Mentor'}
-              handleNext={handleNext}
-              primaryText={count === 0 ? 'Next' : 'Finish & Assign'}
+              //  handleNext={FormSubmitFunction}
+              primaryText={!showAssignmentScreen ? 'Next' : undefined}
               secondaryText={count === 1 ? 'Save Progress' : ''}
+              id="dynamic-form-id"
             >
-              {count === 0 && (
+              {/* {count === 0 && (
                 <Box>
                   <Box mt={2}>
                     <GenericForm fields={formFields} />
@@ -885,7 +1066,15 @@ const Index = () => {
                     <VillageSelector />
                   </Box>
                 </Box>
-              )}
+              )} */}
+              <MentorAssignment
+                FormSubmitFunction={FormSubmitFunction}
+                setShowAssignmentScreen={setShowAssignmentScreen}
+                showAssignmentScreen={showAssignmentScreen}
+                formData={formData}
+                setFormData={setFormData}
+                onClose={onClose}
+              />
             </SimpleModal>
           </>
         )}
@@ -914,6 +1103,7 @@ const Index = () => {
                       values={districtData}
                       defaultValue={districtData?.[0]?.id}
                       onSelect={(value) => console.log('Selected:', value)}
+                      label={t('YOUTHNET_USERS_AND_VILLAGES.DISTRICTS')}
                     />
                   ) : (
                     <Loader showBackdrop={true} />
@@ -932,6 +1122,7 @@ const Index = () => {
                       onSelect={(value) =>
                         console.log('Selected:', setSelectedBlockValue(value))
                       }
+                      label={t('YOUTHNET_USERS_AND_VILLAGES.BLOCKS')}
                     />
                   ) : (
                     <Loader showBackdrop={true} />
@@ -945,6 +1136,7 @@ const Index = () => {
               sx={{
                 pr: '20px',
               }}
+              alignItems={'center'}
             >
               <SearchBar
                 onSearch={setSearchInput}
@@ -952,11 +1144,12 @@ const Index = () => {
                 placeholder={t('DASHBOARD.SEARCH_VILLAGES')}
                 fullWidth={true}
               />
-   <SortBy 
-              appliedFilters={appliedFilters}
-              setAppliedFilters={setAppliedFilters}
-              sortingContent={cohortHierarchy.VILLAGE}
-              />            </Box>
+              <SortBy
+                appliedFilters={appliedFilters}
+                setAppliedFilters={setAppliedFilters}
+                sortingContent={cohortHierarchy.VILLAGE}
+              />
+            </Box>
             {/* <Box>
               <YouthAndVolunteers
                 selectOptions={[
@@ -971,6 +1164,7 @@ const Index = () => {
                   fontSize: '16px',
                   color: 'black',
                   marginLeft: '2rem',
+                  mt: '10px',
                 }}
               >
                 {villageCount} {t(`YOUTHNET_DASHBOARD.VILLAGES`)}
@@ -1029,32 +1223,29 @@ const Index = () => {
                 mt: '15px',
               }}
             >
-              
-{!loading && filteredvillageListWithUsers.length!==0 ?(  <UserList
+              {filteredvillageListWithUsers.length !== 0 ? (
+                <UserList
                   layout="list"
                   users={filteredvillageListWithUsers}
                   onUserClick={handleLocationClick}
-                />):
-              (filteredvillageListWithUsers.length===0?
-               ( <>
-             
-               <Typography
+                />
+              ) : filteredvillageListWithUsers.length === 0 && !loading ? (
+                <>
+                  <Typography
                     sx={{
                       fontSize: '14px',
                       fontWeight: 400,
                       color: theme.palette.warning['300'],
                       marginTop: '15px',
-                      marginLeft:"30%"
+                      marginLeft: '30%',
                     }}
                   >
                     {t('YOUTHNET_USERS_AND_VILLAGES.NO_DATA_FOUND')}
-                    </Typography> 
-
-               </>)
-              : (<Loader showBackdrop={true} />)
-
-              )
-             }
+                  </Typography>
+                </>
+              ) : (
+                <Loader showBackdrop={true} />
+              )}
             </Box>
           </>
         )}
@@ -1082,6 +1273,7 @@ const Index = () => {
                       values={districtData}
                       defaultValue={districtData?.[0]?.id}
                       onSelect={(value) => console.log('Selected:', value)}
+                      label={t('YOUTHNET_USERS_AND_VILLAGES.DISTRICTS')}
                     />
                   ) : (
                     <Loader showBackdrop={true} />
@@ -1100,6 +1292,7 @@ const Index = () => {
                       onSelect={(value) =>
                         console.log('Selected:', setSelectedBlockValue(value))
                       }
+                      label={t('YOUTHNET_USERS_AND_VILLAGES.BLOCKS')}
                     />
                   ) : (
                     <Loader showBackdrop={true} />
@@ -1121,10 +1314,11 @@ const Index = () => {
                     : { id: item.Id, name: item.name }
                 )}
                 defaultValue={selectedVillageValue}
-                onSelect={(value) =>{console.log('Selected:', value) 
-                  setSelectedVillageValue(value)
-                }
-                }
+                onSelect={(value) => {
+                  console.log('Selected:', value);
+                  setSelectedVillageValue(value);
+                }}
+                label={t('YOUTHNET_USERS_AND_VILLAGES.VILLAGES')}
               />
             </Box>
             <Box
@@ -1133,6 +1327,7 @@ const Index = () => {
               sx={{
                 pr: '20px',
               }}
+              alignItems={'center'}
             >
               <SearchBar
                 onSearch={setSearchInput}
@@ -1140,43 +1335,43 @@ const Index = () => {
                 placeholder={t('DASHBOARD.SEARCH_YOUTH')}
                 fullWidth={true}
               />
-<SortBy 
-              appliedFilters={appliedFilters}
-              setAppliedFilters={setAppliedFilters}
-              sortingContent={Role.LEARNER}
-              />               </Box>
+              <SortBy
+                appliedFilters={appliedFilters}
+                setAppliedFilters={setAppliedFilters}
+                sortingContent={Role.LEARNER}
+              />{' '}
+            </Box>
             <Box
               sx={{
                 px: '20px',
                 mt: '15px',
               }}
             >
-            {!loading && filteredyouthList.length!==0 ?( <UserList
-                layout="list"
-                users={filteredyouthList}
-                onUserClick={handleUserClick}
-                onToggleUserClick={handleToggledUserClick}
-              />):
-              (filteredyouthList.length===0?
-               ( <>
-             
-               <Typography
+              {filteredyouthList.length !== 0 ? (
+                <UserList
+                  layout="list"
+                  users={filteredyouthList}
+                  onUserClick={handleUserClick}
+                  onToggleUserClick={handleToggledUserClick}
+                  // showMore={true}
+                />
+              ) : filteredyouthList.length === 0 && !loading ? (
+                <>
+                  <Typography
                     sx={{
                       fontSize: '14px',
                       fontWeight: 400,
                       color: theme.palette.warning['300'],
                       marginTop: '10%',
-                      marginLeft:"25%"
+                      marginLeft: '25%',
                     }}
                   >
                     {t('YOUTHNET_USERS_AND_VILLAGES.NO_DATA_FOUND')}
-                    </Typography> 
-
-               </>)
-              : (<Loader showBackdrop={true} />)
-
-              )
-             }
+                  </Typography>
+                </>
+              ) : (
+                <Loader showBackdrop={true} />
+              )}
             </Box>
             <BottomDrawer
               open={openDrawer}

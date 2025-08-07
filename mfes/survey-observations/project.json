@@ -1,0 +1,9 @@
+{
+  "name": "survey-observations",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "mfes/survey-observations",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project survey-observations --web",
+  "targets": {}
+}

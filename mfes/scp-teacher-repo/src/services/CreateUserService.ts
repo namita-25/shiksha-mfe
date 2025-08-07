@@ -1,5 +1,5 @@
 import API_ENDPOINTS from '@/utils/API/APIEndpoints';
-import { post } from './RestClient';
+import { post, patch } from './RestClient';
 
 //     const sortedFields = response?.data?.result.fields?.sort(
 //       (a: { order: string }, b: { order: string }) =>
@@ -18,18 +18,19 @@ import { post } from './RestClient';
 // };
 
 export const createUser = async (userData: any): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.accountCreate
+  const apiUrl: string = API_ENDPOINTS.accountCreate;
   try {
     const response = await post(apiUrl, userData);
     return response?.data?.result;
   } catch (error) {
     console.error('error in getting cohort list', error);
-    throw error;
+    // throw error;
+    return null;
   }
 };
 
 export const userNameExist = async (userData: any): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.suggestUsername
+  const apiUrl: string = API_ENDPOINTS.suggestUsername;
   try {
     const response = await post(apiUrl, userData);
     return response?.data?.result;
@@ -40,12 +41,31 @@ export const userNameExist = async (userData: any): Promise<any> => {
 };
 
 export const createCohort = async (userData: any): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.cohortCreate
+  const apiUrl: string = API_ENDPOINTS.cohortCreate;
   try {
     const response = await post(apiUrl, userData);
     return response?.data?.result;
   } catch (error) {
     console.error('error in getting cohort list', error);
     // throw error;
+  }
+};
+export interface UserDetailParam {
+  userData?: object;
+
+  customFields?: any;
+}
+export const updateUser = async (
+  userId: string,
+  { userData, customFields }: UserDetailParam
+): Promise<any> => {
+  const apiUrl: string = API_ENDPOINTS.userUpdate(userId);
+
+  try {
+    const response = await patch(apiUrl, { userData, customFields });
+    return response;
+  } catch (error) {
+    console.error('error in fetching user details', error);
+    return error;
   }
 };

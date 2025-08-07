@@ -1,3 +1,5 @@
+const baseurl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
+
 export const URL_CONFIG = {
   PARAMS: {
     CONTENT_GET:
@@ -6,10 +8,10 @@ export const URL_CONFIG = {
     HIERARCHY_FEILDS: 'instructions,outcomeDeclaration',
   },
   API: {
-    CONTENT_READ: '/api/content/v1/read/',
-    HIERARCHY_API: '/action/questionset/v2/hierarchy/',
-    QUESTIONSET_READ: '/action/questionset/v2/read/',
-    COMPOSITE_SEARCH: '/action/composite/v3/search',
-    CONTENT_HIERARCHY: '/action/content/v3/hierarchy',
+    CONTENT_READ: baseurl + '/api/content/v1/read/',
+    HIERARCHY_API: baseurl + '/action/questionset/v2/hierarchy/',
+    QUESTIONSET_READ: baseurl + '/action/questionset/v2/read/',
+    COMPOSITE_SEARCH: baseurl + '/action/composite/v3/search',
+    CONTENT_HIERARCHY: baseurl + '/action/content/v3/hierarchy',
   },
 };

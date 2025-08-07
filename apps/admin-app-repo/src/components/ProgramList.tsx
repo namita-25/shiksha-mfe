@@ -5,6 +5,7 @@ import { transformLabel } from "@/utils/Helper";
 import {
   Box,
   Container,
+  Grid,
   SelectChangeEvent,
   Typography,
   useMediaQuery,
@@ -227,31 +228,28 @@ const ProgramList: React.FC = () => {
               <Loader showBackdrop={false} loadingText={t("COMMON.LOADING")} />
             </Box>
           ) :
-       ( <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            flexDirection: "row",
-            gap: "20px",
-            margin: "20px",
-          }}
-        >
-          { filteredPrograms?.map((program: any) => (
-            <ProgramCard
-              programId={program.tenantId}
-              programName={program.name}
-              description={program.description}
-              // domain={program.domain}
-              status={program.status}
-              imageUrl={program.programImages || loginImg}
-              userRole={userRole}
-            />
-          ))}
-          {filteredPrograms.length === 0 && (<Typography ml="40%">
-            {t("PROGRAM_MANAGEMENT.NO_PROGRAMS_FOUND")}
-          </Typography>)
-          }
-        </Box>)
+       ( <Box sx={{py: 2, px: 2 }}>
+            <Grid container spacing={3} >
+              {filteredPrograms?.map((program: any) => (
+                <Grid item xs={12} sm={6} md={4} lg={3} key={program.tenantId}>
+
+                  <ProgramCard
+                    programId={program.tenantId}
+                    programName={program.name}
+                    description={program.description}
+                    // domain={program.domain}
+                    status={program.status}
+                    imageUrl={program.programImages || loginImg}
+                    userRole={userRole}
+                  />
+                </Grid>
+              ))}
+              {filteredPrograms.length === 0 && (<Typography ml="40%">
+                {t("PROGRAM_MANAGEMENT.NO_PROGRAMS_FOUND")}
+              </Typography>)
+              }
+            </Grid>
+       </Box>)
 }
       </HeaderComponent>
       <AddProgram

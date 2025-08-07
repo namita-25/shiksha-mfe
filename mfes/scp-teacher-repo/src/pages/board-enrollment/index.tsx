@@ -26,7 +26,12 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useRouter } from 'next/router';
 import React, { useEffect, useRef, useState } from 'react';
 import useStore from '@/store/store';
-import { FormContext, FormContextType, limit, Status } from '@/utils/app.constant';
+import {
+  FormContext,
+  FormContextType,
+  limit,
+  Status,
+} from '@/utils/app.constant';
 import { useQueryClient } from '@tanstack/react-query';
 import { getFormRead } from '@/hooks/useFormRead';
 import boardEnrollmentStore from '@/store/boardEnrollmentStore';
@@ -55,10 +60,11 @@ interface FormResponse {
 interface CustomField {
   fieldId: string;
   label: string;
-  value: string | object;
+  value: string | object | any;
   type?: string;
   sourceDetails?: object | null;
   order?: string | null | undefined;
+  selectedValues?: any;
 }
 
 interface FormattedMember {
@@ -184,6 +190,7 @@ const BoardEnrollment = () => {
         };
 
         const resultData = extractFieldData(formData);
+        // console.log('FormData!!!!!!!!', formattedMembers);
         const updatedMemberData = updateFormattedMember(
           formattedMembers,
           resultData
@@ -194,7 +201,11 @@ const BoardEnrollment = () => {
             // Count fields with non-empty values
             const completedStep = item.customField.reduce(
               (count: number, field: any) => {
-                if (field.value && field.value !== '') {
+                if (
+                  field.value &&
+                  field.value !== '' &&
+                  !(Array.isArray(field.value) && field.value.length === 0)
+                ) {
                   return count + 1;
                 }
                 return count;
@@ -209,6 +220,7 @@ const BoardEnrollment = () => {
           });
         };
         const processedData = checkStageCompletion(updatedMemberData);
+        // console.log('!!!!!!!!!!!!!!!!!', updatedMemberData);
         setBoardEnrollmentList(processedData);
         setDisplayStudentList(processedData);
         setBoardEnrollmentData(processedData);
@@ -216,7 +228,7 @@ const BoardEnrollment = () => {
         setStagesCount(stageCounts);
       }
     } catch (error) {
-      console.log("error", error);
+      console.log('error', error);
       // handleFetchError(error);
     } finally {
       setLoading(false);
@@ -247,8 +259,10 @@ const BoardEnrollment = () => {
     return members.map((entry: any) => ({
       userId: entry.userId,
       cohortMembershipId: entry.cohortMembershipId,
-      name: toPascalCase(entry?.firstName || '') + ' ' + (entry?.lastName ? toPascalCase(entry.lastName) : ""),
-
+      name:
+        toPascalCase(entry?.firstName || '') +
+        ' ' +
+        (entry?.lastName ? toPascalCase(entry.lastName) : ''),
 
       memberStatus: entry.status,
       statusReason: entry.statusReason,
@@ -270,7 +284,7 @@ const BoardEnrollment = () => {
       formData
         .filter(
           (formField) =>
-            formField.label === 'BOARD' || formField.label === 'SUBJECTS'
+            formField.label === 'BOARD' || formField.label === 'SUBJECT'
         )
         .map((formField) => formField.fieldId)
     );
@@ -278,6 +292,25 @@ const BoardEnrollment = () => {
     const formDataFieldMap = new Map<string, Field>(
       formData.map((field) => [field.fieldId, field])
     );
+
+    const parseJSON = (val: string) => {
+      try {
+        return JSON.parse(val);
+      } catch (err) {
+        console.warn(`Error parsing JSON:`, err);
+        return val;
+      }
+    };
+
+    const getFieldValue = (
+      label: string,
+      selectedValues: string[] = []
+    ): any => {
+      if (label === 'SUBJECT') {
+        return selectedValues.map(parseJSON);
+      }
+      return selectedValues[0] ? parseJSON(selectedValues[0]) : '';
+    };
 
     // Update each member's customField array
     formattedMember.forEach((member) => {
@@ -294,7 +327,10 @@ const BoardEnrollment = () => {
           const field: CustomField = {
             fieldId: formField.fieldId,
             label: formField.label,
-            value: existingField?.value || '',
+            value: getFieldValue(
+              formField.label,
+              existingField?.selectedValues
+            ),
             type: existingField?.type || 'text', // Default type to 'text'
             sourceDetails: formField.sourceDetails || null,
             order: formField.order || null,
@@ -303,7 +339,8 @@ const BoardEnrollment = () => {
           // Parse JSON if the fieldId is in parseFields
           if (parseFields.has(field.fieldId)) {
             try {
-              field.value = JSON.parse(field.value as string);
+              const parsed = JSON.parse(field.value as string);
+              field.value = parsed;
             } catch (error) {
               console.warn(
                 `Unable to parse value for fieldId ${field.fieldId}:`,
@@ -444,7 +481,7 @@ const BoardEnrollment = () => {
 
       <Box sx={{ px: '16px' }}>
         <Grid container sx={{ mt: '20px', alignItems: 'flex-end' }}>
-          <Grid item xs={8}>
+          <Grid item xs={12}>
             <Box>
               <CohortSelectionSection
                 classId={classId}
@@ -482,9 +519,9 @@ const BoardEnrollment = () => {
       </Box>
 
       <Box sx={{ mr: '20px' }}>
-        <Grid container alignItems={'end'} spacing={2}>
+        <Grid container alignItems="center" spacing={2} sx={{ mt: 0 }}>
           <Grid item xs={8} ref={searchRef}>
-            <Box sx={{ px: '16px', mt: 2 }}>
+            <Box sx={{ px: '16px' }}>
               <Paper
                 component="form"
                 onSubmit={(event) => {
@@ -541,7 +578,7 @@ const BoardEnrollment = () => {
             </Box>
           </Grid>
           <Grid
-            sx={{ display: 'flex', justifyContent: 'flex-end', }}
+            sx={{ display: 'flex', justifyContent: 'flex-end' }}
             xs={4}
             item
           >

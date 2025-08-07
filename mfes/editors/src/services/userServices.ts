@@ -72,10 +72,13 @@ export const getUserDetailsInfo = async (
 
  export const fetchCCTAList = async() => {
     try{
-        const filter={
+        const filter: any = {
             role: Role.CCTA
-        
-        }  
+        }
+        const tenantId = localStorage.getItem('tenantId');
+        if (tenantId) {
+          filter.tenantId = tenantId;
+        }
         const response= await userList({
             filters: filter,
            

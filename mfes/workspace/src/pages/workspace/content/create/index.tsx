@@ -8,6 +8,7 @@ import UploadIcon from "@mui/icons-material/Upload";
 import { useRouter } from "next/router";
 import { createCourse, createQuestionSet } from "@workspace/services/ContentService";
 import QuizOutlinedIcon from "@mui/icons-material/QuizOutlined";
+import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined';
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import VideoLibraryOutlinedIcon from "@mui/icons-material/VideoLibraryOutlined";
 import largeVideoIcon from '/public/150+.png';
@@ -110,6 +111,17 @@ const CreatePage = () => {
           query: { editorforlargecontent: "true" }, // No change needed
         }); // Removed an extra comma
       },
+    },
+    {
+      title: 'AI Assessment Creator',
+      description: 'Generate assessments and question sets with AI',
+      icon: (
+        <PsychologyOutlinedIcon
+          fontSize="large"
+          sx={{ transform: 'scale(-1, 1)' }}
+        />
+      ),
+      onClick: () => router.push( `/ai-assessment-creator`),
     },
   ];
 

@@ -4,7 +4,7 @@ import {
   IAssessmentStatusOptions,
   ISearchAssessment,
 } from '@/utils/Interfaces';
-import { post } from './RestClient';
+import { get, post } from './RestClient';
 import { URL_CONFIG } from '@/utils/url.config';
 import API_ENDPOINTS from '@/utils/API/APIEndpoints';
 
@@ -21,6 +21,35 @@ export const getAssessmentList = async ({
     console.error('error in getting Assessment List Service list', error);
 
     return error;
+  }
+};
+
+export const getAssessmentDetails = async (doId: string) => {
+  try {
+    // Ensure the environment variable is defined
+    const searchApiUrl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
+    if (!searchApiUrl) {
+      throw new Error('Search API URL environment variable is not configured');
+    }
+    // Axios request configuration
+    // const config: AxiosRequestConfig = {
+    //   method: 'get',
+    //   maxBodyLength: Infinity,
+    //   url: `${searchApiUrl}/api/course/v1/hierarchy/${doId}`,
+    //   params: params,
+    // };
+
+    // Execute the request
+    const response = await get(
+      `${searchApiUrl}/action/content/v3/hierarchy/${doId}`,
+      { Authorization: `Bearer` }
+    );
+    const res = response?.data?.result?.content;
+
+    return res;
+  } catch (error) {
+    console.error('Error in ContentSearch:', error);
+    throw error;
   }
 };
 
@@ -53,7 +82,7 @@ export const getDoIdForAssessmentDetails = async ({
 };
 
 export const getAssessmentStatus = async (body: IAssessmentStatusOptions) => {
-  const apiUrl: string = API_ENDPOINTS.assessmentSearchStatus
+  const apiUrl: string = API_ENDPOINTS.assessmentSearchStatus;
   try {
     const response = await post(apiUrl, body);
     return response?.data?.data;
@@ -65,7 +94,7 @@ export const getAssessmentStatus = async (body: IAssessmentStatusOptions) => {
 };
 
 export const searchAssessment = async (body: ISearchAssessment) => {
-  const apiUrl: string = API_ENDPOINTS.assessmentSearch
+  const apiUrl: string = API_ENDPOINTS.assessmentSearch;
   try {
     const response = await post(apiUrl, body);
     return response?.data?.data;

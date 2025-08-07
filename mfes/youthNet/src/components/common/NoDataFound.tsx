@@ -23,7 +23,7 @@ const NoDataFound: React.FC<NoDataFoundProps> = ({
       <Typography
         style={{ fontWeight: '500', textAlign: 'center', width: '100%' }}
       >
-        {t(title)}
+        {t(title,'No Data Found')}
       </Typography>
     </Box>
   );

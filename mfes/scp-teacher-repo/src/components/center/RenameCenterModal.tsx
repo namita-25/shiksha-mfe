@@ -1,4 +1,3 @@
-import { renameFacilitator } from '@/services/ManageUser';
 import { Telemetry } from '@/utils/app.constant';
 import { telemetryFactory } from '@/utils/telemetry';
 import CloseIcon from '@mui/icons-material/Close';
@@ -20,6 +19,7 @@ import { useRouter } from 'next/router';
 import React, { useState } from 'react';
 import { showToastMessage } from '../Toastify';
 import { modalStyles } from '@/styles/modalStyles';
+import { updateBatch } from '@/services/MasterDataService';
 
 interface CreateBlockModalProps {
   open: boolean;
@@ -44,7 +44,6 @@ const RenameCenterModal: React.FC<CreateBlockModalProps> = ({
   const [error, setError] = useState<boolean>(false);
   const [enableRenameButton, setEnableRenameButton] = useState<boolean>();
 
-
   const pattern = /^[a-zA-Z ]*$/;
 
   React.useEffect(() => {
@@ -58,7 +57,6 @@ const RenameCenterModal: React.FC<CreateBlockModalProps> = ({
   ) => {
     const value = event.target.value;
 
-
     // Validate against the pattern
     if (!pattern.test(value.trim())) {
       setError(true);
@@ -66,14 +64,14 @@ const RenameCenterModal: React.FC<CreateBlockModalProps> = ({
       setError(false);
     }
     setCenterName(value);
-    setEnableRenameButton(true)
+    setEnableRenameButton(true);
   };
 
   const handleCreateButtonClick = async () => {
     if (error) return;
     try {
       const name = centerName.toLowerCase().trim();
-      await renameFacilitator(cohortId, name);
+      await updateBatch(cohortId, name);
       setReloadState(true);
       showToastMessage(t('CENTERS.CENTER_RENAMED'), 'success');
 
@@ -103,15 +101,12 @@ const RenameCenterModal: React.FC<CreateBlockModalProps> = ({
       }
       handleClose(name);
     }
-  }
+  };
 
   return (
     <Modal open={open} onClose={() => handleClose('')} closeAfterTransition>
       <Fade in={open}>
-        <Box
-          sx={modalStyles}
-          padding={2}
-        >
+        <Box sx={modalStyles} padding={2}>
           <Box
             sx={{
               display: 'flex',
@@ -125,7 +120,7 @@ const RenameCenterModal: React.FC<CreateBlockModalProps> = ({
               gutterBottom
               color={theme?.palette?.text?.primary}
             >
-              {t('CENTERS.RENAME_CENTER')}
+              {t('CENTERS.RENAME_BATCH')}
             </Typography>
             <IconButton
               onClick={() => handleClose('')}
@@ -157,19 +152,21 @@ const RenameCenterModal: React.FC<CreateBlockModalProps> = ({
           )}
           <Divider sx={{ mb: 2, mx: -2 }} />
           <Button
-  variant="outlined"
-  onClick={handleCreateButtonClick}
-  sx={{
-    width: '100%',
-    border: 'none',
-    backgroundColor: (!!error || !centerName.trim() || !enableRenameButton)? "#EDEDED" :theme?.palette?.primary?.main,
-    mb: 2,
-  }}
-  disabled={!!error || !centerName.trim() || !enableRenameButton}
->
-  {t('CENTERS.RENAME')}
-</Button>
-
+            variant="outlined"
+            onClick={handleCreateButtonClick}
+            sx={{
+              width: '100%',
+              border: 'none',
+              backgroundColor:
+                !!error || !centerName.trim() || !enableRenameButton
+                  ? '#EDEDED'
+                  : theme?.palette?.primary?.main,
+              mb: 2,
+            }}
+            disabled={!!error || !centerName.trim() || !enableRenameButton}
+          >
+            {t('CENTERS.RENAME')}
+          </Button>
         </Box>
       </Fade>
     </Modal>

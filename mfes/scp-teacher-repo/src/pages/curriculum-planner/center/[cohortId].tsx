@@ -30,6 +30,7 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useRouter } from 'next/router';
@@ -97,7 +98,9 @@ const CoursePlannerDetail = () => {
   const fetchCourseDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getTargetedSolutions({
+
+      // Initial call with entityId
+      let response = await getTargetedSolutions({
         subject: tStore?.taxonomySubject,
         class: tStore?.grade,
         board: tStore?.board,
@@ -106,13 +109,29 @@ const CoursePlannerDetail = () => {
         entityId: cohortId,
       });
 
-      if (response?.result?.data == '') {
+      // Retry without entityId if empty
+      if (
+        Array.isArray(response?.result?.data) &&
+        response?.result?.data.length === 0
+      ) {
+        response = await getTargetedSolutions({
+          subject: tStore?.taxonomySubject,
+          class: tStore?.grade,
+          board: tStore?.board,
+          courseType: tStore?.type,
+          medium: tStore?.medium,
+        });
+      }
+
+      if (
+        !Array.isArray(response?.result?.data) ||
+        response?.result?.data.length === 0
+      ) {
         setLoading(false);
         return;
       }
 
       const courseData = response?.result?.data[0];
-
       let courseId = courseData._id;
 
       if (!courseId) {
@@ -122,6 +141,8 @@ const CoursePlannerDetail = () => {
       await fetchAndSetUserProjectDetails(courseId);
     } catch (error) {
       console.error('Error fetching course planner:', error);
+    } finally {
+      setLoading(false);
     }
   }, [statusData]);
 
@@ -157,7 +178,7 @@ const CoursePlannerDetail = () => {
     try {
       const solutionResponse = await getSolutionDetails({
         id: solutionId,
-        role: 'Teacher',
+        role: 'Instructor',
       });
 
       const externalId = solutionResponse?.result?.externalId;
@@ -165,7 +186,16 @@ const CoursePlannerDetail = () => {
         templateId: externalId,
         solutionId,
         role: Role.TEACHER,
-        cohortId,
+        entityId: cohortId,
+        acl: {
+          visibility: 'SCOPE',
+          users: [],
+          subject: tStore?.taxonomySubject,
+          medium: tStore?.medium,
+          class: tStore?.grade,
+          board: tStore?.board,
+          courseType: tStore?.type,
+        },
       });
 
       const updatedResponse = await getTargetedSolutions({
@@ -217,13 +247,10 @@ const CoursePlannerDetail = () => {
 
   const handleToggleAll = () => {
     const allOpen = Object.values(expandedPanels).every(Boolean);
-    const newState = Object.keys(expandedPanels).reduce(
-      (acc, key) => {
-        acc[key] = !allOpen;
-        return acc;
-      },
-      {} as { [key: string]: boolean }
-    );
+    const newState = Object.keys(expandedPanels).reduce((acc, key) => {
+      acc[key] = !allOpen;
+      return acc;
+    }, {} as { [key: string]: boolean });
     setExpandedPanels(newState);
     const windowUrl = window.location.pathname;
 
@@ -270,18 +297,38 @@ const CoursePlannerDetail = () => {
   // };
 
   const getAbbreviatedMonth = (dateString: string | number | Date) => {
-    const date = new Date(dateString);
-    const months = Array.from({ length: 12 }, (_, i) =>
-      dayjs().month(i).format('MMM')
-    );
-    return months[date.getMonth()];
+    dayjs.extend(customParseFormat);
+    //below considering date 12 as month
+    //12-02-1998
+    // const date = new Date(dateString);
+    // const months = Array.from({ length: 12 }, (_, i) =>
+    //   dayjs().month(i).format('MMM')
+    // );
+    // return months[date.getMonth()];
+    //fix this method to consider 02 as month
+    const date = dayjs(dateString, 'DD-MM-YYYY', true); // strict mode
+    if (!date.isValid()) return 'Invalid date';
+    return date.format('MMM'); // e.g., "Feb"
   };
 
   const markMultipleStatuses = async (
     data: any,
     selectedSubtopics: { topid: string; subid: string }[]
   ) => {
-    const updatedData = { ...data };
+    const { entityId, ...dataWithoutEntityId } = data;
+    const extendedData = {
+      ...dataWithoutEntityId,
+      userProfileInformation: {
+        scope: {
+          subject: tStore?.taxonomySubject,
+          medium: tStore?.medium,
+          class: tStore?.grade,
+          board: tStore?.board,
+          courseType: tStore?.type,
+        },
+      },
+    };
+    const updatedData = { ...extendedData };
 
     selectedSubtopics.forEach(({ topid, subid }) => {
       updatedData.tasks = updatedData.tasks.map(
@@ -724,8 +771,8 @@ const CoursePlannerDetail = () => {
                                         )
                                           ? '#FF9800'
                                           : isStatusCompleted(subTopic._id)
-                                            ? '#4CAF50'
-                                            : '#7C766e',
+                                          ? '#4CAF50'
+                                          : '#7C766e',
                                         cursor: isStatusCompleted(subTopic._id)
                                           ? 'default'
                                           : 'pointer',
@@ -762,9 +809,9 @@ const CoursePlannerDetail = () => {
                                   <Box
                                     sx={{ fontSize: '12px', fontWeight: '500' }}
                                   >
-                                    {`${subTopic?.learningResources?.length} ${t(
-                                      'COURSE_PLANNER.RESOURCES'
-                                    )}`}
+                                    {`${
+                                      subTopic?.learningResources?.length
+                                    } ${t('COURSE_PLANNER.RESOURCES')}`}
                                   </Box>
                                   <ArrowForwardIcon sx={{ fontSize: '16px' }} />
                                 </Box>
@@ -788,7 +835,9 @@ const CoursePlannerDetail = () => {
         </div>
         <FacilitatorDrawer
           secondary={t('COMMON.CANCEL')}
-          primary={`${t('COURSE_PLANNER.MARK_AS_COMPLETED')} (${selectedCount})`}
+          primary={`${t(
+            'COURSE_PLANNER.MARK_AS_COMPLETED'
+          )} (${selectedCount})`}
           toggleDrawer={toggleDrawer}
           drawerState={drawerState}
           onPrimaryClick={() => {

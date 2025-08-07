@@ -162,7 +162,8 @@
     "UPDATE_AVAILABLE": "New Update Available!",
     "RELOAD_TO_UPDATE": "Get the latest features and improvements—update now to enjoy a smoother experience and stay up-to-date!",
     "NO_ASSIGNED_BOARDS": "No assigned Board for selected Center",
-    "HIGHT-TO_LOW":"High to low"
+    "HIGHT-TO_LOW": "High to low",
+    "INPROGRESS": "Continue Previous Submission"
   },
   "LOGIN_PAGE": {
     "USERNAME": "Username",
@@ -242,8 +243,6 @@
     "SEARCH_VILLAGES": "Search Village",
     "SEARCH_YOUTH": "Search youth",
     "SEARCH_MENTOR": "Search mentor"
-
-
   },
   "ATTENDANCE": {
     "TOTAL_STUDENTS": "Total: {{count}}",
@@ -312,7 +311,9 @@
     "ENTER_CHARACTER": "Please enter at least one character",
     "CONTACT_NUMBER": "Contact Number",
     "ENROLLMENT_NUMBER": "Enrollment Number",
-    "SELECT_OPTION": "Select Option"
+    "SELECT_OPTION": "Select Option",
+    "PROFILE_UPDATE_SUCCESSFULLY": "Profile updated successfully",
+    "UNABLE_TO_PROFILE_UPDATE_": "Unable to update profile"
   },
   "FIELDS": {
     "DESIGNATION": "Designation",
@@ -620,7 +621,6 @@
     "MIN_LENGTH_CHARACTERS_ERROR": "Minimum {{minLength}} characters required",
     "MAX_LENGTH_CHARACTERS_ERROR": "Maximum {{maxLength}} characters allowed",
     "NUMBER_AND_SPECIAL_CHARACTERS_NOT_ALLOWED": "Numbers and special characters are not allowed",
-
     "ENTER_VALID_MOBILE_NUMBER": "Enter Valid mobile number",
     "ENTER_VALID_EMAIL": "Enter valid Email",
     "ENTER_VALID_YEAR": "Enter valid Year",
@@ -714,7 +714,8 @@
     "SURVEY_FORMS": "Survey Forms",
     "OBSERVATION_STATUS": "Survey Status",
     "OBSERVATION_NOT_STARTED_YET": "Survey not started yet",
-    "EXPIRED": "Expired"
+    "EXPIRED": "Expired",
+    "ARE_YOU_SURE_YOU_TO_SUBMIT_FORM": "Are you sure to submit form?"
   },
   "YOUTHNET_SURVEY": {
     "SURVEY": "Surveys",
@@ -722,35 +723,40 @@
     "ASSIGN_VOLUNTEERS_NOW": "Assign Volunteers Now",
     "REMIND_ME_LATER": "Remind Me Later",
     "NEW_SURVEY_HAS_BEEN_ADDED": "A new survey '{{surveyName}}' has been added and has been assigned to {{villageCount}} villages",
-    "ASSIGN_VOLUNTEERS_TO_ENSURE": "Assign Volunteers to ensure they can access the survey"
+    "ASSIGN_VOLUNTEERS_TO_ENSURE": "Assign Volunteers to ensure they can access the survey",
+    "SURVEY_ASSIGNED_VILLAGE_COUNT": "Assigned to {{villageCount}} Villages"
   },
   "YOUTHNET_DASHBOARD": {
     "VILLAGES_MANAGED_BY_YOU": "Villages Managed by you : {{totalVillageCount}}",
+    "VILLAGE_MANAGED_BY_YOU": "Village Managed by you : {{totalVillageCount}}",
+    "VILLAGE": "Village",
     "MANAGES": "Manages",
     "VILLAGES": "Villages",
     "MONTHLY_REGISTRATIONS_OVERVIEW": "Registrations Overview",
-    "CLOSED_ON": "Closed on",
+    "CLOSED_ON": "Closes on",
     "ABOVE_18": "Over 18 Registrations",
     "BELOW_18": "Under 18 Registrations",
     "VLLAGE_18": "Today's New Registrations ",
-    "TODAYS_NEW_REGISTRATION" :"{{totalCount}} New Registrations Today",
-     "YOUTH_COUNT":"{{count}} Youth",
-     "THIS_MONTH":"This month {{dateDetails}}",
-      "LAST_SIX_MONTH":"Last 6 months",
-      "LAST_TWL_MONTH":"Last 12 months",
-       "TOTAL_YOUTH":"Total Youth",
-       "TOTAL_YOUTH_COUNT":"Total Count of Youth",
-       "AS_OF_TODAY":"As of today",
-       "AS_OF_LAST_SIX_MONTH":"As of last month",
-       "AS_OF_LAST_YEAR":"As of last year",
-         "VILLAGE_NAME":"Village Name",
-    "TOTAL_COUNT_NEW_REGISTRATION":"Total Count (+ New Registrations today)",
-    "NEW_REGISTRATION":"New Registrations Today",
-    "YOUTH_JOINERS":"Youth joiners",
-    "OLD_JOINER_FIRST":"New joiners first",
-    "NEW_JOINER_FIRST":"Old joiners first",
-    "TOTAL_COUNT_YOUTH":"Total Count of Youth"
-
+    "TODAYS_NEW_REGISTRATION": "{{totalCount}} New Registrations Today",
+    "YOUTH_VOLUNTEER_COUNT": "{{count}} Youth & Volunteer",
+    "THIS_MONTH": "This month {{dateDetails}}",
+    "LAST_SIX_MONTH": "Last 6 months",
+    "LAST_TWL_MONTH": "Last 12 months",
+    "TOTAL_YOUTH": "Total Youth and Volunteer",
+    "YOUTH_AND_VOLUNTEER": "{{youthCount}} Youth , {{volunteerCount}} Volunteer",
+    "TOTAL_YOUTH_COUNT": "Total Count of Youth",
+    "AS_OF_TODAY": "As of today",
+    "AS_OF_LAST_SIX_MONTH": "As of last month",
+    "AS_OF_LAST_YEAR": "As of last year",
+    "VILLAGE_NAME": "Village Name",
+    "TOTAL_COUNT_NEW_REGISTRATION": "Total Count (+ New Registrations today)",
+    "NEW_REGISTRATION": "New Registrations Today",
+    "YOUTH_JOINERS": "Youth joiners",
+    "OLD_JOINER_FIRST": "Old joiners first",
+    "NEW_JOINER_FIRST": "New joiners first",
+    "TOTAL_COUNT_YOUTH": "Total Count of Youth",
+    "MARK_AS_VOLUNTEER_SUCCESSFULLY": "Successfully mark youth as a volunteer",
+    "MARK_AS_VOLUNTEER_FAILED": "Failed to mark youth as a volunteer"
   },
   "YOUTHNET_VOLUNTEERLIST": {
     "ENTRIES": "Entries",
@@ -763,8 +769,9 @@
     "FULL_NAME": "Full Name",
     "EMAIL_ID": "Email ID",
     "STATE_DISTRICT_BLOCK": "Block District State",
+    "STATE_DISTRICT": "District State",
     "STATE_DISTRICT_BLOCK_VILLAGE": "Village Block District State",
-     "DESIGNATION": "Designation",
+    "DESIGNATION": "Designation",
     "JOINED_ON": "Joined on",
     "PHONE_NUMBER": "Phone Number",
     "MENTOR_ID": "Mentor ID",
@@ -772,13 +779,12 @@
     "AGE": "Age",
     "VOLUNTEERING_DETAILS": "Volunteering details",
     "MARK_AS_VOLUNTEER": "Mark as Volunteer",
-    "DOB":"Date of Birth",
-    "FIRST_NAME":"First Name",
-    "MIDDLE_NAME":"Middle Name",
-    "LAST_NAME":"Last Name",
-    "USERNAME":"Username"
+    "DOB": "Date of Birth",
+    "FIRST_NAME": "First Name",
+    "MIDDLE_NAME": "Middle Name",
+    "LAST_NAME": "Last Name",
+    "USERNAME": "Username"
   },
-
   "YOUTHNET_USERS_AND_VILLAGES": {
     "MENTORS": "Mentors",
     "CSV": "CSV",
@@ -796,13 +802,14 @@
     "SELECT": "Select",
     "ASSIGN_VILLAGES_FROM_BLOCK": "Assign Villages from Block",
     "ASSIGN_VILLAGES_FROM_BLOCK_INFO": "You can complete this later at your own pace. However, the villages will only be assigned once you click on ‘Finish.’",
-    "NO_DATA_FOUND":"no data found",
-    "VILLAGE":"Village",
-    "BLOCK":"blocks",
-    "VILLAGES":"Villages",
-    "BLOCKS":"Blocks"
+    "NO_DATA_FOUND": "No data found",
+    "VILLAGE": "Village",
+    "BLOCK": "Block",
+    "VILLAGES": "Villages",
+    "BLOCKS": "Blocks",
+    "DISTRICT": "District",
+    "DISTRICTS": "Districts"
   },
-
   "YOUTHNET_CAMP_DETAILS": {
     "SUBMISSION": "Submission",
     "SUMMARY": "Summary"
@@ -814,5 +821,67 @@
     "VILLAGES": "Villages",
     "SUBMISSION": "Submissions",
     "SUMMARY": "Summary"
-  }
+  },
+  "MENTOR": {
+    "MENTOR_CREATED_SUCCESSFULLY": "The mentor account has been created successfully, and the credentials have been sent",
+    "MENTOR_CREATED": "The mentor account has been created successfully",
+    "MENTOR_CREATED_FAILED": "Failed to create mentor account",
+    "FINISH_ASSIGN": "Finish & Assign",
+    "VILLAGES_SELECTED": "villages selected",
+    "DISTRICTS": "Districts",
+    "ASSIGN_VILLAGES_FINISH": "You can complete this later at your own pace. However, the villages will only be assigned once you click on ‘Finish.’",
+    "ASSIGN_VILLAGES_FROM_BLOCKS": "Assign Villages from Blocks",
+    "BACK_TO_FORM": "Back to form",
+    "SELECTED_VILLAGE_COUNT": "Selected village count : {{totalVillageCount}}"
+  },
+  "UNIT_NAME": "Unit Name",
+  "TYPE_OF_CENTER": "Type Of Center",
+  "GOOGLE MAP_LINK": "Google Map Link",
+  "MY_MAIN_SUBJECTS": "Main subjects",
+  "LIFE_SKILLS": "Life Skills",
+  "ENGLISH": "English",
+  "HOME_SCIENCE": "Home Science",
+  "MATH": "Math",
+  "LANGUAGE": "Language",
+  "SCIENCE": "Science",
+  "SOCIAL_SCIENCE": "Social Science",
+  "SUBJECTS_I_TEACH": "Subject I Teach",
+  "MOTHER_NAME": "Mother Name",
+  "HIGHEST_EDCATIONAL_QUALIFICATION_OR_LAST_PASSED_GRADE": "Highest Educational Qualification or Last Passed Grade",
+  "MARITAL_STATUS": "Marital Status",
+  "TYPE_OF_PHONE_AVAILABLE": "Type of Phone Available",
+  "SMARTPHONE": "Smartphone",
+  "KEYPAD": "Keypad",
+  "DOES_THIS_PHONE_BELONG_TO_YOU": "Does This Phone Belong to You?",
+  "YES": "Yes",
+  "NO": "No",
+  "confirm_password": "Confirm Password",
+  "USERNAME": "Username",
+  "NAME_OF_GUARDIAN": "Name of Guardian",
+  "RELATION_WITH_GUARDIAN": "Relation with Guardian",
+  "PARENT_GUARDIAN_PHONE_NO": "Parent/Guardian Phone No",
+  "WHAT_IS_YOUR_PREFERRED_MODE_OF_LEARNING": "What is Your Preferred Mode of Learning?",
+  "REASON_FOR_DROP_OUT_FROM_SCHOOL": "Reason for drop out from School",
+  "ARE_YOU_CURRENTLY_WORKING_IF_YES_CHOOSE_THE_DOMAIN": "Are You Currently Working? If Yes, Choose the Domain",
+  "WHAT_DO_YOU_WANT_TO_BECOME": "What do you want to become?",
+  "CENTER:": "Center:",
+  "District": "District",
+  "State": "State",
+  "Village": "Village",
+  "CENTER": "Center",
+  "BOARD": "Board",
+  "MEDIUM": "Medium",
+  "GRADE": "Grade",
+  "REGULAR": "Regular",
+  "REMOTE": "Remote",
+  "IS_VOLUNTEER": "Is Volunteer",
+  "FIRST_NAME": "First Name",
+  "middle_name": "Middle Name",
+  "last_name": "Last Name",
+  "WHATS_YOUR_GENDER": "Gender",
+  "MALE": "Male",
+  "FEMALE": "Female",
+  "TRANSGENDER": "Transgender",
+  "phone_number": "Phone Number",
+  "first_name": "First Name"
 }

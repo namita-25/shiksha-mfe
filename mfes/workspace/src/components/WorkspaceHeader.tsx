@@ -42,6 +42,8 @@ const WorkspaceHeader = () => {
         padding: '12px 20px',
         background: 'linear-gradient(to right, white, #F8EFDA)',
         borderBottom: '1px solid #ddd',
+        position: 'sticky',
+        top: 0,
       }}
     >
       <Typography

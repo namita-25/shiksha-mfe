@@ -16,12 +16,12 @@ const CoursePlannerCards: React.FC<CoursePlannerCardsProps> = ({
   );
 
   // Remove duplicates by identifier
-  const uniqueResources = filteredResources?.reduce((acc : any, resource :any) => {
-    if (!acc.some((item : any) => item.identifier === resource.identifier)) {
-      acc.push(resource);
-    }
-    return acc;
-  }, [] as typeof resources);
+  // const uniqueResources = filteredResources?.reduce((acc : any, resource :any) => {
+  //   if (!acc.some((item : any) => item.identifier === resource.identifier)) {
+  //     acc.push(resource);
+  //   }
+  //   return acc;
+  // }, [] as typeof resources);
 
   return (
     <Box>
@@ -30,7 +30,7 @@ const CoursePlannerCards: React.FC<CoursePlannerCardsProps> = ({
         spacing={2}
         sx={{ px: '16px !important', cursor: 'pointer' }}
       >
-        {uniqueResources?.map(
+        {filteredResources?.map(
           (
             resource: {
               resourceType: string;

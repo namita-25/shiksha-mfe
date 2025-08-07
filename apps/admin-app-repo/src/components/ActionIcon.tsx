@@ -12,7 +12,7 @@ import Image from 'next/image';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import PreviewIcon from '@mui/icons-material/Preview';
-
+import DownloadIcon from '@mui/icons-material/Download';
 interface ActionCellProps {
   onEdit: (rowData: any) => void;
   onDelete: (rowData: any) => void;
@@ -25,6 +25,7 @@ interface ActionCellProps {
   onViewCourses?: (rowData: any) => void;
   onViewCertificate?: (rowData: any) => void;
   onIssueCertificate?: (rowData: any) => void;
+  onDownloadCertificate?:(rowData: any) => void
 }
 
 const ActionIcon: React.FC<ActionCellProps> = ({
@@ -38,11 +39,12 @@ const ActionIcon: React.FC<ActionCellProps> = ({
   onViewCourses,
   onViewCertificate,
   onIssueCertificate,
+  onDownloadCertificate,
   role,
 }) => {
   const { t } = useTranslation();
   const theme = useTheme<any>();
-  if (rowData.courseStatus === Status.ISSUED && onViewCertificate && onIssueCertificate) {
+  if (rowData.courseStatus === Status.ISSUED && onViewCertificate && onIssueCertificate && onDownloadCertificate) {
     return (
       <Box
         sx={{
@@ -82,6 +84,20 @@ const ActionIcon: React.FC<ActionCellProps> = ({
           <Image src={reissueIcon} alt="" width={24} height={24} />
           <Typography variant="caption" sx={{ mt: 1, fontWeight: 'bold' }}>
             {t('CERTIFICATES.REISSUE_CERTIFICATE')}
+          </Typography>
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            cursor: 'pointer',
+            p: '10px',
+          }}
+          onClick={() => {onDownloadCertificate(rowData)}}
+        >
+          <DownloadIcon/>
+          <Typography variant="caption" sx={{ mt: 1, fontWeight: 'bold' }}>
+            {t('CERTIFICATES.DOWNLOAD')}
           </Typography>
         </Box>
       </Box>

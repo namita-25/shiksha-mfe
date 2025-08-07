@@ -10,43 +10,92 @@ import {
   MentorLeadSearchSchema,
   MentorLeadSearchUISchema,
 } from '../constant/Forms/MentorLeadSearch';
-import { Status } from '@/utils/app.constant';
+import { Role, RoleId, Status } from '@/utils/app.constant';
 import { userList } from '@/services/UserList';
-import { Box, Grid, Typography } from '@mui/material';
+import {
+  Box,
+  Checkbox,
+  FormControlLabel,
+  Grid,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { debounce } from 'lodash';
 import { Numbers } from '@mui/icons-material';
 import PaginatedTable from '@/components/PaginatedTable/PaginatedTable';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Button } from '@mui/material';
-import AddEditMentorLead from '@/components/EntityForms/AddEditMentorLead/AddEditMentorLead';
+import AddEditUser from '@/components/EntityForms/AddEditUser/AddEditUser';
 import SimpleModal from '@/components/SimpleModal';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { updateCohortMemberStatus } from '@/services/CohortService/cohortService';
 import editIcon from '../../public/images/editIcon.svg';
 import deleteIcon from '../../public/images/deleteIcon.svg';
 import Image from 'next/image';
+import {
+  extractMatchingKeys,
+  fetchForm,
+  searchListData,
+} from '@/components/DynamicForm/DynamicFormCallback';
+import { FormContext } from '@/components/DynamicForm/DynamicFormConstant';
+import ConfirmationPopup from '@/components/ConfirmationPopup';
+import DeleteDetails from '@/components/DeleteDetails';
+import { deleteUser } from '@/services/UserService';
+import { transformLabel } from '@/utils/Helper';
+import { getCohortList } from '@/services/GetCohortList';
+import { useTheme } from '@mui/material/styles';
+import AddIcon from '@mui/icons-material/Add';
 
 const MentorLead = () => {
+  console.log(
+    '################ MentorLeadSearchSchema',
+    MentorLeadSearchSchema
+  );
+  const theme = useTheme<any>();
   const [isLoading, setIsLoading] = useState(false);
   const [schema, setSchema] = useState(MentorLeadSearchSchema);
   const [uiSchema, setUiSchema] = useState(MentorLeadSearchUISchema);
   const [addSchema, setAddSchema] = useState(null);
   const [addUiSchema, setAddUiSchema] = useState(null);
   const [prefilledAddFormData, setPrefilledAddFormData] = useState({});
-  const [sortBy, setSortBy] = useState<string>('name');
   const [pageLimit, setPageLimit] = useState<number>(10);
   const [pageOffset, setPageOffset] = useState<number>(0);
   const [prefilledFormData, setPrefilledFormData] = useState({});
   const [loading, setLoading] = useState<boolean>(false);
   const [response, setResponse] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const [renderKey, setRenderKey] = useState(true);
   const [openModal, setOpenModal] = React.useState<boolean>(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editableUserId, setEditableUserId] = useState('');
+  const [open, setOpen] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [village, setVillage] = useState('');
+  const [userID, setUserId] = useState('');
+  const [userData, setUserData] = useState({
+    firstName: '',
+    lastName: '',
+    village: '',
+  });
+  const [reason, setReason] = useState('');
+  const [memberShipID, setMemberShipID] = useState('');
 
   const { t, i18n } = useTranslation();
+
+  const initialFormData = localStorage.getItem('stateId')
+    ? { state: [localStorage.getItem('stateId')] }
+    : {};
+
+  const searchStoreKey = 'mentorLeader';
+  const initialFormDataSearch =
+    localStorage.getItem(searchStoreKey) &&
+    localStorage.getItem(searchStoreKey) != '{}'
+      ? JSON.parse(localStorage.getItem(searchStoreKey))
+      : localStorage.getItem('stateId')
+      ? { state: [localStorage.getItem('stateId')] }
+      : {};
 
   useEffect(() => {
     if (response?.result?.totalCount !== 0) {
@@ -56,50 +105,24 @@ const MentorLead = () => {
   useEffect(() => {
     // Fetch form schema from API and set it in state.
     const fetchData = async () => {
-      let data = JSON.stringify({
-        readForm: [
-          {
-            fetchUrl:
-              'https://dev-middleware.prathamdigital.org/user/v1/form/read?context=USERS&contextType=LEAD',
-            header: {},
-          },
-          {
-            fetchUrl:
-              'https://dev-middleware.prathamdigital.org/user/v1/form/read?context=USERS&contextType=LEAD',
-            header: {
-              tenantid: '6c8b810a-66c2-4f0d-8c0c-c025415a4414',
-            },
-          },
-        ],
-      });
-
-      let config = {
-        method: 'post',
-        maxBodyLength: Infinity,
-        url: '/api/dynamic-form/get-rjsf-form',
-        headers: {
-          'Content-Type': 'application/json',
+      const responseForm = await fetchForm([
+        {
+          fetchUrl: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/form/read?context=${FormContext.mentorLead.context}&contextType=${FormContext.mentorLead.contextType}`,
+          header: {},
         },
-        data: data,
-      };
-
-      await axios
-        .request(config)
-        .then((response) => {
-          console.log(JSON.stringify(response.data));
-          if (response.data?.schema) {
-            console.log(`schema`, response.data?.schema);
-            setAddSchema(response.data?.schema);
-          }
-          if (response.data?.schema) {
-            console.log(`uiSchema`, response.data?.uiSchema);
-            setAddUiSchema(response.data?.uiSchema);
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-        });
+        {
+          fetchUrl: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/form/read?context=${FormContext.mentorLead.context}&contextType=${FormContext.mentorLead.contextType}`,
+          header: {
+            tenantid: localStorage.getItem('tenantId'),
+          },
+        },
+      ]);
+      console.log('responseForm', responseForm);
+      setAddSchema(responseForm?.schema);
+      setAddUiSchema(responseForm?.uiSchema);
     };
+    setPrefilledAddFormData(initialFormData);
+    setPrefilledFormData(initialFormDataSearch);
     fetchData();
   }, []);
 
@@ -110,59 +133,40 @@ const MentorLead = () => {
     },
   };
 
-  const debouncedGetList = debounce(async (data) => {
-    const resp = await userList(data);
-    console.log('Debounced API Call:', resp);
-    // console.log('totalCount', result?.totalCount);
-    // console.log('userDetails', result?.getUserDetails);
-    setResponse({ result: resp });
-  }, 300);
-
   const SubmitaFunction = async (formData: any) => {
     setPrefilledFormData(formData);
+    //set prefilled search data on refresh
+    localStorage.setItem(searchStoreKey, JSON.stringify(formData));
     await searchData(formData, 0);
   };
 
   const searchData = async (formData, newPage) => {
-    const { sortBy, ...restFormData } = formData;
-
-    const filters = {
+    formData = Object.fromEntries(
+      Object.entries(formData).filter(
+        ([_, value]) => !Array.isArray(value) || value.length > 0
+      )
+    );
+    const staticFilter = {
       role: 'Lead',
-      status: [Status.ACTIVE],
-      ...Object.entries(restFormData).reduce((acc, [key, value]) => {
-        if (value !== undefined && value !== '') {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, any>),
+      status: 'active',
+      tenantId: localStorage.getItem('tenantId'),
     };
-
-    const sort = ['firstName', sortBy || 'asc'];
-    let limit = pageLimit;
-    let offset = newPage * limit;
-    let pageNumber = newPage;
-
-    setPageOffset(offset);
-    setCurrentPage(pageNumber);
-    setResponse({});
-    setRenderKey((renderKey) => !renderKey);
-
-    const data = {
-      limit,
-      offset,
-      sort,
-      filters,
-    };
-
-    if (filters.searchKey) {
-      debouncedGetList(data);
-    } else {
-      const resp = await userList(data);
-      // console.log('totalCount', result?.totalCount);
-      // console.log('userDetails', result?.getUserDetails);
-      setResponse({ result: resp });
-      console.log('Immediate API Call:', resp);
+    if (localStorage.getItem('roleName') === Role.ADMIN) {
+      staticFilter.state = [localStorage.getItem('stateId')];
     }
+    const { sortBy } = formData;
+    const staticSort = ['firstName', sortBy || 'asc'];
+    await searchListData(
+      formData,
+      newPage,
+      staticFilter,
+      pageLimit,
+      setPageOffset,
+      setCurrentPage,
+      setResponse,
+      userList,
+      staticSort
+    );
   };
 
   // Define table columns
@@ -171,14 +175,25 @@ const MentorLead = () => {
       keys: ['firstName', 'middleName', 'lastName'],
       label: 'Mentor Lead Name',
       render: (row) =>
-        `${row.firstName || ''} ${row.middleName || ''} ${
-          row.lastName || ''
-        }`.trim(),
+        `${transformLabel(row.firstName) || ''} ${
+          transformLabel(row.middleName) || ''
+        } ${transformLabel(row.lastName) || ''}`.trim(),
     },
     {
       key: 'status',
       label: 'Status',
+      render: (row: any) => transformLabel(row.status),
       getStyle: (row) => ({ color: row.status === 'active' ? 'green' : 'red' }),
+    },
+    {
+      keys: ['gender'],
+      label: 'Gender',
+      render: (row) => transformLabel(row.gender) || '',
+    },
+    {
+      keys: ['mobile'],
+      label: 'Mobile',
+      render: (row) => transformLabel(row.mobile) || '',
     },
     // {
     //   key: 'STATE',
@@ -195,11 +210,15 @@ const MentorLead = () => {
       label: 'Location (State / District )',
       render: (row) => {
         const state =
-          row.customFields.find((field) => field.label === 'STATE')
-            ?.selectedValues[0]?.value || '';
+          transformLabel(
+            row.customFields.find((field) => field.label === 'STATE')
+              ?.selectedValues?.[0]?.value
+          ) || '';
         const district =
-          row.customFields.find((field) => field.label === 'DISTRICT')
-            ?.selectedValues[0]?.value || '';
+          transformLabel(
+            row.customFields.find((field) => field.label === 'DISTRICT')
+              ?.selectedValues?.[0]?.value
+          ) || '';
 
         return `${state == '' ? '' : `${state}`}${
           district == '' ? '' : `, ${district}`
@@ -207,6 +226,70 @@ const MentorLead = () => {
       },
     },
   ];
+  const userDelete = async () => {
+    try {
+      let membershipId = null;
+
+      // Attempt to get the cohort list
+      try {
+        const userCohortResp = await getCohortList(userID);
+        if (userCohortResp?.result?.cohortData?.length) {
+          membershipId = userCohortResp.result.cohortData[0].cohortMembershipId;
+        } else {
+          console.warn('No cohort data found for the user.');
+        }
+      } catch (error) {
+        console.error('Failed to fetch cohort list:', error);
+      }
+
+      // Attempt to update cohort member status only if we got a valid membershipId
+      if (membershipId) {
+        try {
+          const updateResponse = await updateCohortMemberStatus({
+            memberStatus: 'archived',
+            statusReason: reason,
+            membershipId: membershipId,
+          });
+
+          if (updateResponse?.responseCode !== 200) {
+            console.error(
+              'Failed to archive user from center:',
+              updateResponse
+            );
+          } else {
+            console.log('User successfully archived from center.');
+          }
+        } catch (error) {
+          console.error('Error archiving user from center:', error);
+        }
+      }
+
+      // Always attempt to delete the user
+      console.log('Proceeding to self-delete...');
+      const resp = await deleteUser(userID, {
+        userData: { reason: reason, status: 'archived' },
+      });
+
+      if (resp?.responseCode === 200) {
+        setResponse((prev) => ({
+          ...prev,
+          result: {
+            ...prev?.result,
+            getUserDetails: prev?.result?.getUserDetails?.filter(
+              (item) => item?.userId !== userID
+            ),
+          },
+        }));
+        console.log('Team leader successfully archived.');
+      } else {
+        console.error('Failed to archive team leader:', resp);
+      }
+
+      return resp;
+    } catch (error) {
+      console.error('Error updating team leader:', error);
+    }
+  };
 
   // Define actions
   const actions = [
@@ -226,9 +309,9 @@ const MentorLead = () => {
         </Box>
       ),
       callback: (row) => {
-        console.log('row:', row);
-        console.log('AddSchema', addSchema);
-        console.log('AddUISchema', addUiSchema);
+        // console.log('row:', row);
+        // console.log('AddSchema', addSchema);
+        // console.log('AddUISchema', addUiSchema);
 
         let tempFormData = extractMatchingKeys(row, addSchema);
         // console.log('tempFormData', tempFormData);
@@ -255,20 +338,34 @@ const MentorLead = () => {
         </Box>
       ),
       callback: async (row) => {
-        console.log('row:', row);
-        // setEditableUserId(row?.userId);
-        const memberStatus = Status.ARCHIVED;
-        const statusReason = '';
-        const membershipId = row?.userId;
-
-        const response = await updateCohortMemberStatus({
-          memberStatus,
-          statusReason,
-          membershipId,
+        const findVillage = row?.customFields.find((item) => {
+          if (item.label === 'DISTRICT') {
+            return item;
+          }
         });
-        setPrefilledFormData({});
-        searchData(prefilledFormData, currentPage);
-        setOpenModal(false);
+
+        // setVillage(findVillage?.selectedValues[0]?.value);
+        // console.log('row:', row?.customFields[2].selectedValues[0].value);
+        // setEditableUserId(row?.userId);
+        // const memberStatus = Status.ARCHIVED;
+        // const statusReason = '';
+        // const membershipId = row?.userId;
+
+        // const response = await updateCohortMemberStatus({
+        //   memberStatus,
+        //   statusReason,
+        //   membershipId,
+        // });
+        // setPrefilledFormData({});
+        // searchData(prefilledFormData, currentPage);
+        setOpen(true);
+        setUserId(row?.userId);
+
+        setUserData({
+          firstName: row?.firstName || '',
+          lastName: row?.lastName || '',
+          village: findVillage?.selectedValues?.[0]?.value || '',
+        });
       },
     },
   ];
@@ -290,36 +387,36 @@ const MentorLead = () => {
     setOpenModal(false);
   };
 
-  function extractMatchingKeys(row, schema) {
-    let result = {};
-
-    for (const [key, value] of Object.entries(schema.properties)) {
-      if (value.coreField === 0) {
-        if (value.fieldId) {
-          const customField = row.customFields?.find(
-            (field) => field.fieldId === value.fieldId
-          );
-          if (customField) {
-            result[key] = customField.selectedValues
-              .map((v) => v.id)
-              .join(', ');
-          }
-        } else if (row[key] !== undefined) {
-          result[key] = row[key];
-        }
-      } else if (row[key] !== undefined) {
-        result[key] = row[key];
-      }
-    }
-
-    return result;
-  }
+  //Add Edit Props
+  const extraFieldsUpdate = {};
+  const extraFields = {
+    tenantCohortRoleMapping: [
+      {
+        tenantId: '6c8b810a-66c2-4f0d-8c0c-c025415a4414',
+        roleId: RoleId.TEAM_LEADER,
+      },
+    ],
+    username: 'youthnetmentorlead',
+    password: Math.floor(10000 + Math.random() * 90000),
+  };
+  const successUpdateMessage =
+    'MENTOR_LEADERS.MENTOR_LEAD_UPDATED_SUCCESSFULLY';
+  const telemetryUpdateKey = 'youthnet-mentor-lead-updated-successfully';
+  const failureUpdateMessage = 'MENTOR_LEADERS.NOT_ABLE_UPDATE_MENTOR_LEAD';
+  const successCreateMessage =
+    'MENTOR_LEADERS.MENTOR_LEAD_CREATED_SUCCESSFULLY';
+  const telemetryCreateKey = 'youthnet-mentor-lead-created-successfully';
+  const failureCreateMessage = 'MENTOR_LEADERS.NOT_ABLE_CREATE_MENTOR_LEAD';
+  const notificationKey = 'onMentorLeaderCreate';
+  const notificationMessage =
+    'MENTOR_LEADERS.USER_CREDENTIALS_WILL_BE_SEND_SOON';
+  const notificationContext = 'USER';
 
   return (
     <>
       <Box display={'flex'} flexDirection={'column'} gap={2}>
         {isLoading ? (
-          <Loader />
+          <Loader showBackdrop={false} loadingText={t('COMMON.LOADING')} />
         ) : (
           schema &&
           uiSchema && (
@@ -328,36 +425,46 @@ const MentorLead = () => {
               uiSchema={updatedUiSchema}
               SubmitaFunction={SubmitaFunction}
               isCallSubmitInHandle={true}
-              prefilledFormData={prefilledFormData || {}}
+              prefilledFormData={prefilledFormData}
             />
           )
         )}
         <Box mt={4} sx={{ display: 'flex', justifyContent: 'end' }}>
           <Button
             variant="outlined"
+            startIcon={<AddIcon />}
             color="primary"
+            sx={{
+              textTransform: 'none',
+              fontSize: '14px',
+              color: theme.palette.primary['100'],
+              width: '200px',
+            }}
             onClick={() => {
-              setPrefilledAddFormData({});
+              setPrefilledAddFormData(initialFormData);
               setIsEdit(false);
               setEditableUserId('');
               handleOpenModal();
             }}
           >
-            Add New
+            {t('COMMON.ADD_NEW')}{' '}
           </Button>
         </Box>
 
         <SimpleModal
           open={openModal}
           onClose={handleCloseModal}
-          showFooter={false}
+          showFooter={true}
           modalTitle={
             isEdit
               ? t('MENTOR_LEADERS.UPDATE_MENTOR_LEAD')
               : t('MENTOR_LEADERS.NEW_MENTOR_LEAD')
           }
+          id="dynamic-form-id"
+          primaryText={isEdit ? t('Update') : t('Create')}
+
         >
-          <AddEditMentorLead
+          <AddEditUser
             SuccessCallback={() => {
               setPrefilledFormData({});
               searchData({}, 0);
@@ -373,13 +480,25 @@ const MentorLead = () => {
               searchData(prefilledFormData, currentPage);
               setOpenModal(false);
             }}
+            extraFields={extraFields}
+            extraFieldsUpdate={extraFieldsUpdate}
+            successUpdateMessage={successUpdateMessage}
+            telemetryUpdateKey={telemetryUpdateKey}
+            failureUpdateMessage={failureUpdateMessage}
+            successCreateMessage={successCreateMessage}
+            telemetryCreateKey={telemetryCreateKey}
+            failureCreateMessage={failureCreateMessage}
+            notificationKey={notificationKey}
+            notificationMessage={notificationMessage}
+            notificationContext={notificationContext}
+           hideSubmit={true}
+
           />
         </SimpleModal>
 
         {response && response?.result?.getUserDetails ? (
           <Box sx={{ mt: 1 }}>
             <PaginatedTable
-              key={renderKey ? 'defaultRender' : 'customRender'}
               count={response?.result?.totalCount}
               data={response?.result?.getUserDetails}
               columns={columns}
@@ -403,6 +522,26 @@ const MentorLead = () => {
           </Box>
         )}
       </Box>
+      <ConfirmationPopup
+        checked={checked}
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('COMMON.DELETE_USER')}
+        primary={t('COMMON.DELETE_USER_WITH_REASON')}
+        secondary={t('COMMON.CANCEL')}
+        reason={reason}
+        onClickPrimary={userDelete}
+      >
+        <DeleteDetails
+          firstName={userData.firstName}
+          lastName={userData.lastName}
+          village={userData.village}
+          checked={checked}
+          setChecked={setChecked}
+          reason={reason}
+          setReason={setReason}
+        />
+      </ConfirmationPopup>
     </>
   );
 };

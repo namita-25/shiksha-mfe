@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Button, Grid, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 
@@ -7,11 +8,14 @@ import ManageCentersModal from '@/components/ManageCentersModal';
 import ManageUsersModal from '@/components/ManageUsersModal';
 import { showToastMessage } from '@/components/Toastify';
 import { cohortList, getCohortList } from '@/services/CohortServices';
-import { getMyUserList } from '@/services/MyClassDetailsService';
+import {
+  getMyCohortFacilitatorList,
+  getMyUserList,
+} from '@/services/MyClassDetailsService';
 import reassignLearnerStore from '@/store/reassignLearnerStore';
 import useStore from '@/store/store';
 import { QueryKeys, Role, Status, Telemetry } from '@/utils/app.constant';
-import { getUserFullName, toPascalCase } from '@/utils/Helper';
+import { fetchUserData, getUserFullName, toPascalCase } from '@/utils/Helper';
 import { telemetryFactory } from '@/utils/telemetry';
 import AddIcon from '@mui/icons-material/Add';
 import ApartmentIcon from '@mui/icons-material/Apartment';
@@ -35,6 +39,9 @@ import Loader from './Loader';
 import ReassignModal from './ReassignModal';
 import SearchBar from './Searchbar';
 import SimpleModal from './SimpleModal';
+import FacilitatorManage from '@/shared/FacilitatorManage/FacilitatorManage';
+import { customFields } from './GeneratedSchemas';
+import { fetchCohortMemberList } from '@/services/CohortService/cohortService';
 
 interface Cohort {
   cohortId: string;
@@ -58,6 +65,8 @@ interface ManageUsersProps {
   cohortData?: any;
   isFromFLProfile?: boolean;
   teacherUserId?: string;
+  hideSearch?: boolean;
+  isFromCenterDetailPage?: boolean;
 }
 
 const ManageUser: React.FC<ManageUsersProps> = ({
@@ -66,6 +75,8 @@ const ManageUser: React.FC<ManageUsersProps> = ({
   cohortData,
   isFromFLProfile = false,
   teacherUserId,
+  hideSearch = false,
+  isFromCenterDetailPage = false,
 }) => {
   const { t } = useTranslation();
   const theme = useTheme<any>();
@@ -75,6 +86,8 @@ const ManageUser: React.FC<ManageUsersProps> = ({
   const queryClient = useQueryClient();
   const { isRTL } = useDirection();
   const isActiveYear = newStore.isActiveYearSelected;
+  const loggedInUserRole = localStorage.getItem('role');
+  const tenantId = localStorage.getItem('tenantId') || '';
 
   const [value, setValue] = React.useState(1);
   const [users, setUsers] = useState<
@@ -84,6 +97,8 @@ const ManageUser: React.FC<ManageUsersProps> = ({
       lastName?: string;
       userId: string;
       cohortNames?: string;
+      batchNames?: any[];
+      customFields?: any[];
     }[]
   >([]);
   const [loading, setLoading] = React.useState(false);
@@ -100,6 +115,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
   const [offset, setOffSet] = useState(0);
   const [infinitePage, setInfinitePage] = useState(1);
   const [infiniteData, setInfiniteData] = useState(users || []);
+  const [selectedUserData, setSelectedUserData] = useState(null);
 
   const [state, setState] = React.useState({
     bottom: false,
@@ -132,6 +148,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
   const [filteredUsers, setFilteredUsers] = useState(users || []);
   const [TotalCount, setTotalCount] = useState<number>(0);
   const [hasMore, setHasMore] = useState(true);
+  const [allFacilitatorsData, setAllFacilitatorsData] = useState<any>([]);
 
   useEffect(() => {
     if (reloadState) {
@@ -150,16 +167,40 @@ const ManageUser: React.FC<ManageUsersProps> = ({
             return block?.blockId;
           })
           .join('');
-
         if (cohortId) {
           const limit = 10;
-           const page = offset;
+          const page = offset;
+          let stateIds = [];
+          let districtIds = [];
+          let blockIds = [];
+          if (localStorage.getItem('userData')) {
+            try {
+              const customFields = JSON.parse(
+                localStorage.getItem('userData')
+              ).customFields;
+
+              const getSelectedValueIds = (label) => {
+                const field = customFields.find(
+                  (f) => f.label.toLowerCase() === label.toLowerCase()
+                );
+                return (
+                  field?.selectedValues?.map((val) => val.id.toString()) || []
+                );
+              };
+
+              stateIds = getSelectedValueIds('STATE');
+              districtIds = getSelectedValueIds('DISTRICT');
+              blockIds = getSelectedValueIds('BLOCK');
+            } catch (e) {}
+          }
+
           const filters = {
-            states: store.stateCode,
-            districts: store.districtCode,
-            blocks: store.blockCode,
+            state: stateIds,
+            district: districtIds,
+            block: blockIds,
             role: Role.TEACHER,
             status: [Status.ACTIVE],
+            tenantId: tenantId,
           };
           const fields = ['age'];
           // const test = isMobile ? infinitePage : page
@@ -170,6 +211,13 @@ const ManageUser: React.FC<ManageUsersProps> = ({
           //   queryFn: () => getMyUserList({ limit, page, filters, fields }),
           // });
           const facilitatorList = resp.result?.getUserDetails;
+          const entireFLList = await getMyUserList({
+            limit,
+            page: 0,
+            filters,
+            fields,
+          });
+          setAllFacilitatorsData(entireFLList?.result?.getUserDetails);
 
           setTotalCount(resp.result?.totalCount);
 
@@ -206,6 +254,19 @@ const ManageUser: React.FC<ManageUsersProps> = ({
             (user: any, index: number) => {
               const cohorts = cohortDetails[index] || [];
 
+              const batches = cohorts.flatMap((cohort: any) =>
+                (cohort.childData || []).filter(
+                  (child: any) => child.type === 'BATCH'
+                )
+              );
+
+              const batchNames = cohorts
+                .filter(
+                  (item: any) =>
+                    item.type === 'BATCH' && item.cohortStatus === 'active'
+                )
+                .map((item: any) => toPascalCase(item.cohortName));
+
               const cohortNames = cohorts
                 .filter(
                   ({ cohortStatus }: any) => cohortStatus === Status.ACTIVE
@@ -215,8 +276,16 @@ const ManageUser: React.FC<ManageUsersProps> = ({
 
               return {
                 userId: user?.userId,
-                name: toPascalCase(getUserFullName({ firstName: user?.firstName, lastName: user?.lastName, name: user?.name })),
+                name: toPascalCase(
+                  getUserFullName({
+                    firstName: user?.firstName,
+                    lastName: user?.lastName,
+                    name: user?.name,
+                  })
+                ),
                 cohortNames: cohortNames || null,
+                batchNames: batchNames || null,
+                customFields: user?.customFields,
               };
             }
           );
@@ -224,7 +293,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
           setUsers(extractedData);
           // setLoading(false);
           if (isMobile) {
-           setInfiniteData([...infiniteData, ...extractedData]);
+            setInfiniteData([...infiniteData, ...extractedData]);
           } else {
             setFilteredUsers(extractedData);
             setInfiniteData(extractedData);
@@ -234,7 +303,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
             setUsers(extractedData);
             setFilteredUsers(extractedData);
             setLoading(false);
-          });
+          }, 50);
         }
       } catch (error) {
         console.log(error);
@@ -242,8 +311,102 @@ const ManageUser: React.FC<ManageUsersProps> = ({
         setLoading(false);
       }
     };
-    getFacilitator();
-  }, [isFacilitatorAdded, reloadState, page, infinitePage]);
+
+    const fetchFacilitators = async () => {
+      const cohortId = cohortData;
+      const page = 0;
+      const filters = {
+        cohortId: cohortId,
+        role: Role.TEACHER,
+        status: [Status.ACTIVE],
+      };
+      const facilitatorResponse = await fetchCohortMemberList({
+        page,
+        filters,
+      });
+      if (facilitatorResponse?.result?.userDetails) {
+        let facilitatorList = facilitatorResponse.result.userDetails;
+        if (!facilitatorList || facilitatorList?.length === 0) {
+          console.log('No users found.');
+          return;
+        }
+        const userIds = facilitatorList?.map((user: any) => user.userId);
+
+        const cohortDetailsPromises = userIds.map((userId: string) =>
+          queryClient.fetchQuery({
+            queryKey: [QueryKeys.MY_COHORTS, userId],
+            queryFn: () => getCohortList(userId, { customField: 'true' }),
+          })
+        );
+
+        const cohortDetailsResults = await Promise.allSettled(
+          cohortDetailsPromises
+        );
+
+        const cohortDetails = cohortDetailsResults.map((result) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          } else {
+            console.error(
+              'Error fetching cohort details for a user:',
+              result.reason
+            );
+            return null; // or handle the error as needed
+          }
+        });
+
+        const extractedData = facilitatorList?.map(
+          (user: any, index: number) => {
+            const cohorts = cohortDetails[index] || [];
+
+            const batches = cohorts.flatMap((cohort: any) =>
+              (cohort.childData || []).filter(
+                (child: any) => child.type === 'BATCH'
+              )
+            );
+
+            const batchNames = cohorts
+              .filter(
+                (item: any) =>
+                  item.type === 'BATCH' && item.cohortStatus === 'active'
+              )
+              .map((item: any) => item.cohortName);
+
+            const cohortNames = cohorts
+              .filter(({ cohortStatus }: any) => cohortStatus === Status.ACTIVE)
+              .map(({ cohortName }: any) => toPascalCase(cohortName))
+              .join(', ');
+
+            return {
+              userId: user?.userId,
+              name: toPascalCase(
+                getUserFullName({
+                  firstName: user?.firstName,
+                  lastName: user?.lastName,
+                  // name: user?.name,
+                })
+              ),
+              cohortNames: cohortNames || null,
+              batchNames: batchNames || null,
+              customFields: user?.customField,
+            };
+          }
+        );
+        setFilteredUsers(extractedData);
+      }
+    };
+    if (isFromCenterDetailPage) {
+      fetchFacilitators();
+    } else {
+      getFacilitator();
+    }
+  }, [
+    isFacilitatorAdded,
+    reloadState,
+    page,
+    infinitePage,
+    isFromCenterDetailPage,
+  ]);
 
   const handleClose = () => {
     setOpen(false);
@@ -266,27 +429,27 @@ const ManageUser: React.FC<ManageUsersProps> = ({
 
   const toggleDrawer =
     (anchor: Anchor, open: boolean, user?: any, teacherUserId?: string) =>
-      (event: React.KeyboardEvent | React.MouseEvent) => {
-        setCohortDeleteId(isFromFLProfile ? teacherUserId : user.userId);
-        if (!isFromFLProfile) {
-          const cohortNamesArray = user?.cohortNames?.split(', ');
-          const centerNames = cohortNamesArray?.map((cohortName: string) =>
-            cohortName.trim()
-          ) || [t('ATTENDANCE.NO_CENTERS_ASSIGNED')];
-          setCenters(centerNames);
-          setSelectedUser(user);
-        }
+    (event: React.KeyboardEvent | React.MouseEvent) => {
+      setCohortDeleteId(isFromFLProfile ? teacherUserId : user.userId);
+      if (!isFromFLProfile) {
+        const cohortNamesArray = user?.cohortNames?.split(', ');
+        const centerNames = cohortNamesArray?.map((cohortName: string) =>
+          cohortName.trim()
+        ) || [t('ATTENDANCE.NO_CENTERS_ASSIGNED')];
+        setCenters(centerNames);
+        fieldName: setSelectedUser(user);
+      }
 
-        if (
-          event.type === 'keydown' &&
-          ((event as React.KeyboardEvent).key === 'Tab' ||
-            (event as React.KeyboardEvent).key === 'Shift')
-        ) {
-          return;
-        }
+      if (
+        event.type === 'keydown' &&
+        ((event as React.KeyboardEvent).key === 'Tab' ||
+          (event as React.KeyboardEvent).key === 'Shift')
+      ) {
+        return;
+      }
 
-        setState({ ...state, bottom: open });
-      };
+      setState({ ...state, bottom: open });
+    };
 
   const listItemClick = async (event: React.MouseEvent, name: string) => {
     if (name === 'delete-User') {
@@ -336,10 +499,18 @@ const ManageUser: React.FC<ManageUsersProps> = ({
       }
     }
     if (name === 'reassign-block') {
+      //TODO: Add reassign logic here
       const reassignuserId = isFromFLProfile
         ? teacherUserId
         : selectedUser?.userId;
 
+      const matchingUser = allFacilitatorsData?.find(
+        (user) => user.userId === reassignuserId
+      );
+      console.log('****userlist', users);
+      console.log('****reassignuserId', reassignuserId);
+      setSelectedUserData(matchingUser);
+      console.log('$$$$$$$', matchingUser);
       setReassignFacilitatorUserId(
         isFromFLProfile ? teacherUserId : selectedUser?.userId
       );
@@ -495,10 +666,11 @@ const ManageUser: React.FC<ManageUsersProps> = ({
   };
 
   const handleCloseAddFaciModal = () => {
+    console.log('clickedddddddddddddddddd');
     setOpenFacilitatorModal(false);
   };
 
-  const handleDeleteUser = () => { };
+  const handleDeleteUser = () => {};
 
   const handleFacilitatorAdded = () => {
     setIsFacilitatorAdded((prev) => !prev);
@@ -531,6 +703,12 @@ const ManageUser: React.FC<ManageUsersProps> = ({
     }
     return cohortNames;
   };
+
+  const getBatchNames = (batchNames: any) => {
+    if (!Array.isArray(batchNames)) return null;
+    return batchNames.join(', ');
+  };
+
   const handleSearch = (searchTerm: string) => {
     const term = searchTerm;
     setSearchTerm(term);
@@ -540,30 +718,35 @@ const ManageUser: React.FC<ManageUsersProps> = ({
   };
   const PAGINATION_CONFIG = {
     ITEMS_PER_PAGE: 10,
-    INFINITE_SCROLL_INCREMENT: 10
+    INFINITE_SCROLL_INCREMENT: 10,
   };
 
   const fetchData = async () => {
-    if (infiniteData && (infiniteData.length>=TotalCount)){
+    if (infiniteData && infiniteData.length >= TotalCount) {
       return;
-    }    
+    }
     try {
       setOffSet((prev) => {
-        if (TotalCount && prev + PAGINATION_CONFIG.ITEMS_PER_PAGE <= TotalCount) {
+        if (
+          TotalCount &&
+          prev + PAGINATION_CONFIG.ITEMS_PER_PAGE <= TotalCount
+        ) {
           return prev + PAGINATION_CONFIG.ITEMS_PER_PAGE;
         }
         return prev;
       });
 
-     setInfinitePage((prev) => prev + PAGINATION_CONFIG.INFINITE_SCROLL_INCREMENT);
+      setInfinitePage(
+        (prev) => prev + PAGINATION_CONFIG.INFINITE_SCROLL_INCREMENT
+      );
     } catch (error) {
       console.error('Error fetching more data:', error);
       showToastMessage(t('COMMON.SOMETHING_WENT_WRONG'), 'error');
     }
-  }
+  };
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
-    setOffSet((newPage - 1) * PAGINATION_CONFIG.ITEMS_PER_PAGE)
+    setOffSet((newPage - 1) * PAGINATION_CONFIG.ITEMS_PER_PAGE);
   };
 
   return (
@@ -579,33 +762,40 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                 sx={{ display: 'flex', alignItems: 'center', direction: 'row' }}
                 container
               >
-                <SearchBar
-                  onSearch={handleSearch}
-                  value={searchTerm}
-                  placeholder={t('COMMON.SEARCH_FACILITATORS')}
-                />
-                <Box mt={'18px'} px={'18px'} ml={'10px'}>
-                  <Button
-                    sx={{
-                      border: `1px solid ${theme.palette.error.contrastText}`,
-                      borderRadius: '100px',
-                      height: '40px',
-                      width: '8rem',
-                      color: theme.palette.error.contrastText,
-                      '& .MuiButton-endIcon': {
-                        marginLeft: isRTL ? '0px !important' : '8px !important',
-                        marginRight: isRTL
-                          ? '8px !important'
-                          : '-2px !important',
-                      },
-                    }}
-                    className="text-1E"
-                    onClick={handleOpenAddFaciModal}
-                    endIcon={<AddIcon />}
-                  >
-                    {t('COMMON.ADD_NEW')}
-                  </Button>
-                </Box>
+                {!hideSearch && (
+                  <SearchBar
+                    onSearch={handleSearch}
+                    value={searchTerm}
+                    placeholder={t('COMMON.SEARCH_FACILITATORS')}
+                  />
+                )}
+                {isFromCenterDetailPage ? null : (
+                  <Box mt={'18px'} px={'18px'} ml={'10px'}>
+                    <Button
+                      sx={{
+                        border: `1px solid ${theme.palette.error.contrastText}`,
+                        borderRadius: '100px',
+                        height: '40px',
+                        width: '8rem',
+                        color: theme.palette.error.contrastText,
+                        '& .MuiButton-endIcon': {
+                          marginLeft: isRTL
+                            ? '0px !important'
+                            : '8px !important',
+                          marginRight: isRTL
+                            ? '8px !important'
+                            : '-2px !important',
+                        },
+                        width: '100%',
+                      }}
+                      className="text-1E"
+                      onClick={handleOpenAddFaciModal}
+                      endIcon={<AddIcon />}
+                    >
+                      {t('COMMON.ADD_NEW')}
+                    </Button>
+                  </Box>
+                )}
               </Grid>
             )}
 
@@ -661,6 +851,133 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                             loadingText={t('COMMON.LOADING')}
                           />
                         </Box>
+                      ) : isFromCenterDetailPage ? (
+                        <>
+                          <Box>
+                            <Grid container spacing={2}>
+                              {filteredUsers.length > 0 ? (
+                                filteredUsers.map((user) => (
+                                  <Grid
+                                    item
+                                    xs={12}
+                                    sm={12}
+                                    md={6}
+                                    lg={4}
+                                    key={user.userId}
+                                  >
+                                    <Box
+                                      display={'flex'}
+                                      borderBottom={`1px solid ${theme.palette.warning['A100']}`}
+                                      width={'100%'}
+                                      justifyContent={'space-between'}
+                                      sx={{
+                                        cursor: 'pointer',
+                                        '@media (min-width: 600px)': {
+                                          border: `1px solid  ${theme.palette.action.selected}`,
+                                          padding: '4px 10px',
+                                          borderRadius: '8px',
+                                          background:
+                                            theme.palette.warning['A400'],
+                                        },
+                                      }}
+                                    >
+                                      <Box
+                                        display="flex"
+                                        alignItems="center"
+                                        gap="5px"
+                                      >
+                                        <Box>
+                                          <CustomLink
+                                            className="word-break"
+                                            href="#"
+                                            onClick={(e) => e.preventDefault()}
+                                          >
+                                            <Typography
+                                              onClick={() => {
+                                                handleTeacherFullProfile(
+                                                  user?.userId
+                                                );
+                                              }}
+                                              sx={{
+                                                textAlign: 'left',
+                                                fontSize: '16px',
+                                                fontWeight: '400',
+                                                marginTop: '5px',
+                                                color:
+                                                  theme.palette.secondary.main,
+                                              }}
+                                            >
+                                              {`${user?.name}`}
+                                            </Typography>
+                                          </CustomLink>
+                                          {/* Uncomment if batchnames to be displayed */}
+                                          <Box
+                                            sx={{
+                                              backgroundColor:
+                                                theme.palette.action.selected,
+                                              padding: '5px',
+                                              width: 'fit-content',
+                                              borderRadius: '5px',
+                                              fontSize: '12px',
+                                              fontWeight: '600',
+                                              color: 'black',
+                                              marginBottom: '10px',
+                                            }}
+                                          >
+                                            {user?.batchNames?.length > 0
+                                              ? getBatchNames(user.batchNames)
+                                              : t(
+                                                  'ATTENDANCE.NO_BATCHES_ASSIGNED'
+                                                )}
+                                          </Box>
+                                        </Box>
+                                      </Box>
+                                      <Box>
+                                        <MoreVertIcon
+                                          onClick={(event) => {
+                                            isMobile
+                                              ? toggleDrawer(
+                                                  'bottom',
+                                                  true,
+                                                  user
+                                                )(event)
+                                              : handleMenuOpen(event, user);
+                                          }}
+                                          sx={{
+                                            fontSize: '24px',
+                                            marginTop: '1rem',
+                                            color: theme.palette.warning['300'],
+                                            cursor: 'pointer',
+                                          }}
+                                        />
+                                      </Box>
+                                    </Box>
+                                  </Grid>
+                                ))
+                              ) : (
+                                <Box
+                                  sx={{
+                                    m: '1.125rem',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    width: '100%',
+                                  }}
+                                >
+                                  <Typography
+                                    style={{
+                                      width: '100%',
+                                      textAlign: 'center',
+                                      fontWeight: '500',
+                                    }}
+                                  >
+                                    {t('COMMON.NO_DATA_FOUND')}
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Grid>
+                          </Box>
+                        </>
                       ) : (
                         <>
                           <Box>
@@ -741,13 +1058,11 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                                                 marginBottom: '10px',
                                               }}
                                             >
-                                              {user?.cohortNames
-                                                ? getCohortNames(
-                                                  user.cohortNames
-                                                )
+                                              {user?.batchNames?.length > 0
+                                                ? getBatchNames(user.batchNames)
                                                 : t(
-                                                  'ATTENDANCE.NO_CENTERS_ASSIGNED'
-                                                )}
+                                                    'ATTENDANCE.NO_BATCHES_ASSIGNED'
+                                                  )}
                                             </Box>
                                           </Box>
                                         </Box>
@@ -756,10 +1071,10 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                                             onClick={(event) => {
                                               isMobile
                                                 ? toggleDrawer(
-                                                  'bottom',
-                                                  true,
-                                                  user
-                                                )(event)
+                                                    'bottom',
+                                                    true,
+                                                    user
+                                                  )(event)
                                                 : handleMenuOpen(event, user);
                                             }}
                                             sx={{
@@ -789,6 +1104,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                                     style={{
                                       width: '100%',
                                       textAlign: 'center',
+                                      fontWeight: '500',
                                     }}
                                   >
                                     {t('COMMON.NO_DATA_FOUND')}
@@ -805,7 +1121,9 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                             }}
                           >
                             <CustomPagination
-                              count={Math.ceil(TotalCount / PAGINATION_CONFIG.ITEMS_PER_PAGE)}
+                              count={Math.ceil(
+                                TotalCount / PAGINATION_CONFIG.ITEMS_PER_PAGE
+                              )}
                               page={page}
                               onPageChange={handlePageChange}
                               fetchMoreData={() => fetchData()}
@@ -838,8 +1156,10 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                 anchorEl={anchorEl}
                 isMobile={isMobile}
                 optionList={[
+                  // TODO
+
                   {
-                    label: t('COMMON.ADD_OR_REASSIGN_CENTERS'),
+                    label: t('COMMON.REASSIGN_BATCH'),
                     icon: (
                       <ApartmentIcon
                         sx={{ color: theme.palette.warning['300'] }}
@@ -866,12 +1186,18 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                     ),
                     name: 'delete-User',
                   },
-                ].filter(
-                  (option) =>
-                    !isFromFLProfile ||
-                    (option.name !== 'reassign-block' &&
-                      option.name !== 'reassign-block-request')
-                )}
+                ].filter((option) => {
+                  if (option.name === 'reassign-block') {
+                    return loggedInUserRole === Role.TEAM_LEADER; // Only show Reassign Batch if user is TL
+                  }
+                  if (isFromFLProfile) {
+                    return (
+                      option.name !== 'reassign-block' &&
+                      option.name !== 'reassign-block-request'
+                    );
+                  }
+                  return true;
+                })}
               >
                 <Box
                   sx={{
@@ -884,7 +1210,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                 >
                   {selectedUser?.name
                     ? selectedUser.name.charAt(0).toUpperCase() +
-                    selectedUser.name.slice(1)
+                      selectedUser.name.slice(1)
                     : ''}
                 </Box>
                 <Box
@@ -930,9 +1256,7 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                 </Box>
               </BottomDrawer>
 
-              {
-                openCentersModal &&
-
+              {openCentersModal && (
                 <ManageCentersModal
                   open={openCentersModal}
                   onClose={handleCloseCentersModal}
@@ -940,11 +1264,10 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                   centers={centers}
                   onAssign={handleAssignCenters}
                 />
-              }
+              )}
             </Box>
 
-            {
-              confirmationModalOpen &&
+            {confirmationModalOpen && (
               <ConfirmationModal
                 message={t('CENTERS.BLOCK_REQUEST')}
                 handleAction={handleRequestBlockAction}
@@ -955,53 +1278,71 @@ const ManageUser: React.FC<ManageUsersProps> = ({
                 handleCloseModal={handleCloseModal}
                 modalOpen={confirmationModalOpen}
               />
-            }
+            )}
 
-            {
-              reassignModalOpen && <ReassignModal
-                cohortNames={reassignCohortNames}
-                message={t('COMMON.ADD_OR_REASSIGN_CENTERS')}
-                handleAction={handleRequestBlockAction}
-                handleCloseReassignModal={handleCloseReassignModal}
-                modalOpen={reassignModalOpen}
+            {reassignModalOpen && (
+              //TODO: Add new reassign popup here
+              <FacilitatorManage
+                open={reassignModalOpen}
+                onClose={handleCloseReassignModal}
+                isReassign={true}
+                reassignuserId={
+                  isFromFLProfile ? teacherUserId : selectedUser?.userId
+                }
+                selectedUserData={
+                  isFromCenterDetailPage ? selectedUser : selectedUserData
+                }
+                // onFacilitatorAdded={handleFacilitatorAdded}
+              />
+
+              //Old Reassign flow
+              // <ReassignModal
+              //   cohortNames={reassignCohortNames}
+              //   message={t('COMMON.ADD_OR_REASSIGN_CENTERS')}
+              //   handleAction={handleRequestBlockAction}
+              //   handleCloseReassignModal={handleCloseReassignModal}
+              //   modalOpen={reassignModalOpen}
+              //   reloadState={reloadState}
+              //   setReloadState={setReloadState}
+              //   buttonNames={{ primary: t('COMMON.SAVE') }}
+              //   selectedUser={selectedUser}
+              // />
+            )}
+
+            {openDeleteUserModal && (
+              <DeleteUserModal
+                type={Role.TEACHER}
+                userId={userId}
+                open={openDeleteUserModal}
+                onClose={handleCloseModal}
+                onUserDelete={handleDeleteUser}
                 reloadState={reloadState}
                 setReloadState={setReloadState}
-                buttonNames={{ primary: t('COMMON.SAVE') }}
-                selectedUser={selectedUser}
               />
-            }
+            )}
 
-            {openDeleteUserModal && <DeleteUserModal
-              type={Role.TEACHER}
-              userId={userId}
-              open={openDeleteUserModal}
-              onClose={handleCloseModal}
-              onUserDelete={handleDeleteUser}
-              reloadState={reloadState}
-              setReloadState={setReloadState}
-            />
-            }
-
-            {openRemoveUserModal && <SimpleModal
-              primaryText={t('COMMON.OK')}
-              primaryActionHandler={handleCloseRemoveModal}
-              open={openRemoveUserModal}
-              onClose={handleCloseRemoveModal}
-              modalTitle={t('COMMON.DELETE_USER')}
-            >
-              {' '}
-              <Box mt={1.5} mb={1.5}>
-                <Typography>
-                  {t('CENTERS.THE_USER_BELONGS_TO_THE_FOLLOWING_COHORT')}{' '}
-                  <strong>{toPascalCase(removeCohortNames)}</strong>
-                  <br />
-                  {t('CENTERS.PLEASE_REMOVE_THE_USER_FROM_COHORT')}
-                </Typography>
-              </Box>
-            </SimpleModal>
-            }
+            {openRemoveUserModal && (
+              <SimpleModal
+                primaryText={t('COMMON.OK')}
+                primaryActionHandler={handleCloseRemoveModal}
+                open={openRemoveUserModal}
+                onClose={handleCloseRemoveModal}
+                modalTitle={t('COMMON.DELETE_USER')}
+              >
+                {' '}
+                <Box mt={1.5} mb={1.5}>
+                  <Typography>
+                    {t('CENTERS.THE_USER_BELONGS_TO_THE_FOLLOWING_COHORT')}{' '}
+                    <strong>{toPascalCase(removeCohortNames)}</strong>
+                    <br />
+                    {t('CENTERS.PLEASE_REMOVE_THE_USER_FROM_COHORT')}
+                  </Typography>
+                </Box>
+              </SimpleModal>
+            )}
             {openAddFacilitatorModal && (
-              <AddFacilitatorModal
+              <FacilitatorManage
+                key={openAddFacilitatorModal === true ? 'render1' : 'render2'}
                 open={openAddFacilitatorModal}
                 onClose={handleCloseAddFaciModal}
                 onFacilitatorAdded={handleFacilitatorAdded}

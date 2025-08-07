@@ -1,34 +1,57 @@
+import { Role } from '@/utils/app.constant';
+
+const stateId =
+  typeof window !== 'undefined' ? localStorage.getItem('stateId') : null;
+const stateName =
+  typeof window !== 'undefined' ? localStorage.getItem('stateName') : null;
+const userRole =
+  typeof window !== 'undefined' ? localStorage.getItem('roleName') : null;
+
 export const MentorSearchSchema = {
   type: 'object',
   properties: {
     state: {
-      type: 'string',
+      type: 'array',
       title: 'State',
-      enum: ['Select'],
-      enumNames: ['Select'],
-      api: {
-        url: 'https://dev-interface.prathamdigital.org/interface/v1/fields/options/read',
-        method: 'POST',
-        payload: { fieldName: 'state', sort: ['state_name', 'asc'] },
-        options: {
-          optionObj: 'result.values',
-          label: 'label',
-          value: 'value',
-        },
-        callType: 'initial',
+      items: {
+        type: 'string',
+        enum: userRole !== Role.CENTRAL_ADMIN ? [stateId] : ['Select'],
+        enumNames: userRole !== Role.CENTRAL_ADMIN ? [stateName] : ['Select'],
       },
+      api:
+        userRole !== Role.CENTRAL_ADMIN
+          ? undefined // Avoid API call if userRole is Central admin
+          : {
+              url: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/fields/options/read`,
+              method: 'POST',
+              payload: { fieldName: 'state', sort: ['state_name', 'asc'] },
+              options: {
+                optionObj: 'result.values',
+                label: 'label',
+                value: 'value',
+              },
+              callType: 'initial',
+            },
+      //for multiselect
+      uniqueItems: true,
+      isMultiSelect: true,
+      maxSelections: 1000,
     },
     district: {
-      type: 'string',
+      type: 'array',
       title: 'District',
-      enum: ['Select'],
-      enumNames: ['Select'],
+      items: {
+        type: 'string',
+        enum: ['Select'],
+        enumNames: ['Select'],
+      },
       api: {
-        url: 'https://dev-interface.prathamdigital.org/interface/v1/fields/options/read',
+        url: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/fields/options/read`,
         method: 'POST',
         payload: {
           fieldName: 'district',
-          controllingfieldfk: '**',
+          controllingfieldfk:
+            userRole !== Role.CENTRAL_ADMIN ? [stateId] : '**',
           sort: ['district_name', 'asc'],
         },
         options: {
@@ -36,22 +59,29 @@ export const MentorSearchSchema = {
           label: 'label',
           value: 'value',
         },
-        callType: 'dependent',
-        dependent: 'state',
+        callType: userRole !== Role.CENTRAL_ADMIN ? 'initial' : 'dependent',
+        ...(!stateId ? { dependent: 'state' } : {}),
       },
+      //for multiselect
+      uniqueItems: true,
+      isMultiSelect: true,
+      maxSelections: 1000,
     },
     block: {
-      type: 'string',
+      type: 'array',
       title: 'Block',
-      enum: ['Select'],
-      enumNames: ['Select'],
+      items: {
+        type: 'string',
+        enum: ['Select'],
+        enumNames: ['Select'],
+      },
       api: {
-        url: 'https://dev-interface.prathamdigital.org/interface/v1/fields/options/read',
+        url: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/fields/options/read`,
         method: 'POST',
         payload: {
           fieldName: 'block',
           controllingfieldfk: '**',
-          sort: ['block_name', 'asc'],
+          sort: ['block_nCustomRadioWidgetame', 'asc'],
         },
         options: {
           optionObj: 'result.values',
@@ -61,14 +91,21 @@ export const MentorSearchSchema = {
         callType: 'dependent',
         dependent: 'district',
       },
+      //for multiselect
+      uniqueItems: true,
+      isMultiSelect: true,
+      maxSelections: 1000,
     },
     village: {
-      type: 'string',
+      type: 'array',
       title: 'Village',
-      enum: ['Select'],
-      enumNames: ['Select'],
+      items: {
+        type: 'string',
+        enum: ['Select'],
+        enumNames: ['Select'],
+      },
       api: {
-        url: 'https://dev-interface.prathamdigital.org/interface/v1/fields/options/read',
+        url: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/fields/options/read`,
         method: 'POST',
         payload: {
           fieldName: 'village',
@@ -83,10 +120,14 @@ export const MentorSearchSchema = {
         callType: 'dependent',
         dependent: 'block',
       },
+      //for multiselect
+      uniqueItems: true,
+      isMultiSelect: true,
+      maxSelections: 1000,
     },
     firstName: {
       type: 'string',
-      title: 'Search Key',
+      title: 'Search Mentor',
       // description: 'Search for a specific user or entity',
     },
     sortBy: {
@@ -95,33 +136,69 @@ export const MentorSearchSchema = {
       enum: ['asc', 'desc'],
       enumNames: ['A-Z', 'Z-A'],
     },
+    status: {
+      type: 'string',
+      title: 'Status',
+      enum: ['active', 'archived'],
+      enumNames: ['Active', 'Archived'],
+    },
   },
 };
 
 export const MentorSearchUISchema = {
-  'ui:order': ['state', 'district', 'block', 'village', 'searchKey', 'sortBy'],
+  'ui:order': [
+    'state',
+    'district',
+    'block',
+    'village',
+    'firstName',
+    'sortBy',
+    'status',
+  ],
 
   state: {
-    'ui:widget': 'select',
+    'ui:widget': 'CustomMultiSelectWidget',
+    'ui:options': {
+      multiple: true,
+      uniqueItems: true,
+    },
+    ...(stateId ? { 'ui:disabled': true } : {}),
   },
 
   district: {
-    'ui:widget': 'select',
+    'ui:widget': 'CustomMultiSelectWidget',
+    'ui:options': {
+      multiple: true,
+      uniqueItems: true,
+    },
   },
 
   block: {
-    'ui:widget': 'select',
+    'ui:widget': 'CustomMultiSelectWidget',
+    'ui:options': {
+      multiple: true,
+      uniqueItems: true,
+    },
   },
 
   village: {
-    'ui:widget': 'select',
+    'ui:widget': 'CustomMultiSelectWidget',
+    'ui:options': {
+      multiple: true,
+      uniqueItems: true,
+    },
   },
 
-  searchKey: {
-    'ui:widget': 'text',
+  firstName: {
+    'ui:widget': 'SearchTextFieldWidget',
   },
 
   sortBy: {
     'ui:widget': 'select',
+  },
+
+  status: {
+    'ui:widget': 'select',
+    // 'ui:disabled': true,
   },
 };

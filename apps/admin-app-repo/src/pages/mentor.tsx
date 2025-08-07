@@ -1,8 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Form from '@rjsf/mui';
-import validator from '@rjsf/validator-ajv8';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import DynamicForm from '@/components/DynamicForm/DynamicForm';
 import Loader from '@/components/Loader';
 import { useTranslation } from 'react-i18next';
@@ -10,48 +7,85 @@ import {
   MentorSearchSchema,
   MentorSearchUISchema,
 } from '../constant/Forms/MentorSearch';
-import { Status } from '@/utils/app.constant';
+import { Role, RoleId, Status } from '@/utils/app.constant';
 import { userList } from '@/services/UserList';
-import { Box, Grid, Typography } from '@mui/material';
-import { debounce } from 'lodash';
-import { Numbers } from '@mui/icons-material';
+import {
+  Box,
+  Checkbox,
+  FormControlLabel,
+  TextField,
+  Typography,
+} from '@mui/material';
 import PaginatedTable from '@/components/PaginatedTable/PaginatedTable';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { Button } from '@mui/material';
-import AddEditMentor from '@/components/EntityForms/AddEditMentor/AddEditMentor';
 import SimpleModal from '@/components/SimpleModal';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { updateCohortMemberStatus } from '@/services/CohortService/cohortService';
-import AddBoxIcon from '@mui/icons-material/AddBox';
-import PreviewIcon from '@mui/icons-material/Preview';
 import editIcon from '../../public/images/editIcon.svg';
 import deleteIcon from '../../public/images/deleteIcon.svg';
 import Image from 'next/image';
+import {
+  extractMatchingKeys,
+  fetchForm,
+  searchListData,
+} from '@/components/DynamicForm/DynamicFormCallback';
+import { FormContext } from '@/components/DynamicForm/DynamicFormConstant';
+import AddEditUser from '@/components/EntityForms/AddEditUser/AddEditUser';
+import ConfirmationPopup from '@/components/ConfirmationPopup';
+import DeleteDetails from '@/components/DeleteDetails';
+import { deleteUser } from '@/services/UserService';
+import { transformLabel } from '@/utils/Helper';
+import { getCohortList } from '@/services/GetCohortList';
+import { useTheme } from '@mui/material/styles';
+import { useRouter } from 'next/router';
+import AddIcon from '@mui/icons-material/Add';
 
 //import { DynamicForm } from '@shared-lib';
 
 const Mentor = () => {
+  const theme = useTheme<any>();
   const [isLoading, setIsLoading] = useState(false);
   const [schema, setSchema] = useState(MentorSearchSchema);
   const [uiSchema, setUiSchema] = useState(MentorSearchUISchema);
   const [addSchema, setAddSchema] = useState(null);
   const [addUiSchema, setAddUiSchema] = useState(null);
   const [prefilledAddFormData, setPrefilledAddFormData] = useState({});
-  const [sortBy, setSortBy] = useState<string>('name');
   const [pageLimit, setPageLimit] = useState<number>(10);
   const [pageOffset, setPageOffset] = useState<number>(0);
-  const [prefilledFormData, setPrefilledFormData] = useState({ state: '27' });
+  const [prefilledFormData, setPrefilledFormData] = useState({});
   const [loading, setLoading] = useState<boolean>(false);
   const [response, setResponse] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const [renderKey, setRenderKey] = useState(true);
-  // const [open, setOpen] = useState(false);
   const [openModal, setOpenModal] = React.useState<boolean>(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editableUserId, setEditableUserId] = useState('');
+  const [roleId, setRoleID] = useState('');
+  const [tenantId, setTenantId] = useState('');
+  const [open, setOpen] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const [userID, setUserId] = useState('');
+  const [userData, setUserData] = useState({
+    firstName: '',
+    lastName: '',
+    village: '',
+  });
+  const [reason, setReason] = useState('');
+  const [memberShipID, setMemberShipID] = useState('');
 
   const { t, i18n } = useTranslation();
+
+  const initialFormData = localStorage.getItem('stateId')
+    ? { state: [localStorage.getItem('stateId')] }
+    : {};
+
+  const searchStoreKey = 'mentor';
+  const initialFormDataSearch =
+    localStorage.getItem(searchStoreKey) &&
+    localStorage.getItem(searchStoreKey) != '{}'
+      ? JSON.parse(localStorage.getItem(searchStoreKey))
+      : localStorage.getItem('stateId')
+      ? { state: [localStorage.getItem('stateId')] }
+      : {};
 
   useEffect(() => {
     if (response?.result?.totalCount !== 0) {
@@ -61,50 +95,27 @@ const Mentor = () => {
   useEffect(() => {
     // Fetch form schema from API and set it in state.
     const fetchData = async () => {
-      let data = JSON.stringify({
-        readForm: [
-          {
-            fetchUrl:
-              'https://dev-middleware.prathamdigital.org/user/v1/form/read?context=USERS&contextType=INSTRUCTOR',
-            header: {},
-          },
-          {
-            fetchUrl:
-              'https://dev-middleware.prathamdigital.org/user/v1/form/read?context=USERS&contextType=INSTRUCTOR',
-            header: {
-              tenantid: '6c8b810a-66c2-4f0d-8c0c-c025415a4414',
-            },
-          },
-        ],
-      });
-
-      let config = {
-        method: 'post',
-        maxBodyLength: Infinity,
-        url: '/api/dynamic-form/get-rjsf-form',
-        headers: {
-          'Content-Type': 'application/json',
+      const responseForm = await fetchForm([
+        {
+          fetchUrl: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/form/read?context=${FormContext.mentor.context}&contextType=${FormContext.mentor.contextType}`,
+          header: {},
         },
-        data: data,
-      };
-
-      await axios
-        .request(config)
-        .then((response) => {
-          console.log(JSON.stringify(response.data));
-          if (response.data?.schema) {
-            console.log(`schema`, response.data?.schema);
-            setAddSchema(response.data?.schema);
-          }
-          if (response.data?.schema) {
-            console.log(`uiSchema`, response.data?.uiSchema);
-            setAddUiSchema(response.data?.uiSchema);
-          }
-        })
-        .catch((error) => {
-          console.log(error);
-        });
+        {
+          fetchUrl: `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/form/read?context=${FormContext.mentor.context}&contextType=${FormContext.mentor.contextType}`,
+          header: {
+            tenantid: localStorage.getItem('tenantId'),
+          },
+        },
+      ]);
+      console.log('responseForm', responseForm);
+      setAddSchema(responseForm?.schema);
+      setAddUiSchema(responseForm?.uiSchema);
     };
+
+    setPrefilledAddFormData(initialFormData);
+    setPrefilledFormData(initialFormDataSearch);
+    setRoleID(RoleId.TEACHER);
+    setTenantId(localStorage.getItem('tenantId'));
     fetchData();
   }, []);
 
@@ -115,59 +126,42 @@ const Mentor = () => {
     },
   };
 
-  const debouncedGetList = debounce(async (data) => {
-    const resp = await userList(data);
-    console.log('Debounced API Call:', resp);
-    // console.log('totalCount', result?.totalCount);
-    // console.log('userDetails', result?.getUserDetails);
-    setResponse({ result: resp });
-  }, 300);
+  const router = useRouter();
 
   const SubmitaFunction = async (formData: any) => {
     setPrefilledFormData(formData);
+    //set prefilled search data on refresh
+    localStorage.setItem(searchStoreKey, JSON.stringify(formData));
     await searchData(formData, 0);
   };
 
-  const searchData = async (formData, newPage) => {
-    const { sortBy, ...restFormData } = formData;
-
-    const filters = {
+  const searchData = async (formData: any, newPage: any) => {
+    formData = Object.fromEntries(
+      Object.entries(formData).filter(
+        ([_, value]) => !Array.isArray(value) || value.length > 0
+      )
+    );
+    const staticFilter = {
       role: 'Instructor',
-      status: [Status.ACTIVE],
-      ...Object.entries(restFormData).reduce((acc, [key, value]) => {
-        if (value !== undefined && value !== '') {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, any>),
+      status: 'active',
+      tenantId: localStorage.getItem('tenantId'),
     };
-
-    const sort = ['firstName', sortBy || 'asc'];
-    let limit = pageLimit;
-    let offset = newPage * limit;
-    let pageNumber = newPage;
-
-    setPageOffset(offset);
-    setCurrentPage(pageNumber);
-    setResponse({});
-    setRenderKey((renderKey) => !renderKey);
-
-    const data = {
-      limit,
-      offset,
-      sort,
-      filters,
-    };
-
-    if (filters.searchKey) {
-      debouncedGetList(data);
-    } else {
-      const resp = await userList(data);
-      // console.log('totalCount', result?.totalCount);
-      // console.log('userDetails', result?.getUserDetails);
-      setResponse({ result: resp });
-      console.log('Immediate API Call:', resp);
+    if (localStorage.getItem('roleName') === Role.ADMIN) {
+      staticFilter.state = [localStorage.getItem('stateId')];
     }
+    const { sortBy } = formData;
+    const staticSort = ['firstName', sortBy || 'asc'];
+    await searchListData(
+      formData,
+      newPage,
+      staticFilter,
+      pageLimit,
+      setPageOffset,
+      setCurrentPage,
+      setResponse,
+      userList,
+      staticSort
+    );
   };
 
   // Define table columns
@@ -175,15 +169,28 @@ const Mentor = () => {
     {
       keys: ['firstName', 'middleName', 'lastName'],
       label: 'Mentor Name',
-      render: (row) =>
-        `${row.firstName || ''} ${row.middleName || ''} ${
-          row.lastName || ''
-        }`.trim(),
+      render: (row: any) =>
+        `${transformLabel(row.firstName) || ''} ${
+          transformLabel(row.middleName) || ''
+        } ${transformLabel(row.lastName) || ''}`.trim(),
     },
     {
       key: 'status',
       label: 'Status',
-      getStyle: (row) => ({ color: row.status === 'active' ? 'green' : 'red' }),
+      render: (row: any) => transformLabel(row.status),
+      getStyle: (row: any) => ({
+        color: row.status === 'active' ? 'green' : 'red',
+      }),
+    },
+    {
+      keys: ['gender'],
+      label: 'Gender',
+      render: (row) => transformLabel(row.gender) || '',
+    },
+    {
+      keys: ['mobile'],
+      label: 'Mobile',
+      render: (row) => transformLabel(row.mobile) || '',
     },
     // {
     //   key: 'STATE',
@@ -198,19 +205,31 @@ const Mentor = () => {
     {
       keys: ['STATE', 'DISTRICT', 'BLOCK', 'VILLAGE'],
       label: 'Location (State / District / Block/ Village)',
-      render: (row) => {
+      render: (row: any) => {
         const state =
-          row.customFields.find((field) => field.label === 'STATE')
-            ?.selectedValues[0]?.value || '';
+          transformLabel(
+            row.customFields.find(
+              (field: { label: string }) => field.label === 'STATE'
+            )?.selectedValues?.[0]?.value
+          ) || '';
         const district =
-          row.customFields.find((field) => field.label === 'DISTRICT')
-            ?.selectedValues[0]?.value || '';
+          transformLabel(
+            row.customFields.find(
+              (field: { label: string }) => field.label === 'DISTRICT'
+            )?.selectedValues?.[0]?.value
+          ) || '';
         const block =
-          row.customFields.find((field) => field.label === 'BLOCK')
-            ?.selectedValues[0]?.value || '';
+          transformLabel(
+            row.customFields.find(
+              (field: { label: string }) => field.label === 'BLOCK'
+            )?.selectedValues?.[0]?.value
+          ) || '';
         const village =
-          row.customFields.find((field) => field.label === 'VILLAGE')
-            ?.selectedValues[0]?.value || '';
+          transformLabel(
+            row.customFields.find(
+              (field: { label: string }) => field.label === 'VILLAGE'
+            )?.selectedValues?.[0]?.value
+          ) || '';
         return `${state == '' ? '' : `${state}`}${
           district == '' ? '' : `, ${district}`
         }${block == '' ? '' : `, ${block}`}${
@@ -219,6 +238,71 @@ const Mentor = () => {
       },
     },
   ];
+
+  const userDelete = async () => {
+    try {
+      let membershipId = null;
+
+      // Attempt to get the cohort list
+      try {
+        const userCohortResp = await getCohortList(userID);
+        if (userCohortResp?.result?.cohortData?.length) {
+          membershipId = userCohortResp.result.cohortData[0].cohortMembershipId;
+        } else {
+          console.warn('No cohort data found for the user.');
+        }
+      } catch (error) {
+        console.error('Failed to fetch cohort list:', error);
+      }
+
+      // Attempt to update cohort member status only if we got a valid membershipId
+      if (membershipId) {
+        try {
+          const updateResponse = await updateCohortMemberStatus({
+            memberStatus: 'archived',
+            statusReason: reason,
+            membershipId: membershipId,
+          });
+
+          if (updateResponse?.responseCode !== 200) {
+            console.error(
+              'Failed to archive user from center:',
+              updateResponse
+            );
+          } else {
+            console.log('User successfully archived from center.');
+          }
+        } catch (error) {
+          console.error('Error archiving user from center:', error);
+        }
+      }
+
+      // Always attempt to delete the user
+      console.log('Proceeding to self-delete...');
+      const resp = await deleteUser(userID, {
+        userData: { reason: reason, status: 'archived' },
+      });
+
+      if (resp?.responseCode === 200) {
+        setResponse((prev) => ({
+          ...prev,
+          result: {
+            ...prev?.result,
+            getUserDetails: prev?.result?.getUserDetails?.filter(
+              (item) => item?.userId !== userID
+            ),
+          },
+        }));
+        console.log('Team leader successfully archived.');
+      } else {
+        console.error('Failed to archive team leader:', resp);
+      }
+
+      return resp;
+    } catch (error) {
+      console.error('Error updating team leader:', error);
+    }
+  };
 
   // Define actions
   const actions = [
@@ -237,7 +321,7 @@ const Mentor = () => {
           <Image src={editIcon} alt="" />
         </Box>
       ),
-      callback: (row) => {
+      callback: (row: any) => {
         console.log('row:', row);
         console.log('AddSchema', addSchema);
         console.log('AddUISchema', addUiSchema);
@@ -267,31 +351,44 @@ const Mentor = () => {
         </Box>
       ),
       callback: async (row) => {
-        console.log('row:', row);
-        // setEditableUserId(row?.userId);
-        const memberStatus = Status.ARCHIVED;
-        const statusReason = '';
-        const membershipId = row?.userId;
-
-        const response = await updateCohortMemberStatus({
-          memberStatus,
-          statusReason,
-          membershipId,
+        const findVillage = row?.customFields.find((item) => {
+          if (item.label === 'VILLAGE') {
+            return item;
+          }
         });
-        setPrefilledFormData({ state: '27' });
-        searchData(prefilledFormData, currentPage);
-        setOpenModal(false);
+
+        // console.log('row:', row?.customFields[2].selectedValues[0].value);
+        // setEditableUserId(row?.userId);
+        // const memberStatus = Status.ARCHIVED;
+        // const statusReason = '';
+        // const membershipId = row?.userId;
+
+        // const response = await updateCohortMemberStatus({
+        //   memberStatus,
+        //   statusReason,
+        //   membershipId,
+        // });
+        // setPrefilledFormData({});
+        // searchData(prefilledFormData, currentPage);
+        setOpen(true);
+        setUserId(row?.userId);
+
+        setUserData({
+          firstName: row?.firstName || '',
+          lastName: row?.lastName || '',
+          village: findVillage?.selectedValues?.[0]?.value || '',
+        });
       },
     },
   ];
 
   // Pagination handlers
-  const handlePageChange = (newPage) => {
+  const handlePageChange = (newPage: any) => {
     console.log('Page changed to:', newPage);
     searchData(prefilledFormData, newPage);
   };
 
-  const handleRowsPerPageChange = (newRowsPerPage) => {
+  const handleRowsPerPageChange = (newRowsPerPage: any) => {
     console.log('Rows per page changed to:', newRowsPerPage);
     setPageLimit(newRowsPerPage);
   };
@@ -302,36 +399,33 @@ const Mentor = () => {
     setOpenModal(false);
   };
 
-  function extractMatchingKeys(row, schema) {
-    let result = {};
-
-    for (const [key, value] of Object.entries(schema.properties)) {
-      if (value.coreField === 0) {
-        if (value.fieldId) {
-          const customField = row.customFields?.find(
-            (field) => field.fieldId === value.fieldId
-          );
-          if (customField) {
-            result[key] = customField.selectedValues
-              .map((v) => v.id)
-              .join(', ');
-          }
-        } else if (row[key] !== undefined) {
-          result[key] = row[key];
-        }
-      } else if (row[key] !== undefined) {
-        result[key] = row[key];
-      }
-    }
-
-    return result;
-  }
+  //Add Edit Props
+  const extraFieldsUpdate = {};
+  const extraFields = {
+    tenantCohortRoleMapping: [
+      {
+        tenantId: tenantId,
+        roleId: roleId,
+      },
+    ],
+    username: 'youthnetmentor',
+    password: Math.floor(10000 + Math.random() * 90000),
+  };
+  const successUpdateMessage = 'MENTORS.MENTOR_UPDATED_SUCCESSFULLY';
+  const telemetryUpdateKey = 'youthnet-mentor-updated-successfully';
+  const failureUpdateMessage = 'MENTORS.NOT_ABLE_UPDATE_MENTOR';
+  const successCreateMessage = 'MENTORS.MENTOR_CREATED_SUCCESSFULLY';
+  const telemetryCreateKey = 'youthnet-mentor-created-successfully';
+  const failureCreateMessage = 'MENTORS.NOT_ABLE_CREATE_MENTOR';
+  const notificationKey = 'onMentorCreate';
+  const notificationMessage = 'MENTORS.USER_CREDENTIALS_WILL_BE_SEND_SOON';
+  const notificationContext = 'USER';
 
   return (
     <>
       <Box display={'flex'} flexDirection={'column'} gap={2}>
         {isLoading ? (
-          <Loader />
+          <Loader showBackdrop={false} loadingText={t('COMMON.LOADING')} />
         ) : (
           schema &&
           uiSchema && (
@@ -340,36 +434,45 @@ const Mentor = () => {
               uiSchema={updatedUiSchema}
               SubmitaFunction={SubmitaFunction}
               isCallSubmitInHandle={true}
-              prefilledFormData={prefilledFormData || {}}
+              prefilledFormData={prefilledFormData}
             />
           )
         )}
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }} mt={4}>
           <Button
             variant="outlined"
+            startIcon={<AddIcon />}
             color="primary"
+            sx={{
+              textTransform: 'none',
+              fontSize: '14px',
+              color: theme.palette.primary['100'],
+              width: '200px',
+            }}
             onClick={() => {
-              setPrefilledAddFormData({});
+              setPrefilledAddFormData(initialFormData);
               setIsEdit(false);
               setEditableUserId('');
               handleOpenModal();
             }}
           >
-            Add New
+            {t('COMMON.ADD_NEW')}{' '}
           </Button>
         </Box>
 
         <SimpleModal
           open={openModal}
           onClose={handleCloseModal}
-          showFooter={false}
+          showFooter={true}
           modalTitle={
             isEdit ? t('MENTORS.UPDATE_MENTOR') : t('MENTORS.NEW_MENTOR')
           }
+          primaryText={ isEdit? 'Update':'Next'}
+          id="dynamic-form-id"
         >
-          <AddEditMentor
+          <AddEditUser
             SuccessCallback={() => {
-              setPrefilledFormData({ state: '27' });
+              setPrefilledFormData({});
               searchData({}, 0);
               setOpenModal(false);
             }}
@@ -379,17 +482,29 @@ const Mentor = () => {
             isEdit={isEdit}
             editableUserId={editableUserId}
             UpdateSuccessCallback={() => {
-              setPrefilledFormData({ state: '27' });
+              setPrefilledFormData({});
               searchData(prefilledFormData, currentPage);
               setOpenModal(false);
             }}
+            extraFields={extraFields}
+            extraFieldsUpdate={extraFieldsUpdate}
+            successUpdateMessage={successUpdateMessage}
+            telemetryUpdateKey={telemetryUpdateKey}
+            failureUpdateMessage={failureUpdateMessage}
+            successCreateMessage={successCreateMessage}
+            telemetryCreateKey={telemetryCreateKey}
+            failureCreateMessage={failureCreateMessage}
+            notificationKey={notificationKey}
+            notificationMessage={notificationMessage}
+            notificationContext={notificationContext}
+            type="mentor"
+            hideSubmit={true}
           />
         </SimpleModal>
 
         {response && response?.result?.getUserDetails ? (
           <Box sx={{ mt: 1 }}>
             <PaginatedTable
-              key={renderKey ? 'defaultRender' : 'customRender'}
               count={response?.result?.totalCount}
               data={response?.result?.getUserDetails}
               columns={columns}
@@ -413,6 +528,26 @@ const Mentor = () => {
           </Box>
         )}
       </Box>
+      <ConfirmationPopup
+        checked={checked}
+        open={open}
+        onClose={() => setOpen(false)}
+        title={t('COMMON.DELETE_USER')}
+        primary={t('COMMON.DELETE_USER_WITH_REASON')}
+        secondary={t('COMMON.CANCEL')}
+        reason={reason}
+        onClickPrimary={userDelete}
+      >
+        <DeleteDetails
+          firstName={userData.firstName}
+          lastName={userData.lastName}
+          village={userData.village}
+          checked={checked}
+          setChecked={setChecked}
+          reason={reason}
+          setReason={setReason}
+        />
+      </ConfirmationPopup>
     </>
   );
 };

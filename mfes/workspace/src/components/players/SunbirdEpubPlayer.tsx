@@ -1,6 +1,5 @@
 import "reflect-metadata";
-import React, { useEffect } from "react";
-import { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { getTelemetryEvents, handleExitEvent } from "@workspace/utils/Helper";
 
 interface PlayerConfigProps {
@@ -9,21 +8,53 @@ interface PlayerConfigProps {
 
 const SunbirdEpubPlayer = ({ playerConfig }: PlayerConfigProps) => {
   const sunbirdEpubPlayerRef = useRef<HTMLDivElement | null>(null);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
 
   useEffect(() => {
-    // Dynamically load the Sunbird EPUB Player script and CSS from CDN
-    const script = document.createElement("script");
-    script.src =
+    const scriptUrl =
       "https://cdn.jsdelivr.net/npm/@project-sunbird/sunbird-epub-player-web-component@1.4.0/sunbird-epub-player.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href =
+    const styleUrl =
       "https://cdn.jsdelivr.net/npm/@project-sunbird/sunbird-epub-player-web-component@1.4.0/styles.css";
-    link.className = "sunbird-epub-player-styles"; // Add a class for identification
-    document.head.appendChild(link);
+
+    const existingScript = document.querySelector(`script[src="${scriptUrl}"]`);
+    const existingStyle = document.querySelector(`link[href="${styleUrl}"]`);
+
+    const onScriptLoad = () => {
+      setIsScriptLoaded(true);
+    };
+
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.src = scriptUrl;
+      script.async = true;
+      script.onload = onScriptLoad;
+      document.body.appendChild(script);
+    } else {
+      setIsScriptLoaded(true);
+    }
+
+    if (!existingStyle) {
+      const link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = styleUrl;
+      link.className = "sunbird-epub-player-styles";
+      document.head.appendChild(link);
+    }
+
+    return () => {
+      if (!existingScript) {
+        const scriptToRemove = document.querySelector(`script[src="${scriptUrl}"]`);
+        if (scriptToRemove) document.body.removeChild(scriptToRemove);
+      }
+      if (!existingStyle) {
+        const styleToRemove = document.querySelector(".sunbird-epub-player-styles");
+        if (styleToRemove) document.head.removeChild(styleToRemove);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isScriptLoaded || !sunbirdEpubPlayerRef.current) return;
 
     const playerElement = sunbirdEpubPlayerRef.current;
 
@@ -38,42 +69,25 @@ const SunbirdEpubPlayer = ({ playerConfig }: PlayerConfigProps) => {
       getTelemetryEvents(event.detail, "epub");
     };
 
-    // Ensure the script has loaded before adding event listeners
-    script.onload = () => {
-      playerElement?.addEventListener("playerEvent", handlePlayerEvent);
-      playerElement?.addEventListener("telemetryEvent", handleTelemetryEvent);
-    };
+    playerElement.addEventListener("playerEvent", handlePlayerEvent);
+    playerElement.addEventListener("telemetryEvent", handleTelemetryEvent);
 
     return () => {
-      // Cleanup event listeners
-      playerElement?.removeEventListener("playerEvent", handlePlayerEvent);
-      playerElement?.removeEventListener(
-        "telemetryEvent",
-        handleTelemetryEvent
-      );
-
-      // Remove the script element
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-
-      // Remove the stylesheet
-      const styleLink = document.head.querySelector(
-        ".sunbird-epub-player-styles"
-      ) as HTMLLinkElement;
-      if (styleLink) {
-        document.head.removeChild(styleLink);
-      }
+      playerElement.removeEventListener("playerEvent", handlePlayerEvent);
+      playerElement.removeEventListener("telemetryEvent", handleTelemetryEvent);
     };
-  }, []);
+  }, [isScriptLoaded]);
 
   return (
-    <div className="player-grid">
-      {/* @ts-ignore */}
-      <sunbird-epub-player
-        player-config={JSON.stringify(playerConfig)}
-        ref={sunbirdEpubPlayerRef}
-      ></sunbird-epub-player>
+    <div className="player-grid" style={{ height: '100vh' }}>
+      {isScriptLoaded ? (
+        <sunbird-epub-player
+          player-config={JSON.stringify(playerConfig)}
+          ref={sunbirdEpubPlayerRef}
+        />
+      ) : (
+        <div>Loading EPUB Player...</div>
+      )}
     </div>
   );
 };

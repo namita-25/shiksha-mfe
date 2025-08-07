@@ -11,6 +11,8 @@ interface CardProps {
   volunteerCount: number;
   actionLabel: string;
   onActionClick?: () => void;
+  onAssignVolunteerClick?: () => void;
+  entriesList?: any
 }
 
 const VolunteerListCard: React.FC<CardProps> = ({
@@ -19,12 +21,15 @@ const VolunteerListCard: React.FC<CardProps> = ({
   volunteerCount,
   actionLabel,
   onActionClick,
+  onAssignVolunteerClick,
+  entriesList
 }) => {
+  console.log(entriesList)
   const { t } = useTranslation();
   return (
     <Card
       variant="outlined"
-      onClick={onActionClick || (() => { })}
+    
       sx={{
         // mt: 2,
         borderRadius: '8px',
@@ -44,9 +49,12 @@ const VolunteerListCard: React.FC<CardProps> = ({
           justifyContent: 'space-between',
           alignItems: 'center',
         }}
+        onClick={onActionClick || (() => { })}
       >
         {/* Title and Entries */}
-        <Box>
+        <Box
+
+        >
           <Typography variant="subtitle1">{title}</Typography>
           <Typography variant="body2" color="text.secondary">
             {entries} {t('YOUTHNET_VOLUNTEERLIST.ENTRIES')}
@@ -54,6 +62,7 @@ const VolunteerListCard: React.FC<CardProps> = ({
         </Box>
         <ArrowForwardIosIcon fontSize="small" color="action" sx={{ color:'#4D4639'}} />
       </CardContent>
+     
       <Box
         sx={{
           backgroundColor: '#F3EDF7',
@@ -62,11 +71,14 @@ const VolunteerListCard: React.FC<CardProps> = ({
           borderTopLeftRadius:'12px',
            borderTopRightRadius: '12px'
         }}
+        onClick={onAssignVolunteerClick || (() => { })}
+
       >
        <Box sx={{display:'flex' , alignItems:'center', gap:'3px'}}>
-          <Box sx={{ color: '#BA1A1A', fontSize: '18px' }}>
+         {volunteerCount ===0 && (<Box sx={{ color: '#BA1A1A', fontSize: '18px' }}>
             !
-          </Box>
+          </Box>)
+         }
           <Typography
             sx={{
               color: '#7C766F',
@@ -79,6 +91,7 @@ const VolunteerListCard: React.FC<CardProps> = ({
             {volunteerCount} {t('YOUTHNET_VOLUNTEERLIST.VOLUNTEERS_ASSIGNED')}
           </Typography>
        </Box>
+
         <Box
           sx={{
             display: 'flex',

@@ -1,0 +1,42 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@learner/*": ["apps/learner-web-app/src/*"],
+      "@content-mfes/*": ["mfes/content/src/*"],
+      "@login/*": ["mfes/login/src/*"],
+      "@forget-password/*": ["mfes/forget-password/src/*"],
+      "@collection": ["mfes/editors/src/components/CollectionEditor.tsx"],
+
+      "@shared-lib": ["libs/shared-lib-v2/src/index.ts"],
+      "@Content": ["mfes/content/src/components/Content/List.tsx"],
+      "@ContentEnrollDetails": [
+        "mfes/content/src/components/Content/ContentEnroll.tsx"
+      ],
+      "@CourseUnitDetails": [
+        "mfes/content/src/components/Content/CourseUnitDetails.tsx"
+      ],
+      "@InfoCard": ["mfes/content/src/components/Card/InfoCard.tsx"],
+      "@ContentPlayer": ["mfes/content/src/components/Content/Player.tsx"],
+
+      //dynamic form
+      "@shared-lib-v2/*": ["libs/shared-lib-v2/src/*"],
+      "@survey/*": ["mfes/survey-observations/src/*"],
+      "@players/*": ["mfes/players/src/pages/play.tsx"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

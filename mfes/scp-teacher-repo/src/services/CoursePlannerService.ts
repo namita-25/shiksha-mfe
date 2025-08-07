@@ -29,7 +29,7 @@ export const getTargetedSolutions = async ({
     class: className,
     board,
     courseType,
-    // entityId
+    ...(entityId && { entityId }),
   };
 
   try {
@@ -89,7 +89,8 @@ export const getUserProjectTemplate = async ({
   templateId,
   solutionId,
   role,
-  cohortId,
+  entityId,
+  acl
 }: GetUserProjectTemplateParams): Promise<any> => {
   const apiUrl: string = `${process.env.NEXT_PUBLIC_COURSE_PLANNER_API_URL}/userProjects/details?templateId=${templateId}&solutionId=${solutionId}`;
 
@@ -104,7 +105,8 @@ export const getUserProjectTemplate = async ({
     //   users: [],
     //   scope: {}
     // },
-    // entityId: cohortId
+    entityId,
+    acl
   };
 
   try {
@@ -121,7 +123,11 @@ export const UserStatusDetails = async ({
   id,
   lastDownloadedAt,
 }: GetUserProjectStatusParams): Promise<any> => {
-  const apiUrl: string = `${process.env.NEXT_PUBLIC_COURSE_PLANNER_API_URL}/userProjects/sync/${id}?lastDownloadedAt=${encodeURIComponent(lastDownloadedAt)}`;
+  const apiUrl: string = `${
+    process.env.NEXT_PUBLIC_COURSE_PLANNER_API_URL
+  }/userProjects/sync/${id}?lastDownloadedAt=${encodeURIComponent(
+    lastDownloadedAt
+  )}`;
 
   const headers = {
     'x-auth-token': localStorage.getItem('token'),

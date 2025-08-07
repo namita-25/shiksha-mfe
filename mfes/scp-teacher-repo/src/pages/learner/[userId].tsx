@@ -49,7 +49,7 @@ import {
   Card,
   CardContent,
   Grid,
-  Typography
+  Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { GetStaticPaths } from 'next';
@@ -58,12 +58,14 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import React, { ComponentType, useEffect, useState } from 'react';
-import {
-  accessControl,
-  AttendanceAPILimit
-} from '../../../app.config';
+import { accessControl, AttendanceAPILimit } from '../../../app.config';
 import { isEliminatedFromBuild } from '../../../featureEliminationUtil';
 import { useDirection } from '../../hooks/useDirection';
+import {
+  cohortCenterList,
+  getCohortDetails,
+} from '@/services/CenterListServices';
+import LearnerManage from '@/shared/LearnerManage/LearnerManage';
 let AssessmentReport: ComponentType<AssessmentReportProp> | null = null;
 
 if (!isEliminatedFromBuild('AssessmentReport', 'component')) {
@@ -92,14 +94,15 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
   const { userId }: any = router.query;
   const store = useStore();
   const isActiveYear = store.isActiveYearSelected;
-  const [selectedUserEmail, setSelectedUserEmail] = useState("");
-  const [selectedUserUserName, setSelectedUserUserName] = useState("");
+  const [selectedUserEmail, setSelectedUserEmail] = useState('');
+  const [selectedUserUserName, setSelectedUserUserName] = useState('');
   const [assesmentData, setAssesmentData] = useState<any>(null);
   const [test, setTest] = React.useState('Pre Test');
   const [subject, setSubject] = React.useState('English');
   const [customFieldsData, setCustomFieldsData] = useState<UpdateCustomField[]>(
     []
   );
+  const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState<any | null>(null);
   const [isFromDate, setIsFromDate] = useState(
@@ -129,14 +132,24 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
     status: any;
     statusReason: any;
     cohortMembershipId: any;
+    customFields: any;
   } | null>(null);
+  const [center, setCenter] = useState<any>(null);
+  const [batchName, setBatchName] = useState<string>('');
+  const [batchNames, setBatchNames] = useState<string[]>([]);
 
   useEffect(() => {
     setSelectedValue(currentDayMonth);
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('learnerId', userId);
       setCohortId(localStorage.getItem('classId') || '');
+      setClassId(localStorage.getItem('classId') || '');
     }
+    const todayFormattedDate = formatSelectedDate(new Date());
+    const lastSeventhDayFormattedDate = formatSelectedDate(
+      new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000)
+    );
+    getAttendanceData(lastSeventhDayFormattedDate, todayFormattedDate);
   }, []);
 
   const handleReload = () => {
@@ -159,7 +172,7 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
   };
 
   const mapFields = (formFields: any, response: any) => {
-    response.userData.phone_number=response.userData.mobile
+    response.userData.phone_number = response.userData.mobile;
     const initialFormData: any = {};
     formFields.fields.forEach((item: any) => {
       const userData = response?.userData;
@@ -210,9 +223,8 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
           }
         }
       } else {
-
         if (customFieldValue) {
-          const fieldValue = getValue(userData, customFieldValue); 
+          const fieldValue = getValue(userData, customFieldValue);
           if (fieldValue) {
             initialFormData[item.name] = fieldValue;
           }
@@ -227,10 +239,6 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
       const response = await getUserDetails(userId, true);
       setSelectedUserUserName(response?.result?.userData?.username);
       setSelectedUserEmail(response?.result?.userData?.email);
-   
-
-
-
       const formFields = await getFormRead(
         FormContext.USERS,
         FormContextType.STUDENT
@@ -285,13 +293,13 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
     const response = await classesMissedAttendancePercentList({
       filters,
       facets: ['userId'],
+      sort: ['absent_percentage', 'asc'],
     });
     if (response?.responseCode === 200) {
       const userData = response?.data?.result?.userId[userId];
       setOverallAttendance(userData);
     }
   };
-
   // ger user information
   const fetchUserDetails = async () => {
     setLoading(true);
@@ -302,24 +310,30 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
         if (user) {
           const response = await getUserDetails(user, true);
 
+          console.log('response', response);
+          setUserData(response?.result?.userData);
+
           if (response?.responseCode === 200) {
             const data = response;
             if (data) {
               const coreFieldData = data?.result?.userData;
-              let fullName = "";
+              let fullName = '';
 
               if (coreFieldData?.firstName) {
                 fullName += toPascalCase(coreFieldData.firstName);
               }
-              
+
               if (coreFieldData?.middleName) {
-                fullName += (fullName ? " " : "") + toPascalCase(coreFieldData.middleName);
+                fullName +=
+                  (fullName ? ' ' : '') +
+                  toPascalCase(coreFieldData.middleName);
               }
-              
+
               if (coreFieldData?.lastName) {
-                fullName += (fullName ? " " : "") + toPascalCase(coreFieldData.lastName);
+                fullName +=
+                  (fullName ? ' ' : '') + toPascalCase(coreFieldData.lastName);
               }
-              
+
               setUserName(fullName);
               const fields: CustomField[] =
                 data?.result?.userData?.customFields;
@@ -327,9 +341,9 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
                 setAddress(
                   extractAddress(
                     fields,
-                    'STATES',
-                    'DISTRICTS',
-                    'BLOCKS',
+                    'STATE',
+                    'DISTRICT',
+                    'BLOCK',
                     'label',
                     'value',
                     toPascalCase
@@ -341,13 +355,37 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
 
               const fetchFormData = async () => {
                 try {
-                  const response = await getFormRead(
+                  const genericFormResponse = await getFormRead(
                     FormContext.USERS,
                     FormContextType.STUDENT
                   );
-                  if (response) {    
 
+                  genericFormResponse.fields =
+                    genericFormResponse.fields.filter(
+                      (item: { name: string }) =>
+                        !['password', 'confirm_password', 'program'].includes(
+                          item.name
+                        )
+                    );
 
+                  const tenantSpecificResponse = await getFormRead(
+                    FormContext.USERS,
+                    FormContextType.STUDENT,
+                    true
+                  );
+                  console.log(genericFormResponse, 'genericFormResponse');
+                  console.log(tenantSpecificResponse, 'tenantSpecificResponse');
+
+                  // Combine both responses
+                  const combinedFormResponse = {
+                    ...genericFormResponse,
+                    fields: [
+                      ...(genericFormResponse.fields || []),
+                      ...(tenantSpecificResponse.fields || []),
+                    ],
+                  };
+
+                  if (combinedFormResponse) {
                     const mergeData = (
                       fieldIdToValueMap: { [key: string]: string },
                       response: any
@@ -377,12 +415,10 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
 
                     const mergedProfileData = mergeData(
                       fieldIdToValueMap,
-                      response
+                      combinedFormResponse
                     );
+
                     if (mergedProfileData) {
-                      // const nameField = mergedProfileData.fields.find(
-                      //   (field: { name: string }) => field.name === 'name'
-                      // );
                       const customDataFields = mergedProfileData?.fields;
                       if (customDataFields?.length > 0) {
                         setCustomFieldsData(customDataFields);
@@ -420,14 +456,77 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
     fetchUserDetails();
   }, [reload]);
 
-  const learnerDetailsByOrder = [...customFieldsData]
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .filter((field) => (field.order ?? 0) <= 12)
+  const coreFields = [
+    // { label: 'FIRST_NAME', value: userData?.firstName },
+    // { label: 'MIDDLE_NAME', value: userData?.middleName },
+    // { label: 'LAST_NAME', value: userData?.lastName },
+    { label: 'GENDER', value: userData?.gender },
+    { label: 'DOB', value: userData?.dob },
+    { label: 'EMAIL', value: userData?.email },
+    { label: 'MOBILE', value: userData?.mobile },
+  ];
+
+  const coreFieldsForDisplay = coreFields
+    .filter(f => f.value) // Only include fields with values
+    .map((f, idx) => ({
+      fieldId: f.label,
+      label: f.label,
+      type: 'text',
+      value: f.value,
+      displayValue: f.value,
+      order: idx, 
+      coreField: 1,
+    }));
+
+  const mergedCustomFields = [
+    ...coreFieldsForDisplay,
+    ...customFieldsData,
+    ...(userData?.customFields || []),
+  ];
+
+  const uniqueFields = mergedCustomFields.filter(
+    (field, index, self) =>
+      index === self.findIndex((f) => f.label === field.label)
+  );
+
+  const specialFieldsOrder = [
+    'STATE',
+    'DISTRICT',
+    'BLOCK',
+    'VILLAGE',
+    'CENTER',
+    'BATCH',
+  ];
+
+  const learnerDetailsByOrder = [...uniqueFields]
+    ?.map((field, idx) => {
+      // If not already set, assign a default order
+      if (field.order === undefined) field.order = idx;
+      return field;
+    })
+    .sort((a, b) => {
+      const aIdx = specialFieldsOrder.indexOf((a.label || '').toUpperCase());
+      const bIdx = specialFieldsOrder.indexOf((b.label || '').toUpperCase());
+
+      if (aIdx === -1 && bIdx === -1) {
+        // Neither is a special field: sort by order
+        return (a.order ?? 0) - (b.order ?? 0);
+      }
+      if (aIdx === -1) return -1; // a comes before b
+      if (bIdx === -1) return 1;  // b comes before a
+      // Both are special fields: sort by their order in specialFieldsOrder
+      return aIdx - bIdx;
+    })
+    ?.filter((field) => (field.order ?? 0) <= 12 || specialFieldsOrder.includes((field.label || '').toUpperCase()))
     ?.map((field) => {
       const getSelectedOption = (field: any) => {
         return (
           field?.options?.find(
-            (option: any) => option?.value === field?.value?.[0]
+            (option: any) =>
+              option?.value ===
+              (typeof field?.value === 'string'
+                ? field.value
+                : field?.value?.[0])
           ) || '-'
         );
       };
@@ -436,7 +535,7 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
         field.type === 'drop_down' ||
         field.type === 'radio' ||
         field.type === 'dropdown' ||
-        (field.type === 'Radio' && field.options && field.value.length)
+        (field.type === 'Radio' && field.options && field.value?.length)
       ) {
         const selectedOption = getSelectedOption(field);
         return {
@@ -445,10 +544,11 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
             selectedOption !== '-'
               ? selectedOption.label
               : field?.value
-                ? translateString(t, field?.value)
-                : '-',
+              ? translateString(t, field?.value)
+              : '-',
         };
       }
+
       return {
         ...field,
         displayValue: field?.value ? toPascalCase(field?.value) : '-',
@@ -600,8 +700,6 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
   //   return questionValues;
   // }
   // questionValues
-  // const questionValues = getQuestionValues(assesmentData);
-
   // all function call when page render
   // useEffect(() => {
   //   const class_Id = localStorage.getItem('classId') || '';
@@ -652,7 +750,7 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
         limit: AttendanceAPILimit,
         page: 0,
         filters: {
-          scope: 'student',
+          scope: Role.STUDENT,
           fromDate: lastSeventhDayFormattedDate,
           toDate: todayFormattedDate,
           contextId: classId,
@@ -683,6 +781,61 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
     setIsLearnerDeleted(true);
   };
 
+  useEffect(() => {
+    const fetchCohortList = async () => {
+      try {
+        const userDetails = await getUserDetails(userId, true);
+        const centerId = userDetails.result.userData.customFields.find(
+          (field: any) => field.label === 'CENTER'
+        )?.selectedValues[0];
+
+        const response = await cohortCenterList({
+          limit: 10,
+          offset: 0,
+          filters: {
+            cohortId: centerId,
+          },
+        });
+        console.log('Cohort list:', response.results);
+
+        const center = response.results.cohortDetails[0];
+        if (center.type === 'COHORT' && center.status === 'active') {
+          console.log('Center name:', center.name);
+          setCenter(center);
+
+          // Fetch detailed cohort information
+          const cohortDetails = await getCohortDetails({
+            userId: userId,
+            children: true,
+            customField: true,
+          });
+          console.log('Cohort details:', cohortDetails);
+
+          // Find active batch and store its name (search all in result)
+          const allBatches = cohortDetails.result;
+
+          if (allBatches && Array.isArray(allBatches)) {
+            const activeBatchNames = allBatches
+              .filter(
+                (batch: any) =>
+                  batch.cohortStatus === 'active' && batch.type === 'BATCH'
+              )
+              .map((batch: any) => batch.cohortName);
+
+            if (activeBatchNames.length > 0) {
+              setBatchNames(activeBatchNames);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching cohort list:', error);
+      }
+    };
+
+    fetchCohortList();
+  }, [userId]);
+
+  console.log(batchNames, 'batchNames');
 
   return (
     <>
@@ -753,6 +906,7 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
                 setReloadState={setReloadState ?? (() => {})}
                 onLearnerDelete={handleLearnerDelete}
                 isFromProfile={true}
+                customFields={userDetails.customFields}
               />
             )}
           </Box>
@@ -853,7 +1007,9 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
                     <Grid item xs={6}>
                       <StudentStatsCard
                         label1={t('COMMON.ATTENDANCE') + ' (%)'}
-                        value1={`${Math.round(overallAttendance?.present_percentage || 0)}%`}
+                        value1={`${Math.round(
+                          overallAttendance?.present_percentage || 0
+                        )}%`}
                         label2={false}
                         value2=""
                       />
@@ -901,7 +1057,8 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
         //   },
         // }}
         >
-          {isActiveYear && (
+          {/* Hiding button for edit learner until edit functionality is developed */}
+          {/* {isActiveYear && (
             <Button
               sx={{
                 fontSize: '14px',
@@ -935,11 +1092,11 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
                 <CreateOutlinedIcon sx={{ fontSize: '14px' }} />
               </Box>
             </Button>
-          )}
+          )} */}
 
           {openAddLearnerModal && (
             <div>
-              <AddLearnerModal
+              {/* <AddLearnerModal
                 open={openAddLearnerModal}
                 onClose={handleCloseAddLearnerModal}
                 formData={formData}
@@ -948,6 +1105,14 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
                 onReload={handleReload}
                 learnerEmailId={selectedUserEmail}
                 learnerUserName={selectedUserUserName}
+              /> */}
+              <LearnerManage
+                open={openAddLearnerModal}
+                onClose={handleCloseAddLearnerModal}
+                isReassign={false}
+                customFields={userData}
+                userId={userId}
+                isEditProfile={true}
               />
             </div>
           )}
@@ -959,10 +1124,6 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
               border: '2px solid',
               borderColor: '#FFECB3',
               padding: '15px',
-              // '@media (min-width: 900px)': {
-              //   minWidth: '30%',
-              //   width: '30%',
-              // },
             }}
             minWidth={'100%'}
             borderRadius={'12px'}
@@ -973,55 +1134,78 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
             padding="15px"
           >
             <Grid container spacing={4}>
-              {learnerDetailsByOrder?.map(
-                (
-                  item: {
-                    label?: string;
-                    displayValue?: string;
-                    order?: number;
-                  },
-                  i: number
-                ) => {
-                  const labelText = item.label
-                    ? t(`FORM.${item?.label?.toUpperCase()}`, item?.label)
-                    : item?.label;
+              {learnerDetailsByOrder?.map((item, i) => {
+                let displayValue = item?.displayValue;
 
-                  return (
-                    <Grid item xs={6} key={i}>
-                      {/* question */}
-                      <Typography
-                        variant="h4"
-                        sx={{
-                          fontSize: '12px',
-                          color: theme.palette.warning.main,
-                        }}
-                        margin={0}
-                      >
-                        {labelText}
-                      </Typography>
-
-                      {/* value */}
-                      <Typography
-                        variant="h4"
-                        margin={0}
-                        sx={{
-                          wordBreak: 'break-word',
-                          fontSize: '16px',
-                          color: theme.palette.warning['A200'],
-                        }}
-                      >
-                        {item?.displayValue}
-                      </Typography>
-                    </Grid>
-                  );
+                // Prefer displayValue if present and not '-'
+                if (displayValue && displayValue !== '-') {
+                  // Use displayValue as is
+                } else if (item.selectedValues && Array.isArray(item.selectedValues) && item.selectedValues.length > 0) {
+                  // For drop_down or radio, selectedValues can be array of objects or strings
+                  if (typeof item.selectedValues[0] === 'object' && item.selectedValues[0] !== null) {
+                    // For objects with value/label
+                    displayValue = item.selectedValues.map((v: any) => v.label || v.value).join(', ');
+                  } else {
+                    // For array of strings
+                    displayValue = item.selectedValues.join(', ');
+                  }
+                } else {
+                  displayValue = '-';
                 }
-              )}
+
+                if (
+                  item.label?.toUpperCase() === 'CENTER' &&
+                  center &&
+                  center.type === 'COHORT' &&
+                  center.status === 'active'
+                ) {
+                  displayValue = center.name;
+                }
+                if (item.label?.toUpperCase() === 'BATCH') {
+                  displayValue = batchNames.map((name) => toPascalCase(name)).join(', ');
+                }
+
+                const labelText = item.label
+                  ? t(`FORM.${item?.label?.toUpperCase()}`, item?.label)
+                  : item?.label;
+
+                return (
+                  <Grid item xs={4} key={i}>
+                    <Typography
+                      variant="h4"
+                      sx={{
+                        fontSize: '12px',
+                        color: theme.palette.warning.main,
+                      }}
+                      margin={0}
+                    >
+                      {labelText}
+                    </Typography>
+                    <Typography
+                      variant="h4"
+                      margin={0}
+                      sx={{
+                        wordBreak: 'break-word',
+                        fontSize: '16px',
+                        color: theme.palette.warning['A200'],
+                      }}
+                    >
+                      {displayValue !== '-' && typeof displayValue === 'string'
+                        ? t(`FORM.${displayValue}`, toPascalCase(displayValue))
+                        : toPascalCase(displayValue)}
+                    </Typography>
+                  </Grid>
+                );
+              })}
             </Grid>
           </Box>
         </Box>
       </Box>
-      {!isEliminatedFromBuild('AssessmentReport', 'component') &&
-        AssessmentReport && isActiveYear && (
+
+      {/* Hiding Assessment Report on profile until fixed */}
+      {/* {!isEliminatedFromBuild('AssessmentReport', 'component') &&
+        AssessmentReport &&
+        isActiveYear && (
           <Box padding={2}>
             <Card
               sx={{
@@ -1035,7 +1219,7 @@ const LearnerProfile: React.FC<LearnerProfileProp> = ({
               </CardContent>
             </Card>
           </Box>
-        )}
+        )} */}
     </>
   );
 };

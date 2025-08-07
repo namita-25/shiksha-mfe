@@ -1,5 +1,10 @@
 import FingerprintJS from 'fingerprintjs2';
-import { Role , DateFilter, cohortHierarchy} from './app.constant';
+import {
+  Role,
+  DateFilter,
+  cohortHierarchy,
+  VolunteerField,
+} from './app.constant';
 
 export const generateUUID = () => {
   let d = new Date().getTime();
@@ -32,8 +37,12 @@ export const getDeviceId = () => {
 };
 
 export const getLoggedInUserRole = () => {
-  return (localStorage.getItem('role') || "")
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('role') || '';
+  }
+  return '';
 };
+
 export const filterUsersByAge = (users: any[]) => {
   const today = new Date();
 
@@ -66,8 +75,8 @@ export const filterUsersByAge = (users: any[]) => {
     { above18: [], below18: [] } // Initial value for the accumulator
   );
 };
-export const getAge=(dobString: any)=> {
-  console.log(dobString)
+export const getAge = (dobString: any) => {
+  console.log(dobString);
   const dob = new Date(dobString);
   const today = new Date();
 
@@ -77,49 +86,70 @@ export const getAge=(dobString: any)=> {
 
   // Adjust age if birthday hasn't occurred yet this year
   if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-      age--;
+    age--;
   }
-  console.log(age)
+  console.log(age);
   return age;
-}
+};
 export const getAgeInMonths = (dobString: any) => {
   console.log(dobString);
   const dob = new Date(dobString);
   const today = new Date();
 
-  const monthsOld = (today.getFullYear() - dob.getFullYear()) * 12 + (today.getMonth() - dob.getMonth());
+  const monthsOld =
+    (today.getFullYear() - dob.getFullYear()) * 12 +
+    (today.getMonth() - dob.getMonth());
 
   console.log(monthsOld);
   return monthsOld;
 };
-export const countUsersByFilter = ({ users, filter }: { users: any[]; filter: string }) => {
-  let counts: Record<string, number> = {}; 
+export const countUsersByFilter = ({
+  users,
+  filter,
+}: {
+  users: any[];
+  filter: string;
+}) => {
+  let counts: Record<string, number> = {};
   let result: { date?: string; month?: string; count: number }[] = [];
   const today = new Date();
 
-  if (filter ===  DateFilter.THIS_MONTH) {
+  if (filter === DateFilter.THIS_MONTH) {
     const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
 
     for (let d = new Date(firstDay); d <= today; d.setDate(d.getDate() + 1)) {
-      let formattedDate = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      let formattedDate = `${d.getDate().toString().padStart(2, '0')}/${(
+        d.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, '0')}`;
       counts[formattedDate] = 0;
     }
 
     users.forEach((user: any) => {
       let date = new Date(user.createdAt);
-      let formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+      let formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(
+        date.getMonth() + 1
+      )
+        .toString()
+        .padStart(2, '0')}`;
       if (counts.hasOwnProperty(formattedDate)) {
         counts[formattedDate]++;
       }
     });
 
-    result = Object.entries(counts).map(([key, count]) => ({ date: key, count }));
-  } 
-  
-  else if (filter === DateFilter.LAST_SIX_MONTHS || filter === DateFilter.LAST_TWELEVE_MONTHS) {
-    let monthsToInclude = filter ===  DateFilter.LAST_SIX_MONTHS ? 6 : 12;
+    result = Object.entries(counts).map(([key, count]) => ({
+      date: key,
+      count,
+    }));
+  } else if (
+    filter === DateFilter.LAST_SIX_MONTHS ||
+    filter === DateFilter.LAST_TWELEVE_MONTHS
+  ) {
+    let monthsToInclude = filter === DateFilter.LAST_SIX_MONTHS ? 6 : 12;
 
-    for (let i = monthsToInclude; i > 0; i--) { // Start from monthsToInclude and decrement
+    for (let i = monthsToInclude; i > 0; i--) {
+      // Start from monthsToInclude and decrement
       let date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       let formattedMonth = date.toLocaleString('en-US', { month: 'short' });
       counts[formattedMonth] = 0;
@@ -133,7 +163,10 @@ export const countUsersByFilter = ({ users, filter }: { users: any[]; filter: st
       }
     });
 
-    result = Object.entries(counts).map(([key, count]) => ({ month: key, count }));
+    result = Object.entries(counts).map(([key, count]) => ({
+      month: key,
+      count,
+    }));
   }
 
   return result;
@@ -193,34 +226,44 @@ export const debounce = <T extends (...args: any[]) => any>(
   return debounced;
 };
 
-
 export const getVillageUserCounts = (userData: any, villageData: any) => {
   try {
-    console.log("User Data:", userData);
-    console.log("Village Data:", villageData);
+    console.log('User Data:', userData);
+    console.log('Village Data:', villageData);
 
     if (!Array.isArray(villageData)) {
-      console.log("Invalid villageData format.");
-      throw new Error("Invalid data format: villageData is not an array.");
+      console.log('Invalid villageData format.');
+      throw new Error('Invalid data format: villageData is not an array.');
     }
 
     const userDetails = userData?.getUserDetails ?? []; // Ensure it's always an array
 
-    const villageMap = villageData.reduce((acc: Record<number, string>, village: any) => {
-      if (village?.Id && village?.name) {
-        acc[village.Id] = village.name;
-      }
-      return acc;
-    }, {});
+    const villageMap = villageData.reduce(
+      (acc: Record<number, string>, village: any) => {
+        if (village?.Id && village?.name) {
+          acc[village.Id] = village.name;
+        }
+        return acc;
+      },
+      {}
+    );
 
-    const villageCounts: Record<number, { totalUserCount: number; todaysTotalUserCount: number }> = {};
+    const villageCounts: Record<
+      number,
+      { totalUserCount: number; todaysTotalUserCount: number }
+    > = {};
 
     Object.keys(villageMap).forEach((villageId) => {
-      villageCounts[Number(villageId)] = { totalUserCount: 0, todaysTotalUserCount: 0 };
+      villageCounts[Number(villageId)] = {
+        totalUserCount: 0,
+        todaysTotalUserCount: 0,
+      };
     });
 
     if (userDetails.length === 0) {
-      console.log("No user details found. Returning all villages with zero counts.");
+      console.log(
+        'No user details found. Returning all villages with zero counts.'
+      );
       return Object.keys(villageCounts).map((villageId) => ({
         Id: Number(villageId),
         name: villageMap[Number(villageId)],
@@ -229,15 +272,17 @@ export const getVillageUserCounts = (userData: any, villageData: any) => {
       }));
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split('T')[0];
 
     userDetails.forEach((user: any) => {
       if (!user?.customFields) return;
 
-      const villageField = user.customFields.find((field: any) => field.label === cohortHierarchy.VILLAGE);
+      const villageField = user.customFields.find(
+        (field: any) => field.label === cohortHierarchy.VILLAGE
+      );
 
       if (villageField?.selectedValues?.length > 0) {
-        const villageId = villageField.selectedValues[0].id;
+        const villageId = villageField.selectedValues?.[0].id;
 
         if (villageMap[villageId]) {
           villageCounts[villageId].totalUserCount += 1;
@@ -256,22 +301,109 @@ export const getVillageUserCounts = (userData: any, villageData: any) => {
       newRegistrations: villageCounts[Number(villageId)].todaysTotalUserCount,
     }));
   } catch (error) {
-    console.error("Error in getVillageUserCounts:", error);
+    console.error('Error in getVillageUserCounts:', error);
     return [];
   }
 };
 
 export const filterData = (data: any[], searchKey: string) => {
-  if (!searchKey) return data; 
+  if (!searchKey) return data;
 
   searchKey = searchKey.toLowerCase();
 
   return data.filter((item: any) =>
-      item.name.toLowerCase().includes(searchKey) 
-      
+    item.name.toLowerCase().includes(searchKey)
   );
 };
 
+export const categorizeUsers = (users: any) => {
+  const volunteerUsers: any = [];
+  const youthUsers: any = [];
 
+  users.forEach((user: any) => {
+    const isVolunteerField = user.customFields.find(
+      (field: any) => field.label === VolunteerField.IS_VOLUNTEER
+    );
 
+    if (
+      isVolunteerField &&
+      isVolunteerField.selectedValues === VolunteerField.YES
+    ) {
+      volunteerUsers.push({
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+      });
+    } else {
+      youthUsers.push({
+        userId: user.userId,
+        username: user.username,
+        email: user.email,
+      });
+    }
+  });
 
+  return { volunteerUsers, youthUsers };
+};
+
+export const filterSchema = (schemaObj: any) => {
+  const locationFields = ['state', 'district', 'block', 'village'];
+  const extractedFields: any = {};
+  locationFields.forEach((field) => {
+    if (schemaObj.schema.properties[field]) {
+      extractedFields[field] = {
+        title: schemaObj.schema.properties[field].title,
+        fieldId: schemaObj.schema.properties[field].fieldId,
+        field_type: schemaObj.schema.properties[field].field_type,
+        maxSelection: schemaObj.schema.properties[field].maxSelection,
+        isMultiSelect: schemaObj.schema.properties[field].isMultiSelect,
+        'ui:widget': schemaObj.uiSchema[field]?.['ui:widget'] || 'select',
+      };
+    }
+  });
+
+  // Deep copy the schema object
+  const newSchema = JSON.parse(JSON.stringify(schemaObj));
+
+  locationFields.forEach((field) => {
+    // Remove from schema properties
+    delete newSchema.schema.properties[field];
+    // Remove from uiSchema
+    delete newSchema.uiSchema[field];
+
+    // Remove from required array if exists
+    const requiredIndex = newSchema.schema.required?.indexOf(field);
+    if (requiredIndex > -1) {
+      newSchema.schema.required.splice(requiredIndex, 1);
+    }
+
+    // Remove from ui:order array if exists
+    const orderIndex = newSchema.uiSchema['ui:order']?.indexOf(field);
+    if (orderIndex > -1) {
+      newSchema.uiSchema['ui:order'].splice(orderIndex, 1);
+    }
+  });
+
+  console.log(newSchema);
+  return { newSchema, extractedFields };
+};
+
+export const extractVillageIds = (users: any[]): number[] => {
+  const villageIds = users.flatMap((user) =>
+    user.customFields
+      ?.filter((field: any) => field.label === 'VILLAGE')
+      .flatMap(
+        (field: any) => field.selectedValues?.map((val: any) => val.id) || []
+      )
+  );
+
+  return Array.from(new Set(villageIds)); // Remove duplicates
+};
+
+export const filterOutUserVillages = (
+  transformedVillageData: { id: number; name: string }[],
+  userVillageIds: number[]
+): { id: number; name: string }[] => {
+  const userVillageIdSet = new Set(userVillageIds);
+  return transformedVillageData.filter(village => !userVillageIdSet.has(village.id));
+};

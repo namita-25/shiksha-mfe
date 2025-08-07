@@ -1,51 +1,263 @@
-import dynamic from 'next/dynamic';
-import React from 'react';
-
-const SunbirdPdfPlayer = dynamic(() => import('./SunbirdPdfPlayer'), {
+import dynamic from "next/dynamic";
+import React from "react";
+import { useRouter } from "next/router";
+const SunbirdPdfPlayer = dynamic(() => import("./SunbirdPdfPlayer"), {
   ssr: false,
 });
 
-const SunbirdVideoPlayer = dynamic(() => import('./SunbirdVideoPlayer'), {
+const SunbirdVideoPlayer = dynamic(() => import("./SunbirdVideoPlayer"), {
   ssr: false,
 });
-const SunbirdEpubPlayer = dynamic(() => import('./SunbirdEpubPlayer'), {
-  ssr: false,
-});
-
-const SunbirdQuMLPlayer = dynamic(() => import('./SunbirdQuMLPlayer'), {
+const SunbirdEpubPlayer = dynamic(() => import("./SunbirdEpubPlayer"), {
   ssr: false,
 });
 
-const SunbirdV1Player = dynamic(() => import('../V1-Player/V1Player'), {
+const SunbirdQuMLPlayer = dynamic(() => import("./SunbirdQuMLPlayer"), {
   ssr: false,
 });
 
+const SunbirdV1Player = dynamic(() => import("../V1-Player/V1Player"), {
+  ssr: false,
+});
+const SunbirdEcmlPlayer = dynamic(() => import("./SunbirdEcmlPlayer"), {
+  ssr: false,
+});
 interface PlayerProps {
-  'player-config': any;
+  "player-config": any;
+  courseId?: string;
+  unitId?: string;
+  userId?: string;
+  configFunctionality?: any;
 }
 
-const SunbirdPlayers = ({ 'player-config': playerConfig }: PlayerProps) => {
-  console.log('workspace playerconfig', playerConfig);
+const SunbirdPlayers = ({
+  "player-config": playerConfig,
+  courseId,
+  unitId,
+  userId,
+  configFunctionality,
+}: PlayerProps) => {
+  const router = useRouter();
+  console.log("workspace playerconfig", playerConfig);
+
+  // Handle ECML content configuration
+  if (
+    playerConfig?.metadata?.mimeType === "application/vnd.ekstep.ecml-archive"
+  ) {
+    // Check if this ECML content contains question sets
+    const hasQuestionSet =
+      playerConfig?.data?.theme?.stage?.[0]?.["org.ekstep.questionset"] ||
+      playerConfig?.metadata?.questions?.length > 0;
+
+    console.log("ECML content analysis:");
+    console.log("- Original mimeType:", playerConfig?.metadata?.mimeType);
+    console.log("- Has question set:", hasQuestionSet);
+    console.log(
+      "- Questions in metadata:",
+      playerConfig?.metadata?.questions?.length || 0
+    );
+    console.log(
+      "- Questionset in data:",
+      !!playerConfig?.data?.theme?.stage?.[0]?.["org.ekstep.questionset"]
+    );
+
+    if (hasQuestionSet) {
+      // This is a question set, route to QuML player
+      console.log("ECML content contains question set, routing to QuML player");
+
+      // Transform ECML question set data to QuML format
+      const questions = playerConfig?.metadata?.questions || [];
+      const questionSetData =
+        playerConfig?.data?.theme?.stage?.[0]?.["org.ekstep.questionset"]?.[0];
+
+      // Extract questions from ECML data structure
+      let extractedQuestions = [];
+      if (questionSetData?.data?.__cdata) {
+        try {
+          const parsedData = JSON.parse(questionSetData.data.__cdata);
+          extractedQuestions = parsedData || [];
+        } catch (e) {
+          console.warn("Failed to parse ECML question data:", e);
+          extractedQuestions = questions;
+        }
+      } else {
+        extractedQuestions = questions;
+      }
+
+      // Ensure questions have the proper structure for QuML player
+      const formattedQuestions = extractedQuestions.map(
+        (q: any, index: number) => ({
+          identifier: q.identifier || `question_${index}`,
+          name: q.name || q.title || `Question ${index + 1}`,
+          objectType: q.objectType || "AssessmentItem",
+          status: q.status || "Live",
+          // Add required properties that QuML player expects
+          mimeType: q.mimeType || "application/vnd.ekstep.question",
+          primaryCategory: q.primaryCategory || "MCQ",
+          language: q.language || ["English"],
+          // Ensure all string properties are defined
+          title: q.title || q.name || `Question ${index + 1}`,
+          description: q.description || "",
+          category: q.category || "MCQ",
+          // Add any missing required fields
+          ...q,
+        })
+      );
+
+      // Parse the config from ECML
+      let questionSetConfig = {};
+      if (questionSetData?.config?.__cdata) {
+        try {
+          questionSetConfig = JSON.parse(questionSetData.config.__cdata);
+        } catch (e) {
+          console.warn("Failed to parse ECML config:", e);
+        }
+      }
+
+      // Create proper QuML configuration
+      const qumlConfig = {
+        ...playerConfig,
+        metadata: {
+          ...playerConfig.metadata,
+          mimeType: "application/vnd.sunbird.questionset",
+          // Extract questions from ECML data
+          children: formattedQuestions.map((q: any) => ({
+            identifier: q.identifier,
+            name: q.name,
+            objectType: q.objectType,
+            status: q.status,
+            mimeType: q.mimeType,
+            primaryCategory: q.primaryCategory,
+          })),
+          // Set required QuML properties
+          maxScore:
+            playerConfig?.metadata?.totalScore || formattedQuestions.length,
+          totalQuestions: formattedQuestions.length,
+          allowSkip: "true",
+          showFeedback: "true",
+          shuffleQuestions: "false",
+          shuffleOptions: "false",
+        },
+        // Extract question data from ECML structure
+        data: {
+          questions: formattedQuestions,
+          config: {
+            ...questionSetConfig,
+            title: playerConfig.metadata.name,
+            max_score:
+              playerConfig.metadata.totalScore || formattedQuestions.length,
+            allow_skip: "true",
+            show_feedback: "true",
+            shuffle_questions: "false",
+            shuffle_options: "false",
+            total_items: formattedQuestions.length,
+          },
+        },
+      };
+
+      // Replace the playerConfig with the transformed QuML config
+      Object.assign(playerConfig, qumlConfig);
+
+      console.log("- Updated mimeType to:", playerConfig.metadata.mimeType);
+      console.log("- QuML config created with", questions.length, "questions");
+    } else {
+      // This is regular ECML content, use V1Player
+      const dynamicArtifactUrl = `/ecml-content/${playerConfig?.context?.contentId}`;
+      playerConfig.metadata.artifactUrl = dynamicArtifactUrl;
+
+      // Ensure ECML content has proper configuration for the player
+      if (!playerConfig.metadata.body) {
+        playerConfig.metadata.body = "";
+      }
+
+      // Set proper content type for ECML
+      playerConfig.metadata.contentType = "Resource";
+      playerConfig.metadata.resourceType = "Learn";
+
+      // Ensure the content has an identifier
+      if (!playerConfig.metadata.identifier) {
+        playerConfig.metadata.identifier = playerConfig?.context?.contentId;
+      }
+
+      console.log(
+        "ECML content configured with artifactUrl:",
+        dynamicArtifactUrl
+      );
+      console.log("ECML playerConfig:", playerConfig);
+    }
+  }
 
   const mimeType = playerConfig?.metadata?.mimeType;
+
+  console.log("Player routing decision:");
+  console.log("- Final mimeType:", mimeType);
+  console.log("- Content ID:", playerConfig?.context?.contentId);
+
   switch (mimeType) {
-    case 'application/pdf':
-      return <SunbirdPdfPlayer playerConfig={playerConfig} />;
-    case 'video/mp4':
-    case 'video/webm':
-      return <SunbirdVideoPlayer playerConfig={playerConfig} />;
-    case 'application/vnd.sunbird.questionset':
-      return <SunbirdQuMLPlayer playerConfig={playerConfig} />;
-    case 'application/epub':
-      return <SunbirdEpubPlayer playerConfig={playerConfig} />;
-    case 'application/vnd.ekstep.h5p-archive':
-    case 'application/vnd.ekstep.html-archive':
-    case 'video/youtube':
-    case 'video/x-youtube':
-    //case 'application/vnd.ekstep.ecml-archive':
-      return <SunbirdV1Player playerConfig={playerConfig} />;
+    case "application/pdf":
+      console.log("Routing to PDF Player");
+      return (
+        <SunbirdPdfPlayer
+          playerConfig={playerConfig}
+          relatedData={{ courseId, unitId, userId }}
+          configFunctionality={configFunctionality}
+        />
+      );
+    case "video/mp4":
+    case "video/webm":
+    case "audio/mp3":
+    case "audio/wav":
+      console.log("Routing to Video Player");
+      return (
+        <SunbirdVideoPlayer
+          playerConfig={playerConfig}
+          relatedData={{ courseId, unitId, userId }}
+          configFunctionality={configFunctionality}
+        />
+      );
+    case "application/vnd.sunbird.questionset":
+      console.log("Routing to QuML Player");
+      return (
+        <SunbirdQuMLPlayer
+          playerConfig={playerConfig}
+          relatedData={{ courseId, unitId, userId }}
+          configFunctionality={configFunctionality}
+        />
+      );
+    case "application/epub":
+      console.log("Routing to EPUB Player");
+      return (
+        <SunbirdEpubPlayer
+          playerConfig={playerConfig}
+          relatedData={{ courseId, unitId, userId }}
+          configFunctionality={configFunctionality}
+        />
+      );
+    case "application/vnd.ekstep.h5p-archive":
+    case "application/vnd.ekstep.html-archive":
+    case "video/youtube":
+    case "video/x-youtube":
+      // case "application/vnd.ekstep.ecml-archive":
+      console.log("Routing to V1 Player");
+      return (
+        <SunbirdV1Player
+          playerConfig={playerConfig}
+          relatedData={{ courseId, unitId, userId }}
+          configFunctionality={configFunctionality}
+        />
+      );
+    case "application/vnd.ekstep.ecml-archive":
+      console.log("Routing to V1 Player");
+      return (
+        <SunbirdEcmlPlayer
+          playerConfig={playerConfig}
+          relatedData={{ courseId, unitId, userId }}
+          configFunctionality={configFunctionality}
+        />
+      );
     default:
-      return <div>Unsupported media type</div>;
+      console.log("No matching player found, showing unsupported message");
+      return <div>Unsupported media type: {mimeType}</div>;
   }
 };
 

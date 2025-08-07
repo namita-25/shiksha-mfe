@@ -47,6 +47,7 @@ interface KaTableComponentProps {
   onViewCourses?:any
   onViewCertificate?:any
   onIssueCertificate?:any
+  onDownloadCertificate?:any
 
   
 }
@@ -70,7 +71,8 @@ const KaTableComponent: React.FC<KaTableComponentProps> = ({
   tableDataType,
   onViewCourses,
   onViewCertificate,
-  onIssueCertificate
+  onIssueCertificate,
+  onDownloadCertificate
 
 }) => {
   const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
@@ -150,6 +152,7 @@ const KaTableComponent: React.FC<KaTableComponentProps> = ({
                       onViewCourses={onViewCourses}
                       onIssueCertificate={onIssueCertificate}
                       onViewCertificate={onViewCertificate}
+                      onDownloadCertificate={onDownloadCertificate}
                     />
                   );
                 }

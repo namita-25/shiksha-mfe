@@ -23,6 +23,7 @@ interface SimpleModalProps {
   onClose: () => void;
   modalTitle: string;
   handleNext?: any;
+  id?: string
 }
 const SimpleModal: React.FC<SimpleModalProps> = ({
   open,
@@ -35,6 +36,7 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
   children,
   modalTitle,
   handleNext,
+  id=""
 }) => {
   const theme = useTheme<any>();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -59,7 +61,8 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
   const contentStyle = {
     flexGrow: 1,
     overflowY: 'auto',
-    padding: '0 16px 16px',
+    padding: '16px',
+    maxHeight: '60vh',
   };
 
   const buttonStyle = {
@@ -70,7 +73,10 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={(event, reason) => {
+        if (reason && reason === 'backdropClick') return;
+        onClose();
+      }}
       aria-labelledby="child-modal-title"
       aria-describedby="child-modal-description"
     >
@@ -122,6 +128,8 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
                 sx={buttonStyle}
                 onClick={primaryActionHandler || handleNext}
                 className="one-line-text"
+                form={id}
+                type="submit"
               >
                 {primaryText}
               </Button>

@@ -1,0 +1,9 @@
+{
+  "name": "shared-lib-v2",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared-lib-v2/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project shared-lib-v2 --web",
+  "targets": {}
+}

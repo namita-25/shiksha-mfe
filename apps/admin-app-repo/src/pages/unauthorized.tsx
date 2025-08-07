@@ -68,7 +68,8 @@ const Unauthorized = () => {
           sx={{ cursor: "pointer" }}
           onClick={() => {
             localStorage.clear();
-            router.push("/login");
+            // router.push("/login");
+            router.push("/");
           }}
           color={"secondary"}
         >
@@ -79,7 +80,8 @@ const Unauthorized = () => {
           sx={{ cursor: "pointer" }}
           color={"secondary"}
           onClick={() => {
-            window.history.go(-2);
+            // window.history.go(-2);
+            router.push("/");
           }}
         >
           Go back

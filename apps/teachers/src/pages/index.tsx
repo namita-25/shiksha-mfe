@@ -13,7 +13,12 @@ const Home: React.FC = () => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
       if (token) {
-        push('/dashboard');
+        let tenantName = localStorage.getItem('tenantName');
+        if (tenantName == 'YouthNet') {
+          push('/youthnet');
+        } else {
+          push('/scp-teacher-repo');
+        }
       } else {
         push('/login', undefined, { locale: 'en' });
       }

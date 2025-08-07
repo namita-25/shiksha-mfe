@@ -1,12 +1,6 @@
-
-import {
-  getCohortList,
-} from "@/services/CohortService/cohortService";
-import {
-  CohortTypes,
-
-} from "@/utils/app.constant";
-import { getStateBlockDistrictList } from "./MasterDataService";
+import { getCohortList } from '@/services/CohortService/cohortService';
+import { CohortTypes } from '@/utils/app.constant';
+import { getStateBlockDistrictList } from './MasterDataService';
 interface Cohort {
   name: string;
   [key: string]: any;
@@ -23,10 +17,8 @@ interface FormattedBlocksResult {
 }
 export const formatedDistricts = async () => {
   const adminState = JSON.parse(
-    localStorage.getItem("adminInfo") || "{}"
-  ).customFields.find(
-    (field: any) => field.label === "STATES"
-  );
+    localStorage.getItem('adminInfo') || '{}'
+  ).customFields.find((field: any) => field.label === 'STATE');
   try {
     const reqParams = {
       limit: 0,
@@ -35,10 +27,9 @@ export const formatedDistricts = async () => {
         // name: searchKeyword,
         states: adminState.code,
         type: CohortTypes.DISTRICT,
-        status: ["active"]
-
+        status: ['active'],
       },
-      sort: ["name", "asc"],
+      sort: ['name', 'asc'],
     };
 
     const response = await getCohortList(reqParams);
@@ -46,42 +37,40 @@ export const formatedDistricts = async () => {
     const cohortDetails = response?.results?.cohortDetails || [];
     const object = {
       controllingfieldfk: adminState.code,
-      fieldName: "districts",
+      fieldName: 'district',
     };
 
-    const optionReadResponse = await getStateBlockDistrictList(object); 
-    const result = optionReadResponse?.result?.values; 
+    const optionReadResponse = await getStateBlockDistrictList(object);
+    const result = optionReadResponse?.result?.values;
     const uniqueResults = result.reduce((acc: any, current: any) => {
       const isDuplicate = acc.some((item: any) => item.label === current.label);
       if (!isDuplicate) {
-          acc.push(current);
+        acc.push(current);
       }
       return acc;
-  }, [] as typeof result);
-   
-    const matchedCohorts = uniqueResults?.map((value: any) => {
-      const cohortMatch = cohortDetails.find((cohort: any) => cohort?.name?.toLowerCase() === value?.label?.toLowerCase());
-      return cohortMatch ? { ...value } : null;
-    }).filter(Boolean);
+    }, [] as typeof result);
 
-   
+    const matchedCohorts = uniqueResults
+      ?.map((value: any) => {
+        const cohortMatch = cohortDetails.find(
+          (cohort: any) =>
+            cohort?.name?.toLowerCase() === value?.label?.toLowerCase()
+        );
+        return cohortMatch ? { ...value } : null;
+      })
+      .filter(Boolean);
 
     return matchedCohorts;
-
   } catch (error) {
-    console.error("Error in getting District Details", error);
+    console.error('Error in getting District Details', error);
     return error;
   }
 };
 
-
-
 export const formatedBlocks = async (districtCode: string) => {
   const adminState = JSON.parse(
-    localStorage.getItem("adminInfo") || "{}"
-  ).customFields.find(
-    (field: any) => field.label === "STATES"
-  );
+    localStorage.getItem('adminInfo') || '{}'
+  ).customFields.find((field: any) => field.label === 'STATE');
   try {
     const reqParams = {
       limit: 0,
@@ -91,9 +80,9 @@ export const formatedBlocks = async (districtCode: string) => {
         states: adminState.code,
         districts: districtCode,
         type: CohortTypes.BLOCK,
-        status: ["active"],
+        status: ['active'],
       },
-      sort: ["name", "asc"],
+      sort: ['name', 'asc'],
     };
 
     const response = await getCohortList(reqParams);
@@ -101,31 +90,30 @@ export const formatedBlocks = async (districtCode: string) => {
 
     const object = {
       controllingfieldfk: districtCode,
-      fieldName: "blocks",
+      fieldName: 'block',
     };
     const optionReadResponse = await getStateBlockDistrictList(object);
     const result = optionReadResponse?.result?.values;
 
-   
-
     const matchedCohorts = result
       ?.map((value: any) => {
         const cohortMatch = cohortDetails.find(
-          (cohort: any) => cohort?.name?.toLowerCase() === value?.label?.toLowerCase()
+          (cohort: any) =>
+            cohort?.name?.toLowerCase() === value?.label?.toLowerCase()
         );
         // Include cohortId if the match is found
-        return cohortMatch ? { ...value, cohortId: cohortMatch.cohortId } : null;
+        return cohortMatch
+          ? { ...value, cohortId: cohortMatch.cohortId }
+          : null;
       })
       .filter(Boolean);
 
-
     return matchedCohorts;
   } catch (error) {
-    console.log("Error in getting Channel Details", error);
+    console.log('Error in getting Channel Details', error);
     return error;
   }
 };
-
 
 export const formatedStates = async () => {
   // const adminState = JSON.parse(
@@ -139,38 +127,39 @@ export const formatedStates = async () => {
       offset: 0,
       filters: {
         // name: searchKeyword,
-       
+
         type: CohortTypes.STATE,
-        status: ["active"],
+        status: ['active'],
       },
-      sort: ["name", "asc"],
+      sort: ['name', 'asc'],
     };
 
     const response = await getCohortList(reqParams);
     const cohortDetails = response?.results?.cohortDetails || [];
 
     const object = {
-      fieldName: "states",
+      fieldName: 'state',
     };
     const optionReadResponse = await getStateBlockDistrictList(object);
-    const StateFieldId=optionReadResponse?.result?.fieldId;
-    localStorage.setItem("stateFieldId", StateFieldId);
+    const StateFieldId = optionReadResponse?.result?.fieldId;
+    localStorage.setItem('stateFieldId', StateFieldId);
     const result = optionReadResponse?.result?.values;
-
-    
 
     const matchedCohorts = result
       ?.map((value: any) => {
         const cohortMatch = cohortDetails.find(
-          (cohort: any) => cohort?.name?.toLowerCase() === value?.label?.toLowerCase()
+          (cohort: any) =>
+            cohort?.name?.toLowerCase() === value?.label?.toLowerCase()
         );
-        return cohortMatch ? { ...value, cohortId: cohortMatch.cohortId } : null;
+        return cohortMatch
+          ? { ...value, cohortId: cohortMatch.cohortId }
+          : null;
       })
       .filter(Boolean);
 
     return matchedCohorts;
   } catch (error) {
-    console.log("Error in getting Channel Details", error);
+    console.log('Error in getting Channel Details', error);
     return error;
   }
 };

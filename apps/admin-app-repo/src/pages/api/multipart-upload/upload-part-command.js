@@ -1,4 +1,4 @@
-import { S3Client, UploadPartCommand } from "@aws-sdk/client-s3";
+import { S3Client, UploadPartCommand } from '@aws-sdk/client-s3';
 
 // Initialize AWS S3 client
 const s3Client = new S3Client({
@@ -19,12 +19,12 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method === "PUT") {
+  if (req.method === 'PUT') {
     try {
-      const Key = req.headers["key"];
-      const PartNumber = parseInt(req.headers["partnumber"], 10);
-      const UploadId = req.headers["uploadid"];
-      const ContentLength = parseInt(req.headers["contentlength"], 10);
+      const Key = req.headers['key'];
+      const PartNumber = parseInt(req.headers['partnumber'], 10);
+      const UploadId = req.headers['uploadid'];
+      const ContentLength = parseInt(req.headers['contentlength'], 10);
       const body = req; // Use the raw request stream for the body
 
       // Step 2: Initiate UploadPartCommand Upload
@@ -38,14 +38,14 @@ export default async function handler(req, res) {
       });
       const response = await s3Client.send(command);
       if (response?.ETag) {
-        response.ETag = response.ETag.replaceAll('"', "");
+        response.ETag = response.ETag.replaceAll('"', '');
       }
       res.status(200).json({ response });
     } catch (error) {
-      console.error("Error creating upload ID:", error);
+      console.error('Error creating upload ID:', error);
       res.status(500).json({ error: error.message });
     }
   } else {
-    res.status(405).json({ error: "Method not allowed" });
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }

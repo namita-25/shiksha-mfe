@@ -17,7 +17,10 @@ const UserNameCell = ({ userId }: { userId: string }) => {
           queryFn: () => getUserDetailsInfo(userId, false),
         });
 
-        const name = userDetails?.userData?.name;
+        const firstName = userDetails?.userData?.firstName || "";
+        const lastName = userDetails?.userData?.lastName || "";
+
+        const name = firstName || lastName ? `${firstName} ${lastName}`.trim() : "-";
         setUserName(name);
       } catch (error) {
         console.error("Error in fetching user name:", error);
@@ -44,7 +47,7 @@ const UserNameCell = ({ userId }: { userId: string }) => {
 
   return (
     <div>
-      {userName ? firstLetterInUpperCase(userName) : <Typography>-</Typography>}
+      {userName ? firstLetterInUpperCase(userName) : <Typography>*</Typography>}
     </div>
   );
 };

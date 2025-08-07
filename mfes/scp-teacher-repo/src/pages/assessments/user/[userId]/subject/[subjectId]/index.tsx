@@ -169,7 +169,9 @@ function SubjectDetail() {
                 color: theme.palette.warning['300'],
               }}
             >
-              <span>{`Q${(currentPage - 1) * Pagination.ITEMS_PER_PAGE + 1 + index}. `}</span>
+              <span>{`Q${
+                (currentPage - 1) * Pagination.ITEMS_PER_PAGE + 1 + index
+              }. `}</span>
               <span
                 dangerouslySetInnerHTML={{ __html: questionItem?.queTitle }}
               />

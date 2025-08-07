@@ -343,6 +343,7 @@
     "STEP_9": "Access the full academic year’s course plan for each subject, along with resources like videos and documents for every topic. Track your teaching progress by updating topic completion status.",
     "STEP_10": "View detailed scores and summaries of Pre and Post tests for each learner. Track which students have completed, are in progress or yet to start the test.",
     "STEP_11": "Track and update each learner’s board exam enrollment status",
+    "STEP_12": "Whenever you run into a problem while using the app, raise a support request by describing the problem and adding screenshots or attachments. Our team will review and take action.",
     "PREVIOUS": "Previous",
     "NEXT": "Next",
     "SKIP": "Skip",
@@ -661,20 +662,20 @@
     "OBSERVATION_NOT_STARTED_YET": "Survey not started yet",
     "EXPIRED": "Expired"
   },
-    "YOUTHNET_SURVEY": {
-      "NEW_SURVEY": "New Survey",
-      "ASSIGN_VOLUNTEERS_NOW": "Assign Volunteers Now",
-      "REMIND_ME_LATER": "Remind Me Later",
-      "NEW_SURVEY_HAS_BEEN_ADDED": "A new survey '{{surveyName}}' has been added and has been assigned to {{villageCount}} villages",
-      "ASSIGN_VOLUNTEERS_TO_ENSURE": "Assign Volunteers to ensure they can access the survey"
-    },
-    "YOUTHNET_DASHBOARD": {
-      "VILLAGES_MANAGED_BY_YOU": "Villages Managed by you : {{totalVillageCount}}",
-      "MONTHLY_REGISTRATIONS_OVERVIEW": "Monthly Registrations Overview",
-      "CLOSED_ON": "Closed on"
-    },
-    "YOUTHNET_VOLUNTEERLIST": {
-      "ENTRIES": "Entries",
-      "VOLUNTEERS_ASSIGNED": "Volunteers assigned"
-    }
+  "YOUTHNET_SURVEY": {
+    "NEW_SURVEY": "New Survey",
+    "ASSIGN_VOLUNTEERS_NOW": "Assign Volunteers Now",
+    "REMIND_ME_LATER": "Remind Me Later",
+    "NEW_SURVEY_HAS_BEEN_ADDED": "A new survey '{{surveyName}}' has been added and has been assigned to {{villageCount}} villages",
+    "ASSIGN_VOLUNTEERS_TO_ENSURE": "Assign Volunteers to ensure they can access the survey"
+  },
+  "YOUTHNET_DASHBOARD": {
+    "VILLAGES_MANAGED_BY_YOU": "Villages Managed by you : {{totalVillageCount}}",
+    "MONTHLY_REGISTRATIONS_OVERVIEW": "Monthly Registrations Overview",
+    "CLOSED_ON": "Closed on"
+  },
+  "YOUTHNET_VOLUNTEERLIST": {
+    "ENTRIES": "Entries",
+    "VOLUNTEERS_ASSIGNED": "Volunteers assigned"
+  }
 }

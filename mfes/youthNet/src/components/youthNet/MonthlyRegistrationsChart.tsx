@@ -98,7 +98,7 @@ const MonthlyRegistrationsChart: React.FC<Props>= ({userId}) => {
   }, [selectedRange, userId]);
 
   return (
-    <div style={{ padding: '20px', background: '#EDE1CF' }}>
+    <div style={{ padding: '20px',  background: "linear-gradient(to bottom, #FFFDF6, #F8EFDA)" }}>
       <h3
         style={{
           fontWeight: 500,
@@ -200,8 +200,10 @@ const MonthlyRegistrationsChart: React.FC<Props>= ({userId}) => {
       //   : props.payload.count >= 5
       //   ? '#90ee90'
       //   : '#ffcccb';
-        const barColor = props.payload.count >= 5 ? '#90ee90' : '#ffcccb';
-
+      const barColor =
+      props.payload.count > 10 ? '#A5DEB8' :
+      props.payload.count > 5 ? '#089136' :
+      '#EC9E9E';
       return (
         <g>
       {isSelected && (

@@ -31,6 +31,8 @@ import board from '../assets/images/Board.svg';
 import support from '../assets/images/Support.svg';
 import checkBook from '../assets/images/checkbook.svg';
 import assessment from '../assets/images/assessment.svg';
+import faqs from '../assets/images/live_help.png';
+
 import surveyForm from '../assets/images/surveyForm.svg';
 import { useDirection } from '../hooks/useDirection';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -199,6 +201,7 @@ const MenuDrawer: React.FC<DrawerProps> = ({
   const isSupportRequest = router.pathname.includes('/support-request');
   const isVillagesAndYouths = router.pathname.includes('/youthboard/villages');
   const isSurveys = router.pathname.includes('/youthboard/surveys');
+  const isFaq=router.pathname.includes('/faqs')
 
   return (
     <Drawer
@@ -211,8 +214,8 @@ const MenuDrawer: React.FC<DrawerProps> = ({
       sx={{
         '& .MuiPaper-root': {
           borderRight: `1px solid ${theme.palette.warning['A100']}`,
-          '@media (max-width: 900px)': { 
-          zIndex: '998 !important',
+          '@media (max-width: 900px)': {
+            zIndex: '998 !important',
           },
           left: isRTL ? '0px !important' : '0px !important',
 
@@ -245,7 +248,6 @@ const MenuDrawer: React.FC<DrawerProps> = ({
             </Box>
           )}
         </Box>
-
         <Box
           sx={{
             display: 'flex',
@@ -325,7 +327,6 @@ const MenuDrawer: React.FC<DrawerProps> = ({
             </Box>
           )}
         </Box>
-
         {isActiveYear && !tenantName && (
           <Box>
             <Button
@@ -359,7 +360,6 @@ const MenuDrawer: React.FC<DrawerProps> = ({
             </Button>
           </Box>
         )}
-
         {tenantName && (
           <Box>
             <Button
@@ -449,19 +449,19 @@ const MenuDrawer: React.FC<DrawerProps> = ({
                     : 'transparent',
                 },
               }}
-              startIcon={<Image
-                src={surveyForm}
-                alt="SurveyForm-Icon"
-                width={24}
-                height={24}
-              />}
+              startIcon={
+                <Image
+                  src={surveyForm}
+                  alt="SurveyForm-Icon"
+                  width={24}
+                  height={24}
+                />
+              }
               onClick={() => {
                 router.push(`/youthboard/surveys`);
               }}
             >
-              {
-                t('SURVEYS.SURVEYS')
-              }
+              {t('SURVEYS.SURVEYS')}
             </Button>
           </Box>
         )}
@@ -505,7 +505,6 @@ const MenuDrawer: React.FC<DrawerProps> = ({
             </Button>
           </Box>
         )}
-
         {!tenantName && (
           <Box sx={{ marginTop: '18px' }} className="joyride-step-8">
             <Button
@@ -628,7 +627,6 @@ const MenuDrawer: React.FC<DrawerProps> = ({
               </Button>
             </Box>
           )}
-
         {isActiveYear && !tenantName && (
           <Box sx={{ marginTop: '18px' }} className="joyride-step-11">
             <Button
@@ -664,8 +662,42 @@ const MenuDrawer: React.FC<DrawerProps> = ({
             </Button>
           </Box>
         )}
+        <Box sx={{ marginTop: '18px' }}>
+          <Button
+            className="fs-14 joyride-step-10"
+            sx={{
+              width: '100%',
+              display: 'flex',
+              justifyContent: 'flex-start',
+              background: isFaq
+                ? theme.palette.primary.main
+                : 'transparent',
+
+              padding: isFaq
+                ? '16px 18px !important'
+                : '0px 18px !important',
+              color: isFaq ? '#2E1500' : theme.palette.warning.A200,
+              fontWeight: isFaq ? '600' : 500,
+              '&:hover': {
+                background: isFaq
+                  ? theme.palette.primary.main
+                  : 'transparent',
+              },
+              marginTop: '15px',
+              gap: '10px',
+            }}
+            startIcon={
+              <Image src={faqs} alt="Assessment Icon" width={24} height={24} />
+            }
+            onClick={() => {
+              router.push(`/faqs`);
+            }}
+          >
+            {t('COMMON.FAQS')}
+          </Button>
+        </Box>
         {isActiveYear && !tenantName && (
-          <Box sx={{ marginTop: '18px' }}>
+          <Box sx={{ marginTop: '18px' }} className="joyride-step-12">
             <Button
               className="fs-14"
               sx={{

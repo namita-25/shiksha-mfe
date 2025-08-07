@@ -4,10 +4,18 @@ import {
   GetTargetedSolutionsParams,
   GetUserProjectTemplateParams,
 } from '@/utils/Interfaces';
-import { get, post } from './RestClient';
+import { get, post, deleteApi } from './RestClient';
 import axios from 'axios';
 import { URL_CONFIG } from '@/utils/url.config';
-import {COURSE_PLANNER_UPLOAD_ENDPOINTS, TARGET_SOLUTION_ENDPOINTS} from '@/utils/API/APIEndpoints';
+import {
+  COURSE_PLANNER_UPLOAD_ENDPOINTS,
+  TARGET_SOLUTION_ENDPOINTS,
+  COURSE_PLANNER_DELETE,
+  COURSE_PLANNER_TOPIC_CREATE,
+  COURSE_PLANNER_DELETE_CONTENT,
+  COURSE_PLANNER_UPDATE_CONTENT,
+} from '@/utils/API/APIEndpoints';
+import e from 'cors';
 
 export const getFrameworkDetails = async (frameworkId: any): Promise<any> => {
   const apiUrl: string = `/api/framework/v1/read/${frameworkId}`;
@@ -156,5 +164,79 @@ export const getContentHierarchy = async ({
   } catch (error) {
     console.error('Error in getContentHierarchy Service', error);
     throw error;
+  }
+};
+
+export const deletePlanner = async (projectId: any): Promise<any> => {
+  const apiUrl: string = `${COURSE_PLANNER_DELETE}${projectId}`;
+  const requestBody = {};
+  const requestHeaders = {
+    'X-auth-token': localStorage.getItem('token'),
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await deleteApi(apiUrl, requestBody, requestHeaders);
+    return response;
+  } catch (error) {
+    console.error('Error in deletPlanner Service', error);
+    return null;
+  }
+};
+
+export const createTopic = async (
+  projectId: any,
+  payload: any
+): Promise<any> => {
+  const apiUrl: string = `${COURSE_PLANNER_TOPIC_CREATE}${projectId}`;
+  const requestBody = payload;
+  const requestHeaders = {
+    'X-auth-token': localStorage.getItem('token'),
+    'internal-access-token': 'Fqn0m0HQ0gXydRtBCg5l',
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await post(apiUrl, requestBody, requestHeaders);
+    return response;
+  } catch (error) {
+    console.error('Error in createTopic Service', error);
+    return null;
+  }
+};
+
+export const deleteContent = async (projectId: any,externalId: any): Promise<any> => {
+  const apiUrl: string = `${COURSE_PLANNER_DELETE_CONTENT}${projectId}?externalId=${externalId}`;
+  const requestBody = {};
+  const requestHeaders = {
+    'X-auth-token': localStorage.getItem('token'),
+    'internal-access-token': 'Fqn0m0HQ0gXydRtBCg5l',
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await deleteApi(apiUrl, requestBody, requestHeaders);
+    return response;
+  } catch (error) {
+    console.error('Error in deletPlanner Service', error);
+    return null;
+  }
+};
+
+export const updateContent = async (projectId: any,externalId: any,payload: any): Promise<any> => {
+  const apiUrl: string = `${COURSE_PLANNER_UPDATE_CONTENT}${projectId}?externalId=${externalId}`;
+  const requestBody = payload;
+  const requestHeaders = {
+    'X-auth-token': localStorage.getItem('token'),
+    'internal-access-token': 'Fqn0m0HQ0gXydRtBCg5l',
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await post(apiUrl, requestBody, requestHeaders);
+    return response;
+  } catch (error) {
+    console.error('Error in deletPlanner Service', error);
+    return null;
   }
 };

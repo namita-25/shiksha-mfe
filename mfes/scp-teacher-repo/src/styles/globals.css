@@ -24,7 +24,7 @@ body {
 .drawer-select div div {
   display: flex;
   align-items: center;
-  height: 32px !important;
+  height: 53px !important;
   padding: 0 10px;
   font-weight: 500;
   font-size: 14px;
@@ -758,9 +758,7 @@ main {
   background-color: var(--mui-palette-warning-A400);
   border: 1.5px solid var(--mui-palette-warning-A400);
   border-radius: 100px;
-  box-shadow:
-    0 1px 2px 0 rgb(0 0 0 / 30%),
-    0 2px 6px 2px rgb(0 0 0 / 15%);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 30%), 0 2px 6px 2px rgb(0 0 0 / 15%);
 }
 
 .modal-bottom div:nth-child(3) {
@@ -931,6 +929,9 @@ main {
   .mt-md-12 {
     margin-top: 12px;
   }
+  .mt-md-54{
+      margin-top: 46px !important;
+  }
 
   .fl-dir-md-col {
     flex-direction: column !important;
@@ -949,6 +950,10 @@ main {
   } */
   .mt-md-16 {
     margin-top: 10px;
+  }
+
+  .mt-md-24 {
+    margin-top: 24px;
   }
 
   .ps-md-ab {
@@ -996,9 +1001,7 @@ main {
   border-radius: 16px;
 
   /* box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1); */
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .facilitator-card:hover {
@@ -1232,9 +1235,7 @@ mat-radio-group.mat-mdc-radio-group {
   font-size: 14px !important;
   background: transparent !important;
   border-radius: 100px !important;
-  box-shadow:
-    0 3px 1px -2px rgb(0 0 0 / 20%),
-    0 2px 2px 0 rgb(0 0 0 / 14%),
+  box-shadow: 0 3px 1px -2px rgb(0 0 0 / 20%), 0 2px 2px 0 rgb(0 0 0 / 14%),
     0 1px 5px 0 rgb(0 0 0 / 12%) !important;
 }
 
@@ -1244,9 +1245,7 @@ mat-radio-group.mat-mdc-radio-group {
   font-size: 14px !important;
   background: #fdbe16 !important;
   border-radius: 100px !important;
-  box-shadow:
-    0 3px 1px -2px rgb(0 0 0 / 20%),
-    0 2px 2px 0 rgb(0 0 0 / 14%),
+  box-shadow: 0 3px 1px -2px rgb(0 0 0 / 20%), 0 2px 2px 0 rgb(0 0 0 / 14%),
     0 1px 5px 0 rgb(0 0 0 / 12%) !important;
 }
 
@@ -1267,14 +1266,17 @@ mat-radio-group.mat-mdc-radio-group {
 
 .icon {
   position: absolute;
-  top: -20px; 
+  top: -20px;
   right: -3px;
 }
 
 .small-icon {
   position: absolute;
-  top: -25px;  /* Move slightly higher */
-  right: 3.5px;  /* Move slightly left */
+  top: -25px; /* Move slightly higher */
+  right: 3.5px; /* Move slightly left */
   transform: scale(0.7); /* Make it slightly smaller */
   opacity: 0.9; /* Optional: Adjust visibility */
 }
+ .mt-24 {
+   margin-top: 24px;
+ }

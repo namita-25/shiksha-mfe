@@ -21,7 +21,8 @@ interface FileUploadEvent {
 }
 interface QuestionnaireAppProps {
   observationQuestions: any; // Define the correct type here based on your data structure
-  observationName: any
+  observationName: any;
+  backButtonShow?: boolean;
 }
 interface PresignedUrlResponse {
   url: string;
@@ -42,7 +43,11 @@ interface FileUploadData {
   [key: string]: any;
 }
 
-const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQuestions, observationName }) => {
+const ObservationComponent: React.FC<QuestionnaireAppProps> = ({
+  observationQuestions,
+  observationName,
+  backButtonShow = true,
+}) => {
   const questionairePlayerMainRef = useRef<HTMLElement | null>(null);
   const [isBackConfirmationOpen, setIsBackConfirmationOpen] = useState(false);
 
@@ -65,30 +70,89 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
     payload.request[submissionId] = {
       files: [event.data.name],
     };
+    let fileType="";
 
     try {
-      const response = await axios.post('your-presigned-url-endpoint', payload); // Update with your correct endpoint
+      //generate presigned url
+      const submissionId = event.data.submissionId; // Extract submissionId from event data
+      const files = [event.data.name];
+      
+      const requestObject: any = {
+        request: {
+          [submissionId]: {
+            files: files,
+          },
+        },
+        ref: 'survey',
+      };
+      let presignedUrlLatest = '';
+      let presignedUrlData = null;
+      let presignedurl="";
+      let presigneDownloadUrl=""
+      // Get Pre-Signed URL
+      try {
+        // const response_url: any = await axios.post(
+        //   'https://dev-survey.prathamdigital.org/survey/v1/files/preSignedUrls',
+        //   requestObject,
+        //   {
+        //     headers: {
+        //       'x-auth-token': localStorage.getItem('token') || '', // Ensure token exists
+        //     },
+        //   }
+        // );
+        
+        // const result_url = response_url.data.result;
+        // console.log('########### response_url', result_url);
+        // const dynamicSubmissionId = Object.keys(result_url).find(
+        //   (key) => key !== 'cloudStorage'
+        // ); // Get dynamic key
+        // if (dynamicSubmissionId) {
+        //   presignedUrlData = result_url[dynamicSubmissionId]?.files?.[0];
+        //   presignedUrlLatest = result_url[dynamicSubmissionId]?.files?.[0]?.url; // Upload URL
+        //   const downloadUrl =
+        //     result_url[dynamicSubmissionId]?.files?.[0]
+        //       ?.getDownloadableUrl?.[0]; // Download URL
+        //   console.log('########### presignedUrlData:', presignedUrlData);
+        // } else {
+        //   console.error('Submission ID not found in response.');
+        // }
+         let fileName= event.data.name;
+         fileType= event.data.file?.type
+         console.log(fileName, fileType)
+       //  const nameWithoutExtension = fileName.split('.').slice(0, -1).join('.');
+        const result=  await axios.get(`https://dev-interface.prathamdigital.org/interface/v1/user/presigned-url?key=${fileName}&fileType=${fileType}`)
+        presignedurl=result.data.result;
+        presigneDownloadUrl=result.data.result;
+      } catch (error) {
+        console.error('Error fetching pre-signed URL:', error);
+      }
+
+      /*const response = await axios.post(presignedUrlLatest, payload); // Update with your correct endpoint
       const presignedUrlData: PresignedUrlResponse =
-        response.data.result[submissionId].files[0];
+        response.data.result[submissionId].files[0];*/
 
       // Use FormData for file uploads
       const formData = new FormData();
       formData.append('file', event.data.file);
 
-      await axios.put(presignedUrlData.url, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      await axios.put(
+        presignedurl,
+        event.data.file,
+        {
+          headers: {
+            'Content-Type': fileType,
+          },
+        }
+      );
 
       const obj: FileUploadData = {
         name: event.data.name,
-        url: presignedUrlData.url.split('?')[0],
-        previewUrl: presignedUrlData.getDownloadableUrl[0],
+        url: presignedurl.split('?')[0],
+        previewUrl: presigneDownloadUrl.split('?')[0],
       };
 
-      for (const key of Object.keys(presignedUrlData.payload)) {
-        obj[key] = presignedUrlData.payload[key];
+      for (const key of Object.keys(requestObject)) {
+        obj[key] = requestObject[key];
       }
       setFileUploadResponse({
         status: 200,
@@ -106,13 +170,10 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
   };
 
   const receiveUploadData = (event: any) => {
-
-
     if (event.data && event.data.file) {
       uploadFileToPresignedUrl(event as FileUploadEvent);
     }
   };
-
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -122,7 +183,6 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
         window.removeEventListener('message', receiveUploadData, false);
       };
     }
-
   }, []);
 
   useEffect(() => {
@@ -131,7 +191,7 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
 
       if (playerElement) {
         const handlePlayerSubmitOrSaveEvent = async (event: Event) => {
-          if ((event as CustomEvent).detail.status === "submit") {
+          if ((event as CustomEvent).detail.status === 'submit') {
             setCurrentEvent(event as CustomEvent);
             setIsConfirmationOpen(true);
           } else {
@@ -140,9 +200,17 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
         };
 
         const handleSaveSubmit = async (event: Event) => {
-          const submissionData = { evidence: { status: (event as CustomEvent).detail.status, ...(event as CustomEvent).detail.data } };
+          const submissionData = {
+            evidence: {
+              status: (event as CustomEvent).detail.status,
+              ...(event as CustomEvent).detail.data,
+            },
+          };
           const submissionId = observationQuestions?.assessment?.submissionId;
-          const response = await updateSubmission({ submissionId, submissionData });
+          const response = await updateSubmission({
+            submissionId,
+            submissionData,
+          });
           showToastMessage(t('OBSERVATION.FORM_SAVED_SUCCESSFULLY'), 'success');
         };
 
@@ -162,12 +230,17 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
   }, [observationQuestions]);
   const handleConfirmSubmit = async () => {
     if (currentEvent) {
-      const submissionData = { evidence: { status: currentEvent.detail.status, ...(currentEvent.detail.data) } };
+      const submissionData = {
+        evidence: {
+          status: currentEvent.detail.status,
+          ...currentEvent.detail.data,
+        },
+      };
       const submissionId = observationQuestions?.assessment?.submissionId;
       const response = await updateSubmission({ submissionId, submissionData });
-      if (currentEvent.detail.status === "draft") {
+      if (currentEvent.detail.status === 'draft') {
         showToastMessage(t('OBSERVATION.FORM_SAVED_SUCCESSFULLY'), 'success');
-      } else if (currentEvent.detail.status === "submit") {
+      } else if (currentEvent.detail.status === 'submit') {
         showToastMessage(t('OBSERVATION.FORM_SUBMIT_SUCCESSFULLY'), 'success');
         router.push(`${localStorage.getItem('observationPath')}`);
       }
@@ -183,14 +256,14 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
   }, [questionairePlayerMainRef]);
 
   const handleBackEvent = () => {
-    const classList = document?.querySelector('questionnaire-player-main form')?.classList;
+    const classList = document?.querySelector(
+      'questionnaire-player-main form'
+    )?.classList;
 
     if (classList?.contains('ng-dirty')) {
       setIsBackConfirmationOpen(true);
     } else {
-      router.push(
-        `${localStorage.getItem('observationPath')}`
-      );
+      router.push(`${localStorage.getItem('observationPath')}`);
     }
   };
 
@@ -200,42 +273,42 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
 
   const handleConfirmBack = () => {
     setIsBackConfirmationOpen(false);
-    router.push(
-      `${localStorage.getItem('observationPath')}`
-    );
+    router.push(`${localStorage.getItem('observationPath')}`);
   };
 
   return (
     <>
-      <Box
-        sx={{
-          display: 'flex',
-          direction: 'row',
-          gap: '24px',
-          mt: '15px',
-          marginLeft: '10px',
-        }}
-        width={'100%'}
-        onClick={handleBackEvent}
-      >
-        <KeyboardBackspaceOutlinedIcon
-          cursor={'pointer'}
-          sx={{
-            color: theme.palette.warning['A200'],
-          }}
-        />
-        {localStorage.getItem('observationName') && (
-          <Typography variant="h3" fontSize={'22px'}
-            color={'black'}>
-            {localStorage.getItem('observationName')}
+      {backButtonShow && (
+        <>
+          <Box
+            sx={{
+              display: 'flex',
+              direction: 'row',
+              gap: '24px',
+              mt: '15px',
+              marginLeft: '10px',
+            }}
+            width={'100%'}
+            onClick={handleBackEvent}
+          >
+            <KeyboardBackspaceOutlinedIcon
+              cursor={'pointer'}
+              sx={{
+                color: theme.palette.warning['A200'],
+              }}
+            />
+            {localStorage.getItem('observationName') && (
+              <Typography variant="h3" fontSize={'22px'} color={'black'}>
+                {localStorage.getItem('observationName')}
+              </Typography>
+            )}
+          </Box>
 
+          <Typography variant="h3" ml="60px" color={'black'}>
+            {observationName}
           </Typography>
-        )}
-      </Box>
-
-      <Typography variant="h3" ml="60px" color={'black'}>
-        {observationName}
-      </Typography>
+        </>
+      )}
 
       {observationQuestions && (
         <questionnaire-player-main
@@ -245,8 +318,7 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
         ></questionnaire-player-main>
       )}
 
-      {
-        isConfirmationOpen &&
+      {isConfirmationOpen && (
         <ConfirmationModal
           message={t('OBSERVATION.ARE_YOU_SURE_YOU_TO_SUBMIT_FORM')}
           handleAction={handleConfirmSubmit}
@@ -257,10 +329,9 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
           handleCloseModal={() => setIsConfirmationOpen(false)}
           modalOpen={isConfirmationOpen}
         />
-      }
+      )}
 
-      {
-        isBackConfirmationOpen &&
+      {isBackConfirmationOpen && (
         <ConfirmationModal
           message={t('COMMON.YOU_HAVE_UNSAVED_CHANGES')}
           handleAction={handleConfirmBack}
@@ -271,7 +342,7 @@ const ObservationComponent: React.FC<QuestionnaireAppProps> = ({ observationQues
           handleCloseModal={handleCancelBack}
           modalOpen={isBackConfirmationOpen}
         />
-      }
+      )}
     </>
   );
 };

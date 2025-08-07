@@ -22,7 +22,7 @@ import {
   AttendanceStatusListProps,
   CohortMemberList,
   ICohort,
-  user
+  user,
 } from '../utils/Interfaces';
 
 import { fetchAttendanceDetails } from '@/components/AttendanceDetails';
@@ -36,7 +36,7 @@ import { showToastMessage } from '@/components/Toastify';
 import UpDownButton from '@/components/UpDownButton';
 import { getMyCohortMemberList } from '@/services/MyClassDetailsService';
 import useStore from '@/store/store';
-import { Status, Telemetry } from '@/utils/app.constant';
+import { Role, Status, Telemetry } from '@/utils/app.constant';
 import { calculatePercentage } from '@/utils/attendanceStats';
 import { logEvent } from '@/utils/googleAnalytics';
 import withAccessControl from '@/utils/hoc/withAccessControl';
@@ -116,8 +116,10 @@ const UserAttendanceHistory = () => {
       totalcount: data.numberOfCohortMembers,
       present_percentage:
         data.numberOfCohortMembers === 0
-          ? "0"
-          : `${((data.presentCount / data.numberOfCohortMembers) * 100).toFixed(2)}`,
+          ? '0'
+          : `${((data.presentCount / data.numberOfCohortMembers) * 100).toFixed(
+              2
+            )}`,
     };
 
     if (shortDateFormat(selectedDate) > shortDateFormat(new Date())) {
@@ -181,7 +183,7 @@ const UserAttendanceHistory = () => {
           page: 0,
           filters: {
             cohortId: classId,
-            role: 'Student',
+            role: 'Learner',
           },
           includeArchived: true,
         };
@@ -207,7 +209,7 @@ const UserAttendanceHistory = () => {
             contextId: classId,
             fromDate: fromDateFormatted,
             toDate: toDateFormatted,
-            scope: 'student',
+            scope: Role.STUDENT,
           },
           facets: ['attendanceDate'],
         };
@@ -239,38 +241,44 @@ const UserAttendanceHistory = () => {
 
         if (resp) {
           const nameUserIdArray = resp
-              ?.map((entry: any) => ({
-                userId: entry.userId,
-                name: toPascalCase(entry?.firstName || '') + ' ' + (entry?.lastName ? toPascalCase(entry.lastName) : ""),
-                memberStatus: entry.status,
-                createdAt: entry.createdAt,
-                updatedAt: entry.updatedAt,
-                userName: entry.username,
-              }))
-              .filter(
-                (member: {
-                  createdAt: string | number | Date;
-                  updatedAt: string | number | Date;
-                  memberStatus: string;
-                }) => {
-                  const createdAt = new Date(member.createdAt);
-                  createdAt.setHours(0, 0, 0, 0);
-                  const updatedAt = new Date(member.updatedAt);
-                  updatedAt.setHours(0, 0, 0, 0);
-                  const currentDate = new Date(selectedDate);
-                  currentDate.setHours(0, 0, 0, 0);
-                  if (
-                    member.memberStatus === Status.ARCHIVED &&
-                    updatedAt <= currentDate
-                  ) {
-                    return false;
-                  }
-                  return createdAt <= new Date(selectedDate);
+            ?.map((entry: any) => ({
+              userId: entry.userId,
+              name:
+                toPascalCase(entry?.firstName || '') +
+                ' ' +
+                (entry?.lastName ? toPascalCase(entry.lastName) : ''),
+              memberStatus: entry.status,
+              createdAt: entry.createdAt,
+              updatedAt: entry.updatedAt,
+              userName: entry.username,
+            }))
+            .filter(
+              (member: {
+                createdAt: string | number | Date;
+                updatedAt: string | number | Date;
+                memberStatus: string;
+              }) => {
+                const createdAt = new Date(member.createdAt);
+                createdAt.setHours(0, 0, 0, 0);
+                const updatedAt = new Date(member.updatedAt);
+                updatedAt.setHours(0, 0, 0, 0);
+                const currentDate = new Date(selectedDate);
+                currentDate.setHours(0, 0, 0, 0);
+                if (
+                  member.memberStatus === Status.ARCHIVED &&
+                  updatedAt <= currentDate
+                ) {
+                  return false;
                 }
-              );
+                return createdAt <= new Date(selectedDate);
+              }
+            );
 
           // Filter latest entries
-          const filteredEntries = getLatestEntries(nameUserIdArray, shortDateFormat(selectedDate));
+          const filteredEntries = getLatestEntries(
+            nameUserIdArray,
+            shortDateFormat(selectedDate)
+          );
           if (filteredEntries && (selectedDate || currentDate)) {
             const userAttendanceStatusList = async () => {
               const attendanceStatusData: AttendanceStatusListProps = {
@@ -280,7 +288,7 @@ const UserAttendanceHistory = () => {
                   fromDate: shortDateFormat(selectedDate || currentDate),
                   toDate: shortDateFormat(selectedDate || currentDate),
                   contextId: classId,
-                  scope: 'student',
+                  scope: Role.STUDENT,
                 },
               };
               const res = await attendanceStatusList(attendanceStatusData);
@@ -459,7 +467,7 @@ const UserAttendanceHistory = () => {
 
   // handle search student data
   const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const trimmedValue = event.target.value.replace(/\s{2,}/g, " ").trimStart();
+    const trimmedValue = event.target.value.replace(/\s{2,}/g, ' ').trimStart();
     setSearchWord(trimmedValue);
     ReactGA.event('search-by-keyword-attendance-history-age', {
       keyword: trimmedValue,

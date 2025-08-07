@@ -15,12 +15,18 @@ import { ContentStatus, Editor } from "../utils/app.constant";
 const QuestionSetEditor: React.FC = () => {
   const tenantConfig = useTenantConfig();
   const router = useRouter();
-  const { identifier } = router.query;
+  const { identifier, contentMode } = router.query;
   const [mode, setMode] = useState<any>();
   const [fullName, setFullName] = useState("Anonymous User");
   const [deviceId, setDeviceId] = useState("7e85b4967aebd6704ba1f604f20056b6");
 
   const [firstName, lastName] = fullName.split(" ");
+
+  useEffect(() => {
+    if (contentMode?.length) {
+      setMode(contentMode);
+    }
+  }, [router.query]);
 
   useEffect(() => {
     const storedFullName = getLocalStoredUserName();
@@ -82,7 +88,7 @@ const QuestionSetEditor: React.FC = () => {
       },
     },
     config: {
-      mode: mode || "edit",
+      mode: contentMode ||mode || "edit",
       userSpecificFrameworkField: getLocalStoredUserSpecificBoard(),
       enableQuestionCreation: true,
       enableAddFromLibrary: true,
@@ -110,7 +116,7 @@ const QuestionSetEditor: React.FC = () => {
     const isQueue = false;
     const context = "CMS";
     const key = "onContentReview";
-    const url = `${window.location.origin}/editor?identifier=${notificationData?.contentId}`  
+    const url = `${process.env.NEXT_PUBLIC_WORKSPACE_BASE_URL}/editor?identifier=${notificationData?.contentId}&contentMode=review`
     try {
       const response = await fetchCCTAList();
       const cctaList = response;
@@ -169,7 +175,7 @@ const QuestionSetEditor: React.FC = () => {
         link.id = "sunbird-editor-css";
         link.rel = "stylesheet";
         link.href =
-          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-questionset-editor-web-component@5.0.0-beta.8/styles.css";
+          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-questionset-editor-web-component@5.0.0-beta.9/styles.css";
         document.head.appendChild(link);
       }
 
@@ -177,7 +183,7 @@ const QuestionSetEditor: React.FC = () => {
         const script = document.createElement("script");
         script.id = "sunbird-editor-js";
         script.src =
-          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-questionset-editor-web-component@5.0.0-beta.8/sunbird-questionset-editor.js";
+          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-questionset-editor-web-component@5.0.0-beta.9/sunbird-questionset-editor.js";
         script.async = true;
         script.onload = () => setAssetsLoaded(true);
         document.body.appendChild(script);

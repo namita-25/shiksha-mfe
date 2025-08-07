@@ -7,11 +7,7 @@ import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import ButtonFunctional from './ButtonComponent';
 
-import {
-  getDayMonthYearFormat,
-  shortDateFormat
-} from '../utils/Helper';
-
+import { getDayMonthYearFormat, shortDateFormat } from '../utils/Helper';
 
 interface ModalProps {
   open: boolean;
@@ -24,8 +20,8 @@ interface ModalProps {
   secondaryBtnText?: string;
   handleSecondaryAction?: () => void;
   selectedDate?: Date; // Ensure selectedDate is always a Date if provided
+  routeName?: string;
 }
-
 
 const ModalComponent: React.FC<ModalProps> = ({
   open,
@@ -36,19 +32,19 @@ const ModalComponent: React.FC<ModalProps> = ({
   btnText,
   handlePrimaryAction,
   selectedDate,
-  secondaryBtnText='Back',
-  handleSecondaryAction=(()=>{console.log('Button2')}),
+  routeName,
+  secondaryBtnText = 'Back',
+  handleSecondaryAction = () => {
+    console.log('Button2');
+    onClose();
+  },
 }) => {
   const { t } = useTranslation();
   const theme = useTheme<any>();
 
-
-
   return (
     <Modal open={open} onClose={onClose}>
-      <Box
-        sx={modalStyles}
-      >
+      <Box sx={modalStyles}>
         <Box
           p={'20px 20px 15px'}
           display="flex"
@@ -59,20 +55,21 @@ const ModalComponent: React.FC<ModalProps> = ({
             <Typography variant="h4" fontSize="16px" fontWeight="500" m={0}>
               {heading}
             </Typography>
-            <Typography
-              variant="h2"
-              sx={{
-                paddingBottom: '10px',
-                color: theme.palette.warning['A200'],
-                fontSize: '14px',
-              }}
-              component="h2"
-            >
-              {selectedDate
-                ? getDayMonthYearFormat(shortDateFormat(selectedDate))
-                : 'N/A'}
-            </Typography>
-
+            {selectedDate && (
+              <Typography
+                variant="h2"
+                sx={{
+                  paddingBottom: '10px',
+                  color: theme.palette.warning['A200'],
+                  fontSize: '14px',
+                }}
+                component="h2"
+              >
+                {selectedDate
+                  ? getDayMonthYearFormat(shortDateFormat(selectedDate))
+                  : 'N/A'}
+              </Typography>
+            )}
           </Box>
           <CloseSharpIcon
             sx={{
@@ -82,10 +79,10 @@ const ModalComponent: React.FC<ModalProps> = ({
             aria-label="Close"
           />
         </Box>
-        <Divider/>
+        {/* <Divider /> */}
         <Typography variant="h6">{SubHeading}</Typography>
         <Box mt={0.6}>{children}</Box>
-        <Divider />
+        {/* <Divider /> */}
 
         <Box
           mt={2}
@@ -94,7 +91,7 @@ const ModalComponent: React.FC<ModalProps> = ({
           justifyContent="flex-end"
           gap={'20px'}
         >
-           {secondaryBtnText && handleSecondaryAction && (
+          {secondaryBtnText && handleSecondaryAction && (
             <ButtonFunctional
               handleClickButton={handleSecondaryAction}
               buttonName={secondaryBtnText}

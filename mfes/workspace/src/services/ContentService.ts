@@ -2,7 +2,7 @@ import {
   getLocalStoredUserId,
   getLocalStoredUserRole,
 } from "./LocalStorageService";
-import { delApi, get, post } from "./RestClient";
+import { delApi, get, post, patch } from "./RestClient";
 import { MIME_TYPE } from "@workspace/utils/app.config";
 import { v4 as uuidv4 } from "uuid";
 import { PrimaryCategoryValue, Role } from "@workspace/utils/app.constant";
@@ -61,7 +61,7 @@ const getReqBodyWithStatus = (
   sort_by: any,
   channel: string,
   contentType?: string,
-  state?: string,
+  state?: string
 ) => {
   if (typeof window !== "undefined" && typeof localStorage !== "undefined") {
     var PrimaryCategory =
@@ -103,7 +103,7 @@ const getReqBodyWithStatus = (
           status,
           primaryCategory,
           createdBy: { "!=": getLocalStoredUserId() },
-          channel: channel
+          channel: channel,
         },
 
         query,
@@ -121,7 +121,7 @@ const getReqBodyWithStatus = (
           ...upForReviewReqBody.request.filters,
           status,
           primaryCategory,
-          channel: channel
+          channel: channel,
         },
         query,
         limit,
@@ -139,7 +139,7 @@ const getReqBodyWithStatus = (
         ...defaultReqBody.request.filters,
         status,
         primaryCategory,
-        channel: channel
+        channel: channel,
       },
       query,
       limit,
@@ -180,6 +180,49 @@ export const getContent = async (
   }
 };
 
+export const getContentPDF = async ({
+  query,
+  limit,
+  offset,
+  sort_by,
+  filters,
+}: {
+  query: string;
+  limit: number;
+  offset: number;
+  sort_by: any;
+  filters: {
+    status?: string[];
+    primaryCategory?: string[];
+    channel?: any;
+    contentType?: string;
+    state?: string;
+    [key: string]: any; // Allow additional dynamic filters if needed
+  };
+}) => {
+  const apiURL = "/action/composite/v3/search";
+
+  try {
+    const reqBody = {
+      request: {
+        query,
+        filters: {
+          ...filters,
+          mimeType: "application/pdf",
+        },
+        sort_by,
+        limit,
+        offset,
+      },
+    };
+
+    const response = await post(apiURL, reqBody);
+    return response?.data?.result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const createQuestionSet = async (frameworkId: any) => {
   const apiURL = `/action/questionset/v2/create`;
   const reqBody = {
@@ -203,6 +246,103 @@ export const createQuestionSet = async (frameworkId: any) => {
   }
 };
 
+export const createAIQuestionsSet = async (payload: {
+  questionSetId: string;
+  framework: string;
+  channel: string;
+  difficulty_level: string;
+  question_types: string[];
+  metadata: {
+    name: string;
+    board: string;
+    medium: string[];
+    gradeLevel: string[];
+    subject: string[];
+    courseType: string[];
+    program: string[];
+    author: string;
+    description: string;
+    instructions: string;
+    contentLanguage: string;
+    assessmentType: string;
+  };
+  questionsDetails: Array<{
+    type: string;
+    no: number;
+  }>;
+  content: Array<{
+    id: string;
+    url: string;
+  }>;
+  token: string;
+}) => {
+  const apiURL = `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/tracking/ai-assessment/create`;
+  try {
+    const response = await post(
+      apiURL,
+      {
+        ...payload,
+        createdBy: userId,
+      },
+      {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${payload.token}`,
+      }
+    );
+    return response?.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getAIQuestionSetStatus = async (
+  questionSetId: string,
+  token: string
+) => {
+  const apiURL = `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/tracking/ai-assessment/read/${questionSetId}`;
+  try {
+    const response = await get(apiURL, {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    });
+    return response?.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateQuestionSet = async ({ identifier, ...metadata }: any) => {
+  const apiURL = "/mfe_workspace/action/questionset/v2/hierarchy/update";
+  const reqBody = {
+    request: {
+      data: {
+        lastUpdatedBy: userId,
+        nodesModified: {
+          [identifier]: {
+            root: true,
+            objectType: "QuestionSet",
+            isNew: false,
+            metadata,
+          },
+        },
+        hierarchy: {
+          [identifier]: {
+            name: "Untitled QuestionSet",
+            children: [],
+            root: true,
+          },
+        },
+      },
+    },
+  };
+  const response = await patch(apiURL, reqBody, {
+    Accept: "application/json, text/plain, */*",
+    "Content-Type": "application/json",
+    // Add more headers if needed, e.g., authorization, channel, etc.
+  });
+  return response?.data;
+};
+
 export const deleteContent = async (identifier: string, mimeType: string) => {
   const questionsetRetireURL = `/action/questionset/v2/retire/${identifier}`;
   const contentRetireURL = `/action/content/v3/retire/${identifier}`;
@@ -223,7 +363,12 @@ export const deleteContent = async (identifier: string, mimeType: string) => {
   }
 };
 
-export const createCourse = async (userId: any, channelId: any, contentFW: any, targetFW: any) => {
+export const createCourse = async (
+  userId: any,
+  channelId: any,
+  contentFW: any,
+  targetFW: any
+) => {
   const apiURL = `/action/content/v3/create`;
 
   const reqBody = {
@@ -238,7 +383,7 @@ export const createCourse = async (userId: any, channelId: any, contentFW: any, 
         primaryCategory: "Course",
         contentType: "Course",
         framework: contentFW,
-        targetFWIds: [targetFW]
+        targetFWIds: [targetFW],
       },
     },
   };
@@ -305,10 +450,16 @@ export const submitComment = async (
 
 export const getContentHierarchy = async ({
   doId,
+  contentMode,
 }: {
   doId: string;
+  contentMode: string;
 }): Promise<any> => {
-  const apiUrl: string = `/action/content/v3/hierarchy/${doId}`;
+  let apiUrl: string = `/action/content/v3/hierarchy/${doId}`;
+  if (contentMode == "edit") {
+    // apiUrl = `/action/content/v3/hierarchy/${doId}?mode=edit`;
+    apiUrl = `/action/content/v3/hierarchy/${doId}`;
+  }
 
   try {
     console.log("Request data", apiUrl);
@@ -320,7 +471,7 @@ export const getContentHierarchy = async ({
     throw error;
   }
 };
-export const getFrameworkDetails = async (frameworkId:any): Promise<any> => {
+export const getFrameworkDetails = async (frameworkId: any): Promise<any> => {
   const apiUrl: string = `/api/framework/v1/read/${frameworkId}`;
 
   try {

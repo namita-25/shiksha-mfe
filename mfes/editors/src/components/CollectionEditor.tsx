@@ -14,13 +14,20 @@ import { ContentStatus, Editor } from "../utils/app.constant";
 import useTenantConfig from "../hooks/useTenantConfig";
 const CollectionEditor: React.FC = () => {
   const router = useRouter();
-  const { identifier } = router.query;
+  const { identifier, contentMode } = router.query;
   const [mode, setMode] = useState<any>();
   const [fullName, setFullName] = useState("Anonymous User");
   const [deviceId, setDeviceId] = useState("");
 
   const [firstName, lastName] = fullName.split(" ");
   const tenantConfig = useTenantConfig();
+  useEffect(() => {
+    if (contentMode?.length) {
+      setMode(contentMode);
+    }
+  }, [router.query]);
+
+
 
   const sendReviewNotification = async (notificationData: any) => {
     console.log("notificationData", notificationData);
@@ -29,8 +36,7 @@ const CollectionEditor: React.FC = () => {
     const isQueue = false;
     const context = "CMS";
     const key = "onContentReview";
-    const url = `${window.location.origin}/collection?identifier=${notificationData?.contentId}`;
-  
+    const url = `${process.env.NEXT_PUBLIC_WORKSPACE_BASE_URL}/collection?identifier=${notificationData?.contentId}&contentMode=review`;
     try {
       const response = await fetchCCTAList();
       const cctaList = response;
@@ -121,7 +127,7 @@ const CollectionEditor: React.FC = () => {
       cloudStorageUrls: [CLOUD_STORAGE_URL],
     },
     config: {
-      mode: mode || "edit", // edit / review / read / sourcingReview
+      mode: contentMode || mode || "edit", // edit / review / read / sourcingReview
       userSpecificFrameworkField: getLocalStoredUserSpecificBoard(),
       objectType: "Collection",
       primaryCategory: "Course", // Professional Development Course, Curriculum Course
@@ -140,14 +146,25 @@ const CollectionEditor: React.FC = () => {
   const [assetsLoaded, setAssetsLoaded] = useState(false);
 
   useEffect(() => {
+    const loadJQuery = () => {
+      if (!document.getElementById("jquery-script")) {
+        const script = document.createElement("script");
+        script.id = "jquery-script";
+        script.src = "https://code.jquery.com/jquery-3.6.0.min.js";
+        script.async = true;
+        script.onload = () => console.log("jQuery loaded successfully.");
+        document.body.appendChild(script);
+      }
+    };
     const loadAssets = () => {
+      loadJQuery();
       if (!document.getElementById("collection-editor-js")) {
         const script = document.createElement("script");
         console.log("Hello");
 
         script.id = "collection-editor-js";
         script.src =
-          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-collection-editor-web-component@6.1.0-beta.2/sunbird-collection-editor.js";
+          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-collection-editor-web-component@6.1.0-beta.3/sunbird-collection-editor.js";
         script.async = true;
         script.onload = () => setAssetsLoaded(true);
         document.body.appendChild(script);
@@ -162,7 +179,7 @@ const CollectionEditor: React.FC = () => {
         link.id = "collection-editor-css";
         link.rel = "stylesheet";
         link.href =
-          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-collection-editor-web-component@6.1.0-beta.2/styles.css";
+          "https://cdn.jsdelivr.net/npm/@tekdi/sunbird-collection-editor-web-component@6.1.0-beta.4/styles.css";
         document.head.appendChild(link);
       }
 
@@ -182,6 +199,24 @@ const CollectionEditor: React.FC = () => {
         pdfLink.href =
           "https://cdn.jsdelivr.net/npm/@project-sunbird/sunbird-pdf-player-web-component@1.4.0/styles.css";
         document.head.appendChild(pdfLink);
+      }
+
+      if (!document.getElementById("sunbird-epub-player-js")) {
+        const epubScript = document.createElement("script");
+        epubScript.id = "sunbird-epub-player-js";
+        epubScript.src =
+          "https://cdn.jsdelivr.net/npm/@project-sunbird/sunbird-epub-player-web-component@1.4.0/sunbird-epub-player.js";
+        epubScript.async = true;
+        document.body.appendChild(epubScript);
+      }
+
+      if (!document.getElementById("sunbird-epub-player-css")) {
+        const epubLink = document.createElement("link");
+        epubLink.id = "sunbird-epub-player-css";
+        epubLink.rel = "stylesheet";
+        epubLink.href =
+          "https://cdn.jsdelivr.net/npm/@project-sunbird/sunbird-epub-player-web-component@1.4.0/styles.css";
+        document.head.appendChild(epubLink);
       }
 
       const videoScript = document.createElement("script");

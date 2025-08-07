@@ -33,7 +33,15 @@
       "@test-next-route": ["mfes/test-next-route/src/pages/index.tsx"],
       "@test-react-vite": ["mfes/mfes/test-react-vite"],
       "@workspace/*": ["mfes/workspace/src/*"],
-      "@youthNet": ["mfes/youthNet/src/pages/index.tsx"]
+      "@youthNet": ["mfes/youthNet/src/pages/index.tsx"],
+      "@Content": ["mfes/content/src/pages/content.tsx"],
+      "@ContentEnrollDetails": [
+        "mfes/content/src/pages/content-details/[identifier].tsx"
+      ],
+      "@ContentDetails": ["mfes/content/src/pages/details/[identifier].tsx"],
+      "@ContentPlayer": ["mfes/content/src/pages/player/[identifier].tsx"],
+      "@shared-lib-v2/*": ["libs/shared-lib-v2/src/*"],
+
     }
   },
   "exclude": ["node_modules", "tmp"]

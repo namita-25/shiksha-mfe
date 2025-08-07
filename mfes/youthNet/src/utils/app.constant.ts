@@ -14,7 +14,7 @@ import unit from '../assets/images/Unit.png';
 import bgpdf from '../assets/images/bgPDF.svg';
 import bgepub from '../assets/images/bgEpub.svg';
 import bghtml from '../assets/images/bgHtml.svg';
-import bgmp4 from '../assets/images/bgMP4 .svg';
+import bgmp4 from '../assets/images/bgMP4.svg';
 import bgqml from '../assets/images/bgQml.svg';
 import bgyoutube from '../assets/images/bgYouTube.svg';
 import bgh5p from '../assets/images/bgh5p.png';
@@ -59,14 +59,13 @@ export const names = [
 ];
 
 export enum Role {
-  STUDENT = 'Student',
-  TEACHER = 'Teacher',
-  TEAM_LEADER = 'Team Leader',
-  ADMIN = 'Admin',
-  LEARNER='Learner',
-  INSTRUCTOR="Instructor",
-  LEAD="Lead"
-
+  STUDENT = 'Learner',
+  TEACHER = 'Instructor',
+  TEAM_LEADER = 'Lead',
+  ADMIN = 'State Lead',
+  LEARNER = 'Learner',
+  INSTRUCTOR = 'Instructor',
+  LEAD = 'Lead',
 }
 
 export enum Status {
@@ -74,30 +73,35 @@ export enum Status {
   ACTIVE = 'active',
   ARCHIVED = 'archived',
 }
-export enum DateFilter
-{
-  THIS_MONTH="This month",
-  LAST_SIX_MONTHS="Last 6 months",
-  LAST_TWELEVE_MONTHS="Last 12 months"
+export enum DateFilter {
+  THIS_MONTH = 'This month',
+  LAST_SIX_MONTHS = 'Last 6 months',
+  LAST_TWELEVE_MONTHS = 'Last 12 months',
 }
 
 export enum cohortHierarchy {
   BLOCK = 'BLOCK',
   COHORT = 'COHORT',
-  DISTRICT='DISTRICT',
-  VILLAGE='VILLAGE'
+  DISTRICT = 'DISTRICT',
+  VILLAGE = 'VILLAGE',
+  STATE = 'STATE',
+}
+export enum VolunteerField {
+  IS_VOLUNTEER = 'IS_VOLUNTEER',
+  YES = 'yes',
+  NO = 'no',
 }
 export enum SortOrder {
-  ASC = "asc",
-  DESC = "desc",
-  NEW_REGISTRATION_LOW_TO_HIGH = "new-registration-today-low-to-high",
-  NEW_REGISTRATION_HIGH_TO_LOW = "new-registration-today-high-to-low",
-  TOTAL_COUNT_LOW_TO_HIGH = "totalcount-low-to-high",
-  TOTAL_COUNT_HIGH_TO_LOW = "totalcount-high-to-low",
-  AGE_LOW_TO_HIGH = "age-low-to-high",
-  AGE_HIGH_TO_LOW = "age-high-to-low",
-  OLD_JOINER_FIRST = "old-joiner-first",
-  NEW_JOINER_FIRST = "new-joiner-first",
+  ASC = 'asc',
+  DESC = 'desc',
+  NEW_REGISTRATION_LOW_TO_HIGH = 'new-registration-today-low-to-high',
+  NEW_REGISTRATION_HIGH_TO_LOW = 'new-registration-today-high-to-low',
+  TOTAL_COUNT_LOW_TO_HIGH = 'totalcount-low-to-high',
+  TOTAL_COUNT_HIGH_TO_LOW = 'totalcount-high-to-low',
+  AGE_LOW_TO_HIGH = 'age-low-to-high',
+  AGE_HIGH_TO_LOW = 'age-high-to-low',
+  OLD_JOINER_FIRST = 'old-joiner-first',
+  NEW_JOINER_FIRST = 'new-joiner-first',
 }
 export enum sessionMode {
   ONLINE = 'online',
@@ -109,7 +113,7 @@ export enum sessionType {
 }
 
 export enum cohortPrivileges {
-  STUDENT = 'student',
+  STUDENT = 'Learner',
 }
 
 export enum FormContext {
@@ -119,9 +123,9 @@ export enum FormContext {
 }
 
 export enum FormContextType {
-  STUDENT = 'STUDENT',
-  TEACHER = 'TEACHER',
-  TEAM_LEADER = 'TEAM LEADER',
+  STUDENT = 'LEARNER',
+  TEACHER = 'INSTRUCTOR',
+  TEAM_LEADER = 'LEAD',
   COHORT = 'COHORT',
   COHORT_MEMBER = 'COHORTMEMBER',
 }
@@ -145,10 +149,10 @@ export enum CenterType {
 }
 
 export enum RoleId {
-  STUDENT = '493c04e2-a9db-47f2-b304-503da358d5f4',
-  TEACHER = '3bde0028-6900-4900-9d05-eeb608843718',
-  TEAM_LEADER = '9dd9328f-1bc7-444f-96e3-c5e1daa3514a',
-  ADMIN = 'ee482faf-8a41-45fe-9656-5533dd6a787c',
+  STUDENT = 'eea7ddab-bdf9-4db1-a1bb-43ef503d65ef',
+  TEACHER = 'a5f1dbc9-2ad4-442c-b762-0e3fc1f6c6da',
+  TEAM_LEADER = 'c4454929-954e-4c51-bb7d-cca834ab9375',
+  ADMIN = '4a3493aa-a4f7-4e2b-b141-f213084b5599',
 }
 
 export enum Pagination {
@@ -231,6 +235,9 @@ export enum ContentType {
   YOUTUBE_X_VIDEO = 'video/x-youtube',
   WEBM_VIDEO = 'video/webm',
   COLLECTION = 'application/vnd.ekstep.content-collection',
+  //new types
+  AUDIO_MP3 = 'audio/mp3',
+  AUDIO_WAV = 'audio/wav',
 }
 
 // Define the type for the content type mapping
@@ -270,6 +277,8 @@ export const ContentCardsTypes: FileType = {
     imgPath: unit,
     BgImgPath: bgunit,
   },
+  [ContentType.AUDIO_MP3]: { name: 'Audio', imgPath: mp4, BgImgPath: bgmp4 },
+  [ContentType.AUDIO_WAV]: { name: 'Audio', imgPath: mp4, BgImgPath: bgmp4 },
 };
 
 export enum contentStatus {

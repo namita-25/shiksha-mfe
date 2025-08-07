@@ -425,7 +425,7 @@ const MenuDrawer: React.FC<DrawerProps> = ({
                 : t('DASHBOARD.VILLAGES_AND_YOUTH')}
             </Button>
 
-            {/* <Button
+            <Button
               className="fs-14"
               sx={{
                 gap: '10px',
@@ -460,7 +460,7 @@ const MenuDrawer: React.FC<DrawerProps> = ({
               }}
             >
               {t('SURVEYS.SURVEYS')}
-            </Button> */}
+            </Button>
           </Box>
         )}
         {!tenantName && (

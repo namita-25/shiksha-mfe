@@ -33,6 +33,11 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NEXT_PUBLIC_PRODUCTION === 'true',
   },
+
+
+  //cross import support
+  transpilePackages: ['@shared-lib-v2/*'],
+
   trailingSlash: false,
   reactStrictMode: true,
   i18n: nextI18nextConfig.i18n,

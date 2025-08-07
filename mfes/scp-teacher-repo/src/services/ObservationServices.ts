@@ -23,7 +23,7 @@ export const fetchEntities = async ({ solutionId }: any): Promise<any> => {
       'X-auth-token': localStorage.getItem('token'),
     };
 
-    const response = await get(apiUrl, headers);
+    const response = await post(apiUrl, {}, headers);
     return response?.data;
   } catch (error) {
     console.error('Error in fetching attendance list', error);
@@ -66,13 +66,17 @@ export const checkEntityStatus = async ({
   }
 };
 
-
 export const fetchQuestion = async ({
   observationId,
   entityId,
+  tempSubmissionNumber,
 }: any): Promise<any> => {
   try {
-    const apiUrl: string = `${process.env.NEXT_PUBLIC_SURVEY_URL}/observations/assessment/${observationId}?entityId=${entityId}`;
+    let querySubNum = '';
+    if (tempSubmissionNumber) {
+      querySubNum = `&submissionNumber=${tempSubmissionNumber}`;
+    }
+    const apiUrl: string = `${process.env.NEXT_PUBLIC_SURVEY_URL}/observations/assessment/${observationId}?entityId=${entityId}${querySubNum}`;
 
     const headers = {
       'X-auth-token': localStorage.getItem('token'),
@@ -85,10 +89,9 @@ export const fetchQuestion = async ({
   }
 };
 
-
-
 export const updateSubmission = async ({
-  submissionId, submissionData
+  submissionId,
+  submissionData,
 }: any): Promise<any> => {
   try {
     const apiUrl: string = `${process.env.NEXT_PUBLIC_SURVEY_URL}/observationSubmissions/update/${submissionId}`;

@@ -12,20 +12,19 @@ const fetchCohortMemberList = async ({
   page,
   filters,
 }: CohortMemberList): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.cohortMemberList
+  const apiUrl: string = API_ENDPOINTS.cohortMemberList;
   try {
     const response = await post(apiUrl, {
       limit,
       offset: page,
       filters,
-      "sort": [
-        "name",
-        "asc"
-    ],    });
+      sort: ['name', 'asc'],
+    });
     return response?.data;
   } catch (error) {
     console.error('error in cohort member list API ', error);
-    throw error;
+    // throw error;
+    return null;
   }
 };
 
@@ -35,7 +34,7 @@ export const getMyUserList = async ({
   filters,
   fields,
 }: UserList): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.userList
+  const apiUrl: string = API_ENDPOINTS.userList;
   try {
     const response = await post(apiUrl, {
       limit,
@@ -55,8 +54,7 @@ export const getMyCohortMemberList = async ({
   page,
   filters,
   includeArchived = false,
-}: CohortMemberList  & { includeArchived?: boolean }): Promise<any> => {
-
+}: CohortMemberList & { includeArchived?: boolean }): Promise<any> => {
   const statusFilters = [Status.DROPOUT, Status.ACTIVE];
   if (includeArchived) {
     statusFilters.push(Status.ARCHIVED);
@@ -97,7 +95,7 @@ export const updateCohortMemberStatus = async ({
   membershipId,
   dynamicBody = {},
 }: UpdateCohortMemberStatusParams): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.cohortMemberUpdate(membershipId)
+  const apiUrl: string = API_ENDPOINTS.cohortMemberUpdate(membershipId);
 
   // Utility to stringify only the values of the customFields
   const prepareCustomFields = (customFields: any[]): any[] => {
@@ -105,7 +103,11 @@ export const updateCohortMemberStatus = async ({
       if (field && field.value !== undefined) {
         return {
           ...field,
-          value: typeof field.value === 'object' ? JSON.stringify(field.value) : field.value,
+          value: Array.isArray(field.value) // Check if the value is an array
+            ? field.value // Don't stringify if it's already an array
+            : typeof field.value === 'object' && field.value !== null
+            ? JSON.stringify(field.value) // Only stringify objects
+            : field.value, // Otherwise, keep the value as is
         };
       }
       return field;
@@ -116,13 +118,13 @@ export const updateCohortMemberStatus = async ({
   const requestBody = {
     ...(memberStatus && { status: memberStatus }),
     ...(statusReason && { statusReason }),
-    ...Object.entries(dynamicBody).reduce(
-      (acc, [key, value]) => {
-        acc[key] = typeof value === 'object' && value !== null ? JSON.stringify(value) : value;
-        return acc;
-      },
-      {} as Record<string, any>
-    ),
+    ...Object.entries(dynamicBody).reduce((acc, [key, value]) => {
+      acc[key] =
+        typeof value === 'object' && value !== null
+          ? JSON.stringify(value)
+          : value;
+      return acc;
+    }, {} as Record<string, any>),
     // Only stringify the `value` field of customFields if needed
     ...(dynamicBody?.customFields && {
       customFields: prepareCustomFields(dynamicBody.customFields),
@@ -137,4 +139,3 @@ export const updateCohortMemberStatus = async ({
     // throw error;
   }
 };
-

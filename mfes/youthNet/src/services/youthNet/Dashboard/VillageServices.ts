@@ -4,7 +4,7 @@ import API_ENDPOINTS from 'mfes/youthNet/src/utils/API/APIEndpoints';
 export interface ListParam {
   limit?: number;
   offset?: number;
-  controllingfieldfk?: string;
+  controllingfieldfk?: string[];
   fieldName: string;
   optionName?: string;
   sort?: [string, string]; //

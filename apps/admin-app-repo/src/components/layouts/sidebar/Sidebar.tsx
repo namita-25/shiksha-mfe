@@ -1,4 +1,4 @@
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { ExpandLess, ExpandMore } from '@mui/icons-material';
 import {
   Box,
   Collapse,
@@ -10,133 +10,141 @@ import {
   Tooltip,
   Typography,
   useMediaQuery,
-} from "@mui/material";
-import { useTranslation } from "next-i18next";
-import Image from "next/image";
-import { useRouter } from "next/router";
-import PropTypes from "prop-types";
-import { useState } from "react";
-import LogoIcon from "../logo/LogoIcon";
-import Buynow from "./Buynow";
-import Menuitems from "./MenuItems";
-import {getFilteredMenuItems} from "./MenuItems";
+  ListItemButton,
+} from '@mui/material';
+import { useTranslation } from 'next-i18next';
+import Image from 'next/image';
+import { useRouter } from 'next/router';
+import PropTypes from 'prop-types';
+import { useMemo, useState } from 'react';
+import LogoIcon from '../logo/LogoIcon';
+import Buynow from './Buynow';
+// import Menuitems from './MenuItems';
+import { getFilteredMenuItems } from './MenuItems';
+
+//menu config dynamic
+import { MENU_CONFIG } from '../../../config/menuConfig';
+import Link from 'next/link';
+
 const Sidebar = ({
   isMobileSidebarOpen,
   onSidebarClose,
   isSidebarOpen,
 }: any) => {
+  //menu config dynamic
+  const storedRole = localStorage.getItem('roleName');
+  const storedProgram = localStorage.getItem('program');
+  // const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+
+  if (!storedRole && !storedProgram) return null;
+
   const [open, setOpen] = useState<number | null>(null);
   const filteredMenuItems = getFilteredMenuItems();
 
   const { t } = useTranslation();
-  const lgUp = useMediaQuery((theme: any) => theme?.breakpoints?.up("lg"));
-  const router = useRouter();
-  const location = router.pathname;
+  const lgUp = useMediaQuery((theme: any) => theme?.breakpoints?.up('lg'));
 
-  const handleClick = (index: number) => {
-    setOpen((prevOpen) => (prevOpen === index ? null : index));
+  const [openMenus, setOpenMenus] = useState({});
+  const router = useRouter();
+
+  const handleToggle = (key) => {
+    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const getActiveStyle = (link) =>
+    router.pathname === link
+      ? { backgroundColor: '#FDBF34', color: 'black', borderRadius: '100px' }
+      : {};
+
+  // const menuItems = Object.entries(MENU_CONFIG[storedProgram] || {}).filter(
+  //   ([_, item]) => item.roles.includes(storedRole)
+  // );
+  const menuItems = useMemo(() => {
+    return Object.entries(MENU_CONFIG[storedProgram] || {}).filter(
+      ([_, item]) => item.roles.includes(storedRole)
+    );
+  }, [storedProgram, storedRole]);
+
+  // console.log('menuItems', JSON.stringify(menuItems));
 
   const SidebarContent = (
     <Box
       p={2}
-      height="100%"
-      bgcolor="#F8EFDA
-"
+      // minHeight="100%"
+      bgcolor="#F8EFDA"
       sx={{
-        background: "linear-gradient(to bottom, white, #F8EFDA)",
+        background: 'linear-gradient(to bottom, white, #F8EFDA)',
+        height: '100vh',
+        overflowY: 'auto',
       }}
     >
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <LogoIcon />
       </Box>
 
       <Box mt={2}>
-        <List>
-          {filteredMenuItems?.map((item, index) => (
-            <List component="li" disablePadding key={item.title}>
-              <Tooltip placement="right-start" title={t(item.title)}>
-                <ListItem
-                  button
+        <List component="nav">
+          {menuItems.map(([key, item]) => {
+            const hasSubMenu = item.subMenu && item.subMenu.length > 0;
+            const isAllowed = item.roles.includes(storedRole);
+
+            if (!isAllowed) return null;
+
+            return (
+              <div key={key}>
+                <ListItemButton
                   onClick={() => {
-                    if (item.subOptions) {
-                      handleClick(index);
+                    if (hasSubMenu) {
+                      handleToggle(key);
                     } else {
-                      router.push(item.href[0]);
+                      router.push(item.link);
                       onSidebarClose();
                     }
                   }}
-                  selected={item.href?.includes(location)}
-                  sx={{
-                    mb: 1,
-
-                    ...(item.href?.includes(location) && {
-                      color: "black",
-                      backgroundColor: (theme) =>
-                        `${theme.palette.primary.main}!important`,
-                      borderRadius: "100px",
-                    }),
-                  }}
+                  style={getActiveStyle(item.link)}
                 >
-                  <ListItemIcon>
-                    {"SIDEBAR.CERTIFICATE_ISSUANCE" === item.title ? (
-                    <Image src={item.icon} alt="" width={33} height={33} />
-
-                    ):(  <Image src={item.icon} alt="" />)}
+                  <ListItemIcon sx={{ minWidth: '40px' }}>
+                    <Image
+                      src={item.icon}
+                      alt={t(item.title)}
+                      width={20}
+                      height={20}
+                    />
                   </ListItemIcon>
-                  <ListItemText>
-                    <Typography variant="h2" sx={{ fontWeight: "700px" }}>
-                      {t(item.title)}
-                    </Typography>
-                  </ListItemText>
-                  {item.subOptions ? (
-                    open === index ? (
+                  <ListItemText primary={t(item.title)} />
+                  {hasSubMenu ? (
+                    openMenus[key] ? (
                       <ExpandLess />
                     ) : (
                       <ExpandMore />
                     )
                   ) : null}
-                </ListItem>
-              </Tooltip>
+                </ListItemButton>
 
-              {item.subOptions && (
-                <Collapse in={open === index} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {item?.subOptions?.map((subItem) => (
-                      <Tooltip
-                        title={t(subItem.title)}
-                        placement="right-start"
-                        key={subItem.title}
-                      >
-                        <ListItem
-                          button
-                          key={subItem.title}
-                          onClick={() => {
-                            router.push(subItem.href[0]);
-                            onSidebarClose();
-                          }}
-                          selected={subItem.href.includes(location)}
-                          sx={{
-                            pl: 8,
-                            ml: 2,
-                            mb: 1,
-                            ...(subItem.href.includes(location) && {
-                              color: "black",
-                              backgroundColor: (theme) =>
-                                `${theme.palette.primary.main}!important`,
-                              borderRadius: "100px",
-                            }),
-                          }}
-                        >
-                          <ListItemText>{t(subItem.title)}</ListItemText>
-                        </ListItem>
-                      </Tooltip>
-                    ))}
-                  </List>
-                </Collapse>
-              )}
-            </List>
-          ))}
+                {hasSubMenu && (
+                  <Collapse in={openMenus[key]} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      {item.subMenu
+                        .filter((sub) => sub.roles.includes(storedRole))
+                        .map((sub) => (
+                          <ListItemButton
+                            key={sub.link}
+                            sx={{ pl: 7 }}
+                            onClick={() => {
+                              router.push(sub.link);
+                              onSidebarClose();
+                            }}
+                            style={getActiveStyle(sub.link)}
+                          >
+                            <ListItemText primary={t(sub.title)} />
+                          </ListItemButton>
+                        ))}
+                    </List>
+                  </Collapse>
+                )}
+              </div>
+            );
+          })}
         </List>
       </Box>
       <Buynow />
@@ -151,9 +159,9 @@ const Sidebar = ({
         variant="persistent"
         PaperProps={{
           sx: {
-            width: "284px",
-            border: "0 !important",
-            boxShadow: "0px 7px 30px 0px rgb(113 122 131 / 11%)",
+            width: '284px',
+            border: '0 !important',
+            boxShadow: '0px 7px 30px 0px rgb(113 122 131 / 11%)',
           },
         }}
       >
@@ -168,8 +176,8 @@ const Sidebar = ({
       onClose={onSidebarClose}
       PaperProps={{
         sx: {
-          width: "284px",
-          border: "0 !important",
+          width: '284px',
+          border: '0 !important',
         },
       }}
       variant="temporary"

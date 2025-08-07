@@ -5,7 +5,6 @@ import firebaseConfig from './firebaseConfig';
 
 const firebaseApp = initializeApp(firebaseConfig);
 let messaging;
-
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   messaging = getMessaging();
 } else {
@@ -14,15 +13,17 @@ if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
 
 export const requestPermission = async () => {
   const permission = await Notification.requestPermission();
-
-  if (permission === 'granted') {
-    const token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FCM_VAPID_KEY,
-    });
-    return token;
-  } else {
-    console.warn('Notification permission denied');
-    return null;
+  try {
+    if (permission === 'granted') {
+      const token = await getToken(messaging, {
+        vapidKey: process.env.NEXT_PUBLIC_FCM_VAPID_KEY,
+      });
+      return token;
+    } else {
+      console.log('Permission failed');
+    }
+  } catch (error) {
+    console.log('Error getting token:', error);
   }
 };
 

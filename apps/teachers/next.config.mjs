@@ -26,6 +26,10 @@ const nextConfig = {
     // See: https://github.com/gregberge/svgr
     svgr: false,
   },
+
+  //cross import support
+  transpilePackages: ['@shared-lib-v2/*'],
+
   // @ts-ignore
   i18n: nextI18nextConfig.i18n,
 

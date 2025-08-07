@@ -1,6 +1,7 @@
-import { getLearnerAttendanceStatus } from "@/services/AttendanceService";
-import { formatSelectedDate } from "./Helper";
-import { LearnerAttendanceProps } from "./Interfaces";
+import { getLearnerAttendanceStatus } from '@/services/AttendanceService';
+import { formatSelectedDate } from './Helper';
+import { LearnerAttendanceProps } from './Interfaces';
+import { Role } from './app.constant';
 
 // Helper function to fetch attendance stats
 export const fetchAttendanceStats = async (userId: string) => {
@@ -12,7 +13,7 @@ export const fetchAttendanceStats = async (userId: string) => {
       contextId: classId,
       fromDate: formatSelectedDate(today),
       toDate: formatSelectedDate(today),
-      scope: 'student',
+      scope: Role.STUDENT,
       userId: userId,
     },
   };
@@ -23,6 +24,6 @@ export const fetchAttendanceStats = async (userId: string) => {
     return attendanceStats;
   } catch (error) {
     console.error('Error fetching attendance stats:', error);
-    // throw error; 
+    // throw error;
   }
 };

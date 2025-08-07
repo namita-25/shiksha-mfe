@@ -904,6 +904,7 @@ export interface RegistrationStatisticsProps {
   avatar?: boolean;
   subtile?: string;
   onPrimaryClick?: () => void;
+  isVolunteer?:boolean
 }
 export interface VillageNewRegistrationProps {
   locations: { id: number; value: string }[]; 

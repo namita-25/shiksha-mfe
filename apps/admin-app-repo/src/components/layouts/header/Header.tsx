@@ -18,7 +18,7 @@ import Profile from "./Profile";
 import { AcademicYear } from "@/utils/Interfaces";
 import useStore from "@/store/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { Role, youthNetTenantName } from "@/utils/app.constant";
+import { Role, TenantName } from "@/utils/app.constant";
 import MenuIcon from '@mui/icons-material/Menu';
 
 const Header = ({
@@ -105,7 +105,7 @@ const Header = ({
       storedUserData?.role === Role.SCTA ||
       storedUserData?.role === Role.CCTA
     ) {
-      if(storedUserData?.tenantData[0]?.tenantName != youthNetTenantName.SECOND_CHANCE_PROGRAM ) {
+      if(storedUserData?.tenantData[0]?.tenantName != TenantName.SECOND_CHANCE_PROGRAM ) {
         router.push("/workspace");
       } else {
         if (locale) 
@@ -115,25 +115,27 @@ const Header = ({
       }
     } else {
       if (locale) {
-        if (storedUserData?.role === Role.CENTRAL_ADMIN && storedUserData?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
+        if (storedUserData?.role === Role.CENTRAL_ADMIN && storedUserData?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM) {
           if (router.pathname === "/programs") window.location.reload();
           else router.push("/programs", undefined, { locale: locale });
-        } else if (storedUserData?.role === Role.CENTRAL_ADMIN && storedUserData?.tenantData[0]?.tenantName == youthNetTenantName.YOUTHNET){
+        } else if ((storedUserData?.role === Role.CENTRAL_ADMIN ||
+                    storedUserData?.role === Role.ADMIN) && storedUserData?.tenantData[0]?.tenantName == TenantName.YOUTHNET){
           if (router.pathname === "/mentor") window.location.reload();
           else router.push("/mentor", undefined, { locale: locale });
         } 
-        else if (storedUserData?.role === Role.ADMIN && storedUserData?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
+        else if (storedUserData?.role === Role.ADMIN && storedUserData?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM) {
           if (router.pathname === "/centers") window.location.reload();
           else router.push("/centers", undefined, { locale: locale });
         }
       } else {
-        if (storedUserData?.role === Role.CENTRAL_ADMIN && storedUserData?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
+        if (storedUserData?.role === Role.CENTRAL_ADMIN && storedUserData?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM) {
           if (router.pathname === "/programs") window.location.reload();
           else router.push("/programs");
-        } else if (storedUserData?.role === Role.ADMIN && storedUserData?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
+        } else if (storedUserData?.role === Role.ADMIN && storedUserData?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM) {
           if (router.pathname === "/centers") window.location.reload();
           else router.push("/centers");
-        } else if (storedUserData?.role === Role.CENTRAL_ADMIN && storedUserData?.tenantData[0]?.tenantName == youthNetTenantName.YOUTHNET) {
+        } else if ((storedUserData?.role === Role.CENTRAL_ADMIN ||
+                    storedUserData?.role === Role.ADMIN) && storedUserData?.tenantData[0]?.tenantName == TenantName.YOUTHNET) {
           if (router.pathname === "/mentor") window.location.reload();
           else router.push("/mentor", undefined, { locale: locale });
         }

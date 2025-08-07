@@ -4,6 +4,7 @@
 const { composePlugins, withNx } = require('@nx/next');
 
 const PORTAL_BASE_URL = 'https://sunbird-editor.tekdinext.com';
+// const PORTAL_BASE_URL = 'http://localhost:4104/mfe_workspace';
 
 const routes = {
   API: {
@@ -32,6 +33,10 @@ const nextConfig = {
         destination: '/api/fileUpload', // Forward asset uploads to fileUpload.js
       },
       {
+        source: '/play/content/assets/:path*', // Match any URL starting with /workspace/content/assets/
+        destination: '/assets/:path*', // Serve the assets from the public folder
+      },
+      {
         source: '/assets/pdfjs/:path*', // Match any URL starting with /workspace/content/assets/
         destination: '/assets/:path*', // Serve the assets from the public folder
       },
@@ -53,7 +58,7 @@ const nextConfig = {
         destination: '/api/proxy?path=/action/content/:path*', // Forward other /action/asset requests to proxy.js
       },
       {
-        source: "/action/v1/telemetry",
+        source: '/action/v1/telemetry',
         destination: `${process.env.NEXT_PUBLIC_TELEMETRY_URL}/v1/telemetry`,
       },
       {
@@ -98,8 +103,6 @@ const nextConfig = {
       },
     ];
   },
-
-  
 };
 
 const plugins = [

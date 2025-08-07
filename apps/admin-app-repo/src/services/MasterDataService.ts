@@ -1,6 +1,6 @@
-import { showToastMessage } from "@/components/Toastify";
-import { deleteApi, patch, post, put } from "./RestClient";
-import axios from "axios";
+import { showToastMessage } from '@/components/Toastify';
+import { deleteApi, patch, post, put } from './RestClient';
+import axios from 'axios';
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
 export interface CenterListParam {
   limit?: number;
@@ -52,7 +52,7 @@ export const getStateBlockDistrictList = async ({
     const response = await post(apiUrl, requestBody);
     return response?.data;
   } catch (error) {
-    console.error("Error in fetching state, block, and district list", error);
+    console.error('Error in fetching state, block, and district list', error);
     throw error;
   }
 };
@@ -72,7 +72,7 @@ export const getDistrictsForState = async ({
   optionName?: string;
   sort?: [string, string];
 }): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.fieldOptionsRead
+  const apiUrl: string = API_ENDPOINTS.fieldOptionsRead;
 
   const requestBody: {
     limit?: number;
@@ -101,7 +101,7 @@ export const getDistrictsForState = async ({
     const response = await post(apiUrl, requestBody);
     return response?.data;
   } catch (error) {
-    console.error("Error fetching blocks for districts", error);
+    console.error('Error fetching blocks for districts', error);
     throw error;
   }
 };
@@ -121,7 +121,7 @@ export const getBlocksForDistricts = async ({
   optionName?: string;
   sort?: [string, string];
 }): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.fieldOptionsRead
+  const apiUrl: string = API_ENDPOINTS.fieldOptionsRead;
 
   const requestBody: {
     limit?: number;
@@ -150,7 +150,7 @@ export const getBlocksForDistricts = async ({
     const response = await post(apiUrl, requestBody);
     return response?.data;
   } catch (error) {
-    console.error("Error fetching blocks for districts", error);
+    console.error('Error fetching blocks for districts', error);
     throw error;
   }
 };
@@ -160,7 +160,7 @@ export const getCenterList = async ({
   limit,
   offset,
 }: CenterListParam): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.cohortSearch
+  const apiUrl: string = API_ENDPOINTS.cohortSearch;
   try {
     const response = await post(apiUrl, {
       filters,
@@ -169,16 +169,16 @@ export const getCenterList = async ({
     });
     return response?.data;
   } catch (error) {
-    console.error("error in fetching user details", error);
+    console.error('error in fetching user details', error);
     return error;
   }
 };
 
 export const deleteOption = async (
-  type: "states" | "districts" | "blocks",
+  type: 'states' | 'districts' | 'blocks',
   option: string
 ): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.fieldOptionDelete(type, option)
+  const apiUrl: string = API_ENDPOINTS.fieldOptionDelete(type, option);
   const requestBody = {};
   const requestHeaders = {};
 
@@ -195,30 +195,33 @@ export const createOrUpdateOption = async (
   fieldId: string,
   fieldParams: {
     isCreate?: boolean;
-    options: { name: string; value: string; controllingfieldfk?: string ,updatedBy?:string}[];
+    options: {
+      name: string;
+      value: string;
+      controllingfieldfk?: string;
+      updatedBy?: string;
+    }[];
   },
-  t?:any
+  t?: any
   // stateId?: string
 ): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.fieldUpdate(fieldId)
-
-  
+  const apiUrl: string = API_ENDPOINTS.fieldUpdate(fieldId);
 
   try {
-    const response = await patch(apiUrl, { fieldParams }); 
+    const response = await patch(apiUrl, { fieldParams });
     return response?.data;
   } catch (error: any) {
     if (axios.isAxiosError(error) && error.response) {
       if (error.response.status === 409) {
-        showToastMessage(t("COMMON.COHORT_CODE_EXISTS"), "error");
-     } 
+        showToastMessage(t('COMMON.COHORT_CODE_EXISTS'), 'error');
+      }
     }
     console.error(
-      "Error in createOrUpdateOption:",
+      'Error in createOrUpdateOption:',
       error.message,
       error.response?.data
     );
-    throw new Error("Failed to update options");
+    throw new Error('Failed to update options');
   }
 };
 
@@ -226,13 +229,23 @@ export const updateCohort = async (
   cohortId: string,
   cohortDetails: any
 ): Promise<any> => {
-  const apiUrl: string = API_ENDPOINTS.cohortUpdate(cohortId)
+  const apiUrl: string = API_ENDPOINTS.cohortUpdate(cohortId);
 
   try {
     const response = await put(apiUrl, cohortDetails);
     return response?.data;
   } catch (error) {
-    console.error("Error in updating cohort details", error);
-    throw error;
+    console.error('Error in updating cohort details', error);
+    // throw error;
+    return null;
+  }
+};
+
+export const fetchStateOptions = async (data: any) => {
+  try {
+    const response = await axios.post(API_ENDPOINTS.fieldOptionsRead, data);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching state options:', error);
   }
 };

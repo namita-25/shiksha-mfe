@@ -5,9 +5,11 @@ import ErrorIcon from '../../public/images/404.png'; // Make sure to replace thi
 import Image from 'next/image';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from "next/router";
 
 const PageNotFound = () => {
   const { t } = useTranslation();
+  const router = useRouter();
 
   return (
     <Box
@@ -28,6 +30,16 @@ const PageNotFound = () => {
         color="black"
       >
         {t('COMMON.PAGE_NOT_FOUND')}
+      </Typography>
+      <Typography
+        sx={{ cursor: "pointer" }}
+        color={"secondary"}
+        onClick={() => {
+          // window.history.go(-2);
+          router.push("/");
+        }}
+      >
+        Go back
       </Typography>
     </Box>
   );

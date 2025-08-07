@@ -47,7 +47,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [language, setLanguage] = useState(selectedLanguage);
   const [scrolling, setScrolling] = useState(false);
   const [open, setOpen] = useState(false);
-
   const { isRTL } = useDirection();
   const router = useRouter();
 
@@ -107,6 +106,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             if (onLoginSuccess) {
               onLoginSuccess(userResponse);
+              setLoading(false)
             }
           }
         }

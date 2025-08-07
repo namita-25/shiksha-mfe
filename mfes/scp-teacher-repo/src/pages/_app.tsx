@@ -35,6 +35,7 @@ import customTheme from '../styles/customTheme';
 import { telemetryFactory } from '../utils/telemetry';
 import AllowNotification from '@/components/AllowNotification';
 import dynamic from 'next/dynamic';
+import { LanguageProvider } from '@shared-lib-v2/lib/context/LanguageContext';
 
 const InstallPopup = dynamic(() => import(`@/components/InstallPopup`), { ssr: false });
 
@@ -160,6 +161,7 @@ function App({ Component, pageProps }: AppProps) {
 
   return (
     <>
+
       <style jsx global>{`
         html {
           font-family: ${poppins.style.fontFamily} !important;
@@ -173,6 +175,8 @@ function App({ Component, pageProps }: AppProps) {
           rel="stylesheet"
         />
       </Head>
+      <LanguageProvider>
+
       <CacheProvider value={isRTL ? rtlCache : ltrCache}>
         <CssVarsProvider theme={customTheme}>
           <Box
@@ -201,6 +205,8 @@ function App({ Component, pageProps }: AppProps) {
           </Box>
         </CssVarsProvider>
       </CacheProvider>
+      </LanguageProvider>
+
     </>
   );
 }

@@ -6,7 +6,7 @@
 //     S3Client,
 //     CompleteMultipartUploadCommand,
 //   } from "@aws-sdk/client-s3";
-  
+
 //   // Initialize AWS S3 client
 //   const s3Client = new S3Client({
 //     region: process.env.AWS_REGION, // e.g., "us-west-1"

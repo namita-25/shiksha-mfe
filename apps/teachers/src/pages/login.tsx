@@ -9,6 +9,7 @@ import { AcademicYear } from '../utils/Interfaces';
 import { getAcademicYear } from '../services/AcademicYearService';
 import router from 'next/router';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { RoleNames } from '../utils/app.constant';
 
 const Login = dynamic(() => import('@login'), {
   ssr: false,
@@ -129,7 +130,7 @@ const LoginComponent = () => {
 
       localStorage.setItem('role', receivedToken?.tenantData[0]?.roleName);
       localStorage.setItem('userEmail', receivedToken?.email);
-      localStorage.setItem('userName', receivedToken?.name);
+      localStorage.setItem('userName', receivedToken?.firstName);
       localStorage.setItem('userIdName', receivedToken?.username);
       localStorage.setItem(
         'temporaryPassword',
@@ -152,32 +153,42 @@ const LoginComponent = () => {
           const activeSessionId = await getAcademicYearList();
           const customFields = userDetails?.result?.userData?.customFields;
           if (customFields?.length) {
+            // set customFields in userData
+            let userDataString = localStorage.getItem('userData');
+            let userData: any = userDataString
+              ? JSON.parse(userDataString)
+              : null;
+            userData.customFields = customFields;
+            localStorage.setItem('userData', JSON.stringify(userData));
             const state = customFields.find(
-              (field: any) => field?.label === 'STATES'
+              (field: any) => field?.label === 'STATE'
             );
             const district = customFields.find(
-              (field: any) => field?.label === 'DISTRICTS'
+              (field: any) => field?.label === 'DISTRICT'
             );
             const block = customFields.find(
-              (field: any) => field?.label === 'BLOCKS'
+              (field: any) => field?.label === 'BLOCK'
             );
 
             if (state) {
-              localStorage.setItem('stateName', state?.value);
-              setStateName(state?.value);
-              setStateCode(state?.code);
+              localStorage.setItem(
+                'stateName',
+                state?.selectedValues?.[0]?.value
+              );
+              setStateName(state?.selectedValues?.[0]?.value);
+              setStateCode(state?.selectedValues?.[0]?.id);
               setStateId(state?.fieldId);
             }
 
             if (district) {
-              setDistrictName(district?.value);
-              setDistrictCode(district?.code);
+              setDistrictName(district?.selectedValues?.[0]?.value);
+              setDistrictCode(district?.selectedValues?.[0]?.id);
               setDistrictId(district?.fieldId);
             }
 
             if (block) {
-              setBlockName(block?.value);
-              setBlockCode(block?.code);
+              setBlockName(block?.selectedValues?.[0]?.value);
+              setBlockCode(block?.selectedValues?.[0]?.id);
               setBlockId(block?.fieldId);
             }
           }
@@ -191,7 +202,12 @@ const LoginComponent = () => {
         token &&
         tenant?.toLowerCase() === TENANT_DATA.YOUTHNET?.toLowerCase()
       ) {
-        router.push('/youth');
+        if (
+          localStorage.getItem('role') === RoleNames.TEACHER ||
+          localStorage.getItem('role') === RoleNames.TEAM_LEADER
+        )
+          router.push('/youth');
+        else router.push('/unauthorized');
       }
     }
   };

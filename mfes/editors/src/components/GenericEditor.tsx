@@ -54,7 +54,7 @@ const GenericEditor: React.FC = () => {
     const isQueue = false;
     const context = "CMS";
     const key = "onContentReview";
-    const url = `${window.location.origin}/workspace/content/review?identifier=${notificationData?.contentId}`;
+    const url = `${process.env.NEXT_PUBLIC_WORKSPACE_BASE_URL}/workspace/content/review?identifier=${notificationData?.contentId}`;
  const ContentDetail = await fetch(
         `/action/content/v3/read/${notificationData?.contentId}`
       );
@@ -131,7 +131,7 @@ const GenericEditor: React.FC = () => {
 
     try {
       const response = await fetch(
-        `/action/content/v3/read/${contentId}?fields=createdBy,status,mimeType,contentType,resourceType,collaborators,contentDisposition,primaryCategory,framework,channel,targetFWIds&mode=edit`
+        `/action/content/v3/read/${contentId}?mode=edit&fields=body,collaborators,editorState,stageIcons,templateId,languageCode,template,gradeLevel,status,concepts,versionKey,name,appIcon,contentType,owner,domain,code,visibility,createdBy,description,language,mediaType,mimeType,osId,languageCode,createdOn,lastUpdatedOn,audience,ageGroup,attributions,artifactUrl,board,subject,keywords,config,resourceType,medium,publisher,year,pkgVersion,framework,rejectReasons,rejectComment,topic,ownedBy,ownershipType,creators,contributors,reservedDialcodes,qrCodeProcessId,channel,purpose,assets,assetsMap,copyright,author,copyrightYear,origin,license,displayScore,courseType,licenseterms,primaryCategory,additionalCategories,maxAttempts,verticals,programs,domain,subDomain,targetAgeGroup,primaryUser,contentLanguage,program,subject`
       );
 
       if (!response.ok) {
@@ -234,6 +234,7 @@ const GenericEditor: React.FC = () => {
       ) {
         window.context["uploadInfo"] = {
           isLargeFileUpload: true,
+          maxAllowedContentSize: "1" //1GB
         };
       }
     }

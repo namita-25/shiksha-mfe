@@ -367,12 +367,13 @@ const FilterModalCenter: React.FC<FilterModalProps> = ({
             sx={{
               display: 'flex',
               gap: 1,
+               mt: 2, 
             }}
           >
             <Button
               variant="outlined"
               fullWidth
-              sx={{ mt: 2, mb: 2 }}
+             
               onClick={clearFilters}
             >
               {t('COMMON.CLEAR_ALL')}
@@ -382,7 +383,7 @@ const FilterModalCenter: React.FC<FilterModalProps> = ({
               fullWidth
               color="primary"
               onClick={handleApplyClick}
-              sx={{ mt: 2, mb: 2 }}
+             
             >
               {t('COMMON.APPLY')}
             </Button>

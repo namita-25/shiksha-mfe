@@ -126,9 +126,9 @@ const CoursePlanner = () => {
           const gradeField = cohortDetails?.customFields?.find(
             (field: any) => field?.label === 'GRADE'
           );
-          setBoardNew(boardField?.value);
-          setMediumNew(mediumField?.value);
-          setGradeNew(gradeField?.value);
+          setBoardNew(boardField?.selectedValues[0]);
+          setMediumNew(mediumField?.selectedValues[0]);
+          setGradeNew(gradeField?.selectedValues[0]);
 
           const stringFields = [
             // { label: CoursePlannerConstants.STATES, setter: setState },
@@ -142,8 +142,8 @@ const CoursePlanner = () => {
               (field: any) => field.label === label
             );
 
-            if (field && field.value) {
-              setter(field.value.trim());
+            if (field && field.selectedValues[0]) {
+              setter(field.selectedValues[0].trim());
             }
           });
         }
@@ -163,7 +163,7 @@ const CoursePlanner = () => {
     const fetchTaxonomyResultsOne = async () => {
       try {
         // Define the URL for the API
-        const url = `/api/framework/v1/read/${frameworkId}`;
+        const url = process.env.NEXT_PUBLIC_MIDDLEWARE_URL+`/api/framework/v1/read/${frameworkId}`;
 
         // Use axios to fetch data from the API
         const response = await axios.get(url);
@@ -207,15 +207,16 @@ const CoursePlanner = () => {
   }, [classId]);
 
   useEffect(() => {
-    if (store.cohorts.length > 0) {
-      const cohortId = router.query.center
-        ? router.query.center
-        : store.cohorts[0].cohortId;
+    // console.log('## store', store)
+    // if (store?.cohorts?.length > 0) {
+    //   const cohortId = router.query.center
+    //     ? router.query.center
+    //     : store.cohorts[0]?.childData[0]?.cohortId || store.cohorts[0].cohortId;
 
-      addQueryParams({ center: cohortId });
-      setSelectedValue(cohortId);
-      setType(tStore.type || COURSE_TYPE.FOUNDATION_COURSE);
-    }
+    //   addQueryParams({ center: cohortId });
+    //   setSelectedValue(cohortId);
+    // }
+    setType(tStore.type || COURSE_TYPE.FOUNDATION_COURSE);
   }, [store.cohorts]);
 
   useEffect(() => {
@@ -225,7 +226,7 @@ const CoursePlanner = () => {
 
         console.log(boardNew, mediumNew, gradeNew);
 
-        const url = `/api/framework/v1/read/${frameworkId}`;
+        const url = process.env.NEXT_PUBLIC_MIDDLEWARE_URL+`/api/framework/v1/read/${frameworkId}`;
 
         // Use axios to fetch data from the API
         const response = await axios.get(url);
@@ -417,8 +418,8 @@ const CoursePlanner = () => {
           </Box>
         </Grid>
         <Grid item xs={12} md={6}>
-          <Box sx={{ mt: 2, px: '20px', width: '100%' }}>
-            <FormControl sx={{ width: '100%' }}>
+          <Box sx={{  px: '20px', width: '100%' }} className="mt-24">
+            <FormControl sx={{ width: '100%', marginTop: '18px', }}>
               <InputLabel id="course-type-select-label">
                 {' '}
                 {t('COURSE_PLANNER.COURSE_TYPE')}

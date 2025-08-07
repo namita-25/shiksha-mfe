@@ -21,10 +21,13 @@ export * from './lib/QuestionSetEditor/QuestionSet';
 export * from './lib/CollectionEditor/Collection';
 export * from './lib/GenericEditor/GenericEditor';
 export * from './lib/Dialog/CommonDialog';
+export * from './lib/Filter/FilterForm';
 export * from './lib/theme';
 export * from './lib/ThemeProvider';
 export * from './lib/Progress/Circular';
 export * from './lib/Progress/Progress';
+export * from './lib/Progress/CircularProgressWithLabel';
+export * from './lib/Loader/Loader';
 import Image from '../images/default.png';
 export const IMAGES = {
   DEFAULT_PLACEHOLDER: Image,

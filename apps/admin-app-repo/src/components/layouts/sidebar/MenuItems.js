@@ -8,7 +8,7 @@ import support from '../../../assets/images/Support.svg';
 
 import coursePlannerIcon from '../../../../public/images/event_available.svg';
 import { store } from '@/store/store';
-import { Role, youthNetTenantName } from '@/utils/app.constant';
+import { Role, TenantName } from '@/utils/app.constant';
 const isActiveYear = store.getState().isActiveYearSelected;
 
 const Menuitems = [
@@ -70,6 +70,10 @@ const Menuitems = [
         title: 'MASTER.BLOCKS',
         href: ['/block'],
       },
+      {
+        title: 'Village',
+        href: ['/village'],
+      },
      
     ],
   },
@@ -120,7 +124,7 @@ export const getFilteredMenuItems = () => {
     }
 
     if (userInfo?.role === Role.SCTA || userInfo?.role === Role.CCTA) {
-      if (userInfo?.tenantData[0]?.tenantName != youthNetTenantName.SECOND_CHANCE_PROGRAM) {
+      if (userInfo?.tenantData[0]?.tenantName != TenantName.SECOND_CHANCE_PROGRAM) {
         return Menuitems.filter((item) => item.title === 'SIDEBAR.WORKSPACE');
       }
       // For SCTA and CCTA, show only Course Planner and Workspace
@@ -134,12 +138,15 @@ export const getFilteredMenuItems = () => {
 
 if (
   userInfo?.role === Role.ADMIN &&
-  userInfo?.tenantData[0]?.tenantName === youthNetTenantName.YOUTHNET
+  userInfo?.tenantData[0]?.tenantName === TenantName.YOUTHNET
 ) {
   return Menuitems.filter(
     (item) =>
       item.title === 'SIDEBAR.MANAGE_USERS' ||
-      item.title === 'SIDEBAR.SUPPORT_REQUEST' 
+    item.title === 'SIDEBAR.SUPPORT_REQUEST' ||
+      item.title === 'SIDEBAR.SUPPORT_REQUEST' ||
+       item.title === 'SIDEBAR.CERTIFICATE_ISSUANCE' || 
+         item.title === 'MASTER.MASTER'
   ).map((item) => {
     if (item.title === 'SIDEBAR.MANAGE_USERS' && item.subOptions) {
       return {
@@ -157,7 +164,7 @@ if (
 
 if (
   userInfo?.role === Role.ADMIN &&
-  userInfo?.tenantData[0]?.tenantName === youthNetTenantName.SECOND_CHANCE_PROGRAM
+  userInfo?.tenantData[0]?.tenantName === TenantName.SECOND_CHANCE_PROGRAM
 ) {
   return Menuitems.map((item) => {
     if (item.title === 'SIDEBAR.MANAGE_USERS' && item.subOptions) {
@@ -168,6 +175,7 @@ if (
             subItem.title === 'SIDEBAR.TEAM_LEADERS' ||
             subItem.title === 'SIDEBAR.FACILITATORS' || 
             subItem.title === 'SIDEBAR.LEARNERS'
+          
         ),
       };
     }
@@ -180,7 +188,7 @@ if (
 
     if (
       userInfo?.role === Role.ADMIN &&
-      userInfo?.tenantData[0]?.tenantName === youthNetTenantName.SECOND_CHANCE_PROGRAM
+      userInfo?.tenantData[0]?.tenantName === TenantName.SECOND_CHANCE_PROGRAM
     ) {
       // Exclude Course Planner and Workspace for Admin and Central Admin
       return Menuitems.filter(
@@ -194,7 +202,7 @@ if (
     if (
       (userInfo?.role === Role.ADMIN ||
         userInfo?.role === Role.CENTRAL_ADMIN) &&
-      userInfo?.tenantData[0]?.tenantName === youthNetTenantName.SECOND_CHANCE_PROGRAM
+      userInfo?.tenantData[0]?.tenantName === TenantName.SECOND_CHANCE_PROGRAM
     ) {
       // Exclude Course Planner and Workspace for Admin and Central Admin
       return Menuitems.filter(

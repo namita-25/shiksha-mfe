@@ -11,7 +11,11 @@ interface DrawerItem {
   icon?: React.ReactNode;
   to: string;
 }
-
+export interface DrawerItemProp {
+  title: React.ReactNode;
+  icon?: React.ReactNode;
+  to: string | ((event: React.MouseEvent<HTMLAnchorElement>) => void);
+}
 interface CommonDrawerProps {
   open: boolean;
   onDrawerClose: () => void;

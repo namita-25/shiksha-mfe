@@ -26,6 +26,8 @@ import customTheme from '../styles/customTheme';
 import rtlPlugin from 'stylis-plugin-rtl';
 import { Box, IconButton } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
+import "react-toastify/dist/ReactToastify.css";
+import { LanguageProvider } from '@shared-lib-v2/lib/context/LanguageContext';
 
 const ColorModeContext = React.createContext({ toggleColorMode: () => {} });
 const poppins = Poppins({
@@ -125,15 +127,16 @@ function CustomApp({ Component, pageProps }: AppProps) {
 
       <CacheProvider value={isRTL ? rtlCache : ltrCache}>
         <CssVarsProvider theme={customTheme}>
-          <Box
+          <LanguageProvider>
+             <Box
             sx={{
               padding: '0',
               '@media (min-width: 900px)': {
-                width: !isFullWidthPage ? 'calc(100% - 22rem)' : '100%',
+                // width: '100%',
                 marginLeft: !isFullWidthPage ? '351px' : '0',
               },
               '@media (min-width: 2000px)': {
-                width: '100%',
+                // width: '100%',
                 marginLeft: !isFullWidthPage ? '351px' : '0',
               },
               background: theme.palette.warning['A400'],
@@ -142,13 +145,16 @@ function CustomApp({ Component, pageProps }: AppProps) {
           >
             <QueryClientProvider client={client}>
               <Component {...pageProps} />
-            </QueryClientProvider>
-            <ToastContainer
+              <ToastContainer
               position="bottom-left"
               autoClose={3000}
               stacked={false}
             />
+            </QueryClientProvider>
+          
           </Box>
+          </LanguageProvider>
+         
         </CssVarsProvider>
       </CacheProvider>
     </>

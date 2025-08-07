@@ -14,8 +14,24 @@
       "code": "mr"
     },
     {
-      "label": "اردو",
-      "code": "ur"
+      "label": "ગુજરાતી",
+      "code": "gu"
+    },
+    {
+      "label": "తెలుగు",
+      "code": "tel"
+    },
+    {
+      "label": "ಕನ್ನಡ",
+      "code": "kan"
+    },
+    {
+      "label": "ଓଡିଆ",
+      "code": "odi"
+    },
+    {
+      "label": "தமிழ்",
+      "code": "tam"
     }
   ]
 }

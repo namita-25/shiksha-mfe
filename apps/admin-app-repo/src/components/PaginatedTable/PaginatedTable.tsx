@@ -154,7 +154,7 @@ const PaginatedTable = ({
         <Table>
           <TableHead>
             <TableRow>
-              {columns.map((col) => (
+              {columns?.map((col) => (
                 <TableCell key={col.key || col.keys?.join('-')}>
                   {col.label}
                 </TableCell>
@@ -163,28 +163,29 @@ const PaginatedTable = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row, index) => (
+            {data && data?.map((row, index) => (
               <TableRow key={index}>
-                {columns.map((col) => (
+                {columns?.map((col) => (
                   <TableCell key={col.key || col.keys?.join('-')}>
                     {/* ✅ Keep custom render logic if provided */}
                     {col.render
                       ? col.render(row)
                       : Array.isArray(col.keys)
-                      ? col.keys.map((key) => row[key] ?? '').join(' ')
-                      : row[col.key] ?? ''}
+                        ? col.keys.map((key) => row[key] ?? '').join(' ')
+                        : row[col.key] ?? ''}
                   </TableCell>
                 ))}
                 {actions.length > 0 && (
-                  <TableCell sx={{width:'100px'}}>
-                    {actions.map((action, idx) => (
-                    
-                        <IconButton key={idx} onClick={() => action.callback(row)}>
-                          {action.icon}
-                        </IconButton>
-            
-
-                    ))}
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      {actions
+                        .filter((action) => (typeof action.show === 'function' ? action.show(row) : true))
+                        .map((action, idx) => (
+                          <IconButton key={idx} onClick={() => action.callback(row)}>
+                            {action.icon}
+                          </IconButton>
+                        ))}
+                    </Box>
                   </TableCell>
                 )}
               </TableRow>

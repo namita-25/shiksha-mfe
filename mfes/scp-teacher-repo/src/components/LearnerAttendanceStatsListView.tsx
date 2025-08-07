@@ -12,7 +12,11 @@ import { getUserDetails } from '@/services/ProfileService';
 import useAttendanceRangeColor from '@/hooks/useAttendanceRangeColor';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'react-i18next';
-import { capitalizeEachWord, filterMiniProfileFields, toPascalCase } from '@/utils/Helper';
+import {
+  capitalizeEachWord,
+  filterMiniProfileFields,
+  toPascalCase,
+} from '@/utils/Helper';
 
 interface StudentsStatsListProps {
   name: string;
@@ -36,7 +40,7 @@ const StudentsStatsList: React.FC<StudentsStatsListProps> = ({
   const textColor = determinePathColor(presentPercent);
 
   const [userData, setUserData] = React.useState<UserData | null>(null);
-  const [fullName, setFullName] = React.useState<string>("");
+  const [fullName, setFullName] = React.useState<string>('');
 
   const [customFieldsData, setCustomFieldsData] = React.useState<
     UpdateCustomField[]
@@ -65,20 +69,22 @@ const StudentsStatsList: React.FC<StudentsStatsListProps> = ({
             const userData = data?.userData;
             setUserData(userData);
 
-            let fullName = "";
+            let fullName = '';
 
-              if (userData?.firstName) {
-                fullName += toPascalCase(userData.firstName);
-              }
-              
-              if (userData?.middleName) {
-                fullName += (fullName ? " " : "") + toPascalCase(userData.middleName);
-              }
-              
-              if (userData?.lastName) {
-                fullName += (fullName ? " " : "") + toPascalCase(userData.lastName);
-              }
-              setFullName(fullName);
+            if (userData?.firstName) {
+              fullName += toPascalCase(userData.firstName);
+            }
+
+            if (userData?.middleName) {
+              fullName +=
+                (fullName ? ' ' : '') + toPascalCase(userData.middleName);
+            }
+
+            if (userData?.lastName) {
+              fullName +=
+                (fullName ? ' ' : '') + toPascalCase(userData.lastName);
+            }
+            setFullName(fullName);
             const customDataFields = userData?.customFields;
             if (customDataFields?.length > 0) {
               setCustomFieldsData(customDataFields);
@@ -113,6 +119,8 @@ const StudentsStatsList: React.FC<StudentsStatsListProps> = ({
           userName={fullName}
           contactNumber={userData?.mobile}
           enrollmentNumber={userData?.username || ''}
+          gender={userData?.gender}
+          email={userData?.email}
         />
       )}
       <Stack>
@@ -129,37 +137,37 @@ const StudentsStatsList: React.FC<StudentsStatsListProps> = ({
             p={2}
           >
             <Grid item xs={6} textAlign={'left'}>
-                {memberStatus === Status.ARCHIVED ? (
+              {memberStatus === Status.ARCHIVED ? (
+                <Typography
+                  sx={{
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '400',
+                    color: theme.palette.text.disabled, // Use disabled color
+                  }}
+                >
+                  {name}
+                </Typography>
+              ) : (
+                <Link className="word-break" href={''}>
                   <Typography
+                    onClick={() => {
+                      handleOpenModalLearner(userId!);
+                      ReactGA.event('learner-details-link-clicked', {
+                        userId: userId,
+                      });
+                    }}
                     sx={{
                       textAlign: 'left',
                       fontSize: '14px',
                       fontWeight: '400',
-                      color: theme.palette.text.disabled, // Use disabled color
+                      color: theme.palette.secondary.main,
                     }}
                   >
                     {name}
                   </Typography>
-                ) : (
-                  <Link className="word-break" href={''}>
-                    <Typography
-                      onClick={() => {
-                        handleOpenModalLearner(userId!);
-                        ReactGA.event('learner-details-link-clicked', {
-                          userId: userId,
-                        });
-                      }}
-                      sx={{
-                        textAlign: 'left',
-                        fontSize: '14px',
-                        fontWeight: '400',
-                        color: theme.palette.secondary.main,
-                      }}
-                    >
-                      {name}
-                    </Typography>
-                  </Link>
-                )}
+                </Link>
+              )}
             </Grid>
             {memberStatus === Status.DROPOUT ? (
               <Grid item xs={6}>

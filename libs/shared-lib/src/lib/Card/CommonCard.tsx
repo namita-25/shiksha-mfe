@@ -1,15 +1,30 @@
-import * as React from 'react';
-import Card from '@mui/material/Card';
-import CardHeader from '@mui/material/CardHeader';
-import CardMedia from '@mui/material/CardMedia';
-import CardContent from '@mui/material/CardContent';
-import CardActions from '@mui/material/CardActions';
-import Avatar from '@mui/material/Avatar';
-import Typography from '@mui/material/Typography';
-import { red } from '@mui/material/colors';
-import { Box } from '@mui/material';
-import { Progress } from '../Progress/Progress';
-
+import * as React from "react";
+import Card from "@mui/material/Card";
+import CardHeader from "@mui/material/CardHeader";
+import CardMedia from "@mui/material/CardMedia";
+import CardContent from "@mui/material/CardContent";
+import CardActions from "@mui/material/CardActions";
+import Avatar from "@mui/material/Avatar";
+import Typography from "@mui/material/Typography";
+import { red } from "@mui/material/colors";
+import { Box, Button } from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import { CircularProgressWithLabel } from "../Progress/CircularProgressWithLabel";
+export interface ContentItem {
+  name: string;
+  gradeLevel: string[];
+  language: string[];
+  artifactUrl: string;
+  identifier: string;
+  appIcon: string;
+  contentType: string;
+  mimeType: string;
+  description: string;
+  posterImage: string;
+  leafNodes?: any[];
+  children?: any[];
+}
 interface CommonCardProps {
   title: string;
   avatarLetter?: string;
@@ -20,12 +35,30 @@ interface CommonCardProps {
   content?: React.ReactNode;
   actions?: React.ReactNode;
   children?: React.ReactNode;
-  orientation?: 'vertical' | 'horizontal';
+  orientation?: "vertical" | "horizontal";
   minheight?: string;
-  status?: 'Not started' | 'Completed' | 'In progress' | string;
-  progress?: number;
+  TrackData?: any[];
+  item: ContentItem;
+  type: string;
   onClick?: () => void;
 }
+export const getLeafNodes = (node: any) => {
+  const result = [];
+
+  // If the node has leafNodes, add them to the result array
+  if (node?.leafNodes) {
+    result.push(...node.leafNodes);
+  }
+
+  // If the node has children, iterate through them and recursively collect leaf nodes
+  if (node?.children) {
+    node.children.forEach((child: any) => {
+      result.push(...getLeafNodes(child));
+    });
+  }
+
+  return result;
+};
 
 export const CommonCard: React.FC<CommonCardProps> = ({
   avatarLetter,
@@ -39,103 +72,141 @@ export const CommonCard: React.FC<CommonCardProps> = ({
   children,
   orientation,
   minheight,
-  status,
-  progress,
+  TrackData,
+  item,
+  type,
   onClick,
 }) => {
+  const [trackCompleted, setTrackCompleted] = React.useState(0);
+  const [trackProgress, setTrackProgress] = React.useState(100);
+
+  React.useEffect(() => {
+    const init = () => {
+      try {
+        //@ts-ignore
+        if (TrackData) {
+          const result = TrackData?.find((e) => e.courseId === item.identifier);
+          if (type === "Course") {
+            const leafNodes = getLeafNodes(item ?? []);
+            const completedCount = result?.completed_list?.length || 0;
+            const percentage =
+              leafNodes.length > 0
+                ? Math.round((completedCount / leafNodes.length) * 100)
+                : 0;
+            setTrackProgress(percentage);
+            setTrackCompleted(percentage);
+          } else {
+            setTrackCompleted(result?.completed ? 100 : 0);
+          }
+        }
+      } catch (e) {
+        console.log("error", e);
+      }
+    };
+    init();
+  }, [TrackData, item, type]);
+
   return (
     <Card
       sx={{
-        display: 'flex',
-        flexDirection: orientation === 'horizontal' ? 'column' : 'row',
-        height: minheight || 'auto',
-        cursor: onClick ? 'pointer' : 'default',
-        borderRadius: '12px',
-        bgcolor: '#FEF7FF',
-        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden',
-        '&:hover': {
-          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
+        display: "flex",
+        flexDirection: orientation === "horizontal" ? "column" : "row",
+        height: minheight || "auto",
+        cursor: onClick ? "pointer" : "default",
+        borderRadius: "12px",
+        bgcolor: "#FEF7FF",
+        boxShadow: "0px 2px 6px rgba(0, 0, 0, 0.1)",
+        overflow: "hidden",
+        "&:hover": {
+          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
         },
-        '@media (max-width: 600px)': {
-          flexDirection: 'column',
+        "@media (max-width: 600px)": {
+          flexDirection: "column",
         },
       }}
       onClick={onClick}
     >
       {/* Image and Progress Overlay */}
-      <Box sx={{ position: 'relative', width: '100%' }}>
+      <Box sx={{ position: "relative", width: "100%" }}>
         {image && (
           <CardMedia
             component="img"
-            image={image || '/assets/images/default.png'}
-            alt={imageAlt || 'Image'}
+            image={image || "/assets/images/default.png"}
+            alt={imageAlt || "Image"}
             sx={{
-              width: '100%',
-              height: orientation === 'horizontal' ? '297px' : 'auto',
-              objectFit: 'cover', //set contain
-              '@media (max-width: 600px)': {
-                height: '200px',
+              width: "100%",
+              height: orientation === "horizontal" ? "297px" : "auto",
+              objectFit: "cover", //set contain
+              "@media (max-width: 600px)": {
+                height: "200px",
               },
             }}
           />
         )}
 
         {/* Progress Bar Overlay */}
-        {progress !== undefined && (
+        {trackProgress >= 0 && (
           <Box
             sx={{
-              position: 'absolute',
-              height: '40px',
+              position: "absolute",
+              height: "40px",
               top: 0,
-              width: '100%',
-              display: 'flex',
-              // justifyContent: 'center',
-              alignItems: 'center',
-              background: 'rgba(0, 0, 0, 0.5)',
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              background: "rgba(0, 0, 0, 0.5)",
             }}
           >
-            <Progress
-              variant="determinate"
-              value={100}
-              size={30}
-              thickness={5}
+            <Box
               sx={{
-                color: '#fff8fb',
-                position: 'absolute',
-                left: '10px',
-              }}
-            />
-            <Progress
-              variant="determinate"
-              value={progress}
-              size={30}
-              thickness={5}
-              sx={{
-                color: progress === 100 ? '#21A400' : '#FFB74D',
-                position: 'absolute',
-                left: '10px',
-              }}
-            />
-            <Typography
-              sx={{
-                fontSize: '12px',
-                fontWeight: 'bold',
-                marginLeft: '12px',
-                color: progress === 100 ? '#21A400' : '#FFB74D',
-                position: 'absolute',
-                left: '50px',
+                p: "0px 5px",
+                fontSize: "12px",
+                fontWeight: "bold",
+                color: trackCompleted === 100 ? "#21A400" : "#FFB74D",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
               }}
             >
-              {status &&
-                actions &&
-                actions?.toString().toLowerCase() === 'resource' &&
-                status}
-              {status &&
-                actions &&
-                actions?.toString().toLowerCase() === 'course' &&
-                `${progress}%`}
-            </Typography>
+              {type === "Course" ? (
+                <>
+                  <CircularProgressWithLabel
+                    value={trackProgress ?? 0}
+                    _text={{
+                      sx: {
+                        color: trackCompleted === 100 ? "#21A400" : "#FFB74D",
+                        fontSize: "10px",
+                      },
+                    }}
+                    sx={{
+                      color: trackCompleted === 100 ? "#21A400" : "#FFB74D",
+                    }}
+                    size={35}
+                    thickness={2}
+                  />
+                  {trackCompleted >= 100 ? (
+                    <>
+                      <CheckCircleIcon sx={{ color: "#21A400" }} />
+                      {`Completed`}
+                    </>
+                  ) : trackProgress > 0 && trackProgress < 100 ? (
+                    `In progress`
+                  ) : (
+                    `Enrolled`
+                  )}
+                </>
+              ) : trackCompleted >= 100 ? (
+                <>
+                  <CheckCircleIcon sx={{ color: "#21A400" }} />
+                  {`Completed`}
+                </>
+              ) : (
+                <>
+                  <ErrorIcon sx={{ color: "#FFB74D" }} />
+                  {`Enrolled`}
+                </>
+              )}
+            </Box>
           </Box>
         )}
       </Box>
@@ -151,21 +222,21 @@ export const CommonCard: React.FC<CommonCardProps> = ({
         title={
           <Typography
             sx={{
-              fontSize: '16px',
-              whiteSpace: 'wrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitBoxOrient: 'vertical',
+              fontSize: "16px",
+              whiteSpace: "wrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
               WebkitLineClamp: 1,
-              paddingLeft: '5px',
+              paddingLeft: "5px",
             }}
           >
             {title}
           </Typography>
         }
         subheader={
-          <Typography variant="h6" sx={{ fontSize: '14px' }}>
+          <Typography variant="h6" sx={{ fontSize: "14px" }}>
             {subheader}
           </Typography>
         }
@@ -173,26 +244,26 @@ export const CommonCard: React.FC<CommonCardProps> = ({
       {content && (
         <CardContent
           sx={{
-            display: 'flex',
+            display: "flex",
             paddingBottom: 0,
-            overflow: 'hidden',
-            maxWidth: '100%',
-            height: '50px',
+            overflow: "hidden",
+            maxWidth: "100%",
+            // height: '50px',
           }}
         >
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
             <Typography
               sx={{
-                display: '-webkit-box',
+                display: "-webkit-box",
                 WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              <span style={{ fontSize: '14px', fontWeight: 700 }}>
+              <span style={{ fontSize: "14px", fontWeight: 700 }}>
                 Description:
-              </span>{' '}
+              </span>{" "}
               {content}
             </Typography>
           </Box>
@@ -200,26 +271,8 @@ export const CommonCard: React.FC<CommonCardProps> = ({
       )}
       {children && <CardContent>{children}</CardContent>}
       {actions && (
-        <CardActions
-          disableSpacing
-          sx={{
-            border: '1px solid #79747E',
-            borderRadius: '8px',
-            width: '80px',
-            display: 'flex',
-            justifyContent: 'center',
-            margin: '12px',
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: '14px',
-              fontWeight: 500,
-              color: '#6750A4',
-            }}
-          >
-            {actions}
-          </Typography>
+        <CardActions>
+          <Button variant="contained">{actions}</Button>
         </CardActions>
       )}
     </Card>

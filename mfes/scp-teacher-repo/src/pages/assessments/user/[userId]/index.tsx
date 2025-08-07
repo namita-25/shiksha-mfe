@@ -8,7 +8,11 @@ import {
 import { getUserDetails } from '@/services/ProfileService';
 import { AssessmentStatus } from '@/utils/app.constant';
 import { logEvent } from '@/utils/googleAnalytics';
-import { format2DigitDate, getAssessmentType, toPascalCase } from '@/utils/Helper';
+import {
+  format2DigitDate,
+  getAssessmentType,
+  toPascalCase,
+} from '@/utils/Helper';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import KeyboardBackspaceOutlinedIcon from '@mui/icons-material/KeyboardBackspaceOutlined';
@@ -63,7 +67,7 @@ function AssessmentsDetails() {
   );
   const [assessmentList, setAssessmentList] = useState([]);
   const [subject, setSubject] = useState<any>([]);
-  const [fullName, setFullName] = useState<any>("");
+  const [fullName, setFullName] = useState<any>('');
 
   const [assessmentInfo, setAssessmentInfo] = useState<any>();
   const [isLoading, setIsLoading] = useState(false);
@@ -85,6 +89,9 @@ function AssessmentsDetails() {
       label: 'Page Loaded',
     });
   }, []);
+  useEffect(() => {
+    setAssessmentType(assessmentTypeParam ?? 'pre');
+  }, [assessmentTypeParam]);
 
   useEffect(() => {
     const getDoIdForAssessmentReport = async () => {
@@ -96,9 +103,7 @@ function AssessmentsDetails() {
         board: board ? [board] : [],
         status: ['Live'],
         assessmentType: getAssessmentType(assessmentType),
-        primaryCategory: [
-          "Practice Question Set"
-        ]
+        primaryCategory: ['Practice Question Set'],
       };
       try {
         if (stateName) {
@@ -153,7 +158,7 @@ function AssessmentsDetails() {
       }
     };
     getDoIdForAssessmentReport();
-  }, [assessmentType]);
+  }, [assessmentType, board]);
 
   useEffect(() => {
     const getAssessmentsForLearners = async () => {
@@ -228,18 +233,22 @@ function AssessmentsDetails() {
         });
         if (response?.result?.userData) {
           setUserDetails(response?.result?.userData);
-          let fullName = "";
+          let fullName = '';
 
           if (response?.result?.userData?.firstName) {
             fullName += toPascalCase(response?.result?.userData.firstName);
           }
 
           if (response?.result?.userData?.middleName) {
-            fullName += (fullName ? " " : "") + toPascalCase(response?.result?.userData.middleName);
+            fullName +=
+              (fullName ? ' ' : '') +
+              toPascalCase(response?.result?.userData.middleName);
           }
 
           if (response?.result?.userData?.lastName) {
-            fullName += (fullName ? " " : "") + toPascalCase(response?.result?.userData.lastName);
+            fullName +=
+              (fullName ? ' ' : '') +
+              toPascalCase(response?.result?.userData.lastName);
           }
           setFullName(fullName);
         }
@@ -290,7 +299,10 @@ function AssessmentsDetails() {
 
   const getTrackingStatus = () => {
     if (assessmentInfo?.status === AssessmentStatus.IN_PROGRESS) {
-      return `(${t('ASSESSMENTS.NUMBER_OUT_OF_COMPLETED', { completedCount: assessmentInfo?.assessments?.length || 0, totalCount: assessmentList?.length })})`;
+      return `(${t('ASSESSMENTS.NUMBER_OUT_OF_COMPLETED', {
+        completedCount: assessmentInfo?.assessments?.length || 0,
+        totalCount: assessmentList?.length,
+      })})`;
     }
     return '';
   };
@@ -302,11 +314,19 @@ function AssessmentsDetails() {
     if (newType === 'other') queryParams.assessmentType = 'other';
     else delete queryParams.assessmentType;
 
-    router.push({ pathname: router.pathname, query: queryParams }, undefined, { shallow: true });
+    router.push({ pathname: router.pathname, query: queryParams }, undefined, {
+      shallow: true,
+    });
   };
 
   useEffect(() => {
-    setAssessmentType(router.query.assessmentType === 'post' ? 'post' : (router.query.assessmentType === 'pre' ? 'pre' : 'other'));
+    setAssessmentType(
+      router.query.assessmentType === 'post'
+        ? 'post'
+        : router.query.assessmentType === 'pre'
+        ? 'pre'
+        : 'other'
+    );
   }, [router.query.type]);
 
   return (

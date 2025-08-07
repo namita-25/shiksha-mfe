@@ -7,5 +7,6 @@ services:
     ports:
       - '3032:3002'
       - '4104:4104'
+      - '4106:4106'
     environment:
       - NODE_ENV=production

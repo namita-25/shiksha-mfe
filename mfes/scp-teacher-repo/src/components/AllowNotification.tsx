@@ -68,10 +68,14 @@ const AllowNotification = () => {
         try {
           const token = await requestPermission();
           if (token && userId && authToken) {
-            await UpdateDeviceNotification({ deviceId: token, action: 'add' }, userId, {
-              tenantId,
-              Authorization: `Bearer ${authToken}`,
-            });
+            await UpdateDeviceNotification(
+              { deviceId: token, action: 'add' },
+              userId,
+              {
+                tenantId,
+                Authorization: `Bearer ${authToken}`,
+              }
+            );
             localStorage.setItem('deviceID', token);
           }
         } catch (error) {

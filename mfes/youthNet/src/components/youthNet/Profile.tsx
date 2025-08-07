@@ -16,14 +16,12 @@ interface ProfileDetailsProps {
   mentorId?: string;
   gender?: string;
   age?: number;
-  dob?:string;
-  village?:string|null,
-  middleName?:string|null;
-  userName?:string|null;
-  firstName?:string|null;
-  lastName?:string|null;
-
-
+  dob?: string;
+  village?: string | null;
+  middleName?: string | null;
+  userName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
 }
 
 const Profile: React.FC<ProfileDetailsProps> = ({
@@ -43,10 +41,11 @@ const Profile: React.FC<ProfileDetailsProps> = ({
   userName,
   middleName,
   firstName,
-  lastName
+  lastName,
 }) => {
   const { t } = useTranslation();
   const theme = useTheme<any>();
+  console.log('designation', designation);
   return (
     <Card
       sx={{
@@ -57,80 +56,82 @@ const Profile: React.FC<ProfileDetailsProps> = ({
       }}
     >
       <CardContent>
-        {designation!==Role.LEARNER  ?(
+        {designation !== Role.LEARNER ? (
           <>
-          <Typography
-          color={theme.palette.warning['500']}
-          sx={{ fontSize: '12px', fontWeight: 600 }}
-        >
-          {t('YOUTHNET_PROFILE.FULL_NAME')}
-        </Typography>
-        <Typography
-          color={theme.palette.warning['A200']}
-          sx={{ fontSize: '16px', fontWeight: 400 }}
-          gutterBottom
-        >
-          {fullName}
-        </Typography>
-        </>):
-         <>
-         <Typography
-         color={theme.palette.warning['500']}
-         sx={{ fontSize: '12px', fontWeight: 600 }}
-       >
-         {t('YOUTHNET_PROFILE.FIRST_NAME')}
-       </Typography>
-       <Typography
-         color={theme.palette.warning['A200']}
-         sx={{ fontSize: '16px', fontWeight: 400 }}
-         gutterBottom
-       >
-         {firstName}
-       </Typography>
-       <Typography
-         color={theme.palette.warning['500']}
-         sx={{ fontSize: '12px', fontWeight: 600 }}
-       >
-         {t('YOUTHNET_PROFILE.MIDDLE_NAME')}
-       </Typography>
-       <Typography
-         color={theme.palette.warning['A200']}
-         sx={{ fontSize: '16px', fontWeight: 400 }}
-         gutterBottom
-       >
-         {middleName}
-       </Typography>
-       <Typography
-         color={theme.palette.warning['500']}
-         sx={{ fontSize: '12px', fontWeight: 600 }}
-       >
-         {t('YOUTHNET_PROFILE.LAST_NAME')}
-       </Typography>
-       <Typography
-         color={theme.palette.warning['A200']}
-         sx={{ fontSize: '16px', fontWeight: 400 }}
-         gutterBottom
-       >
-         {lastName}
-       </Typography>
-       </>
-        }
-        {designation!==Role.LEAD  && (
+            <Typography
+              color={theme.palette.warning['500']}
+              sx={{ fontSize: '12px', fontWeight: 600 }}
+            >
+              {t('YOUTHNET_PROFILE.FULL_NAME')}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['A200']}
+              sx={{ fontSize: '16px', fontWeight: 400 }}
+              gutterBottom
+            >
+              {fullName}
+            </Typography>
+          </>
+        ) : (
           <>
-          <Typography
-          color={theme.palette.warning['500']}
-          sx={{ fontSize: '12px', fontWeight: 600 }}
-        >
-          {t('YOUTHNET_PROFILE.USERNAME')}
-        </Typography>
-        <Typography
-          color={theme.palette.warning['A200']}
-          sx={{ fontSize: '16px', fontWeight: 400 }}
-          gutterBottom
-        >
-          {userName}
-        </Typography>
-        </>)}
+            <Typography
+              color={theme.palette.warning['500']}
+              sx={{ fontSize: '12px', fontWeight: 600 }}
+            >
+              {t('YOUTHNET_PROFILE.FIRST_NAME')}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['A200']}
+              sx={{ fontSize: '16px', fontWeight: 400 }}
+              gutterBottom
+            >
+              {firstName}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['500']}
+              sx={{ fontSize: '12px', fontWeight: 600 }}
+            >
+              {t('YOUTHNET_PROFILE.MIDDLE_NAME')}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['A200']}
+              sx={{ fontSize: '16px', fontWeight: 400 }}
+              gutterBottom
+            >
+              {middleName}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['500']}
+              sx={{ fontSize: '12px', fontWeight: 600 }}
+            >
+              {t('YOUTHNET_PROFILE.LAST_NAME')}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['A200']}
+              sx={{ fontSize: '16px', fontWeight: 400 }}
+              gutterBottom
+            >
+              {lastName}
+            </Typography>
+          </>
+        )}
+        {designation !== Role.LEAD && (
+          <>
+            <Typography
+              color={theme.palette.warning['500']}
+              sx={{ fontSize: '12px', fontWeight: 600 }}
+            >
+              {t('YOUTHNET_PROFILE.USERNAME')}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['A200']}
+              sx={{ fontSize: '16px', fontWeight: 400 }}
+              gutterBottom
+            >
+              {userName}
+            </Typography>
+          </>
+        )}
 
         <Typography
           color={theme.palette.warning['500']}
@@ -146,10 +147,7 @@ const Profile: React.FC<ProfileDetailsProps> = ({
           {emailId}
         </Typography>
 
-        
-
         <Grid container spacing={2}>
-         
           {/* <Grid item xs={6}>
             <Typography
               color={theme.palette.warning['500']}
@@ -235,23 +233,28 @@ const Profile: React.FC<ProfileDetailsProps> = ({
             </Typography>
           </Grid>
           <Grid item xs={6}>
-          <Typography
-          color={theme.palette.warning['500']}
-          sx={{ fontSize: '12px', fontWeight: 600, mt: 2 }}
-        >
-          {village?t('YOUTHNET_PROFILE.STATE_DISTRICT_BLOCK_VILLAGE') : t('YOUTHNET_PROFILE.STATE_DISTRICT_BLOCK')}
-        </Typography>
-        <Typography
-          color={theme.palette.warning['A200']}
-          sx={{ fontSize: '16px', fontWeight: 400 }}
-          gutterBottom
-        >
-           {village? village+" , ":""}{block}, {district},  {state}
-        </Typography>
+            <Typography
+              color={theme.palette.warning['500']}
+              sx={{ fontSize: '12px', fontWeight: 600, mt: 2 }}
+            >
+              {village
+                ? t('YOUTHNET_PROFILE.STATE_DISTRICT_BLOCK_VILLAGE')
+                : designation === Role.LEAD
+                ? t('YOUTHNET_PROFILE.STATE_DISTRICT')
+                : t('YOUTHNET_PROFILE.STATE_DISTRICT_BLOCK')}
+            </Typography>
+            <Typography
+              color={theme.palette.warning['A200']}
+              sx={{ fontSize: '16px', fontWeight: 400 }}
+              gutterBottom
+            >
+              {village ? `${village} , ` : ''}
+              {designation === Role.LEAD
+                ? `${district}, ${state}`
+                : `${block}, ${district}, ${state}`}
+            </Typography>
           </Grid>
-        
         </Grid>
-        
       </CardContent>
     </Card>
   );

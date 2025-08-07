@@ -1,3 +1,4 @@
+//@ts-nocheck
 import * as React from 'react';
 
 import useNotification from '@/hooks/useNotification';
@@ -172,7 +173,9 @@ const PlannedSession: React.FC<PlannedModalProps> = ({
     const handleBMGS = async () => {
       try {
         if (medium && grade && board) {
-          const url = `/api/framework/v1/read/${frameworkId}`;
+          const url =
+            process.env.NEXT_PUBLIC_MIDDLEWARE_URL +
+            `/api/framework/v1/read/${frameworkId}`;
           const boardData = await fetch(url).then((res) => res.json());
           const frameworks = boardData?.result?.framework;
 
@@ -1462,7 +1465,7 @@ const PlannedSession: React.FC<PlannedModalProps> = ({
               </Box>
             )}
             <SessionMode
-              mode={editSession ? (mode ?? '') : (block?.sessionMode ?? '')}
+              mode={editSession ? mode ?? '' : block?.sessionMode ?? ''}
               handleSessionModeChange={(e) =>
                 handleSessionModeChange(e, block?.id)
               }

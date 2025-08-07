@@ -128,7 +128,6 @@
     "FACILITATOR_ADDED_SUCCESSFULLY": "فیسلیٹیٹر کو کامیابی سے شامل کیا گیا!",
     "LEARNER_UPDATED_SUCCESSFULLY": "لرنر پروفائل کامیابی سے اپ ڈیٹ ہوا!",
     "FACILITATOR_UPDATED_SUCCESSFULLY": "فیسلیٹیٹر پروفائل کامیابی سے اپ ڈیٹ ہوا!",
-    "PLEASE_SELECT_THE_CENTER": "براہ کرم مرکز منتخب کریں۔",
     "CREATE": "بنائیں",
     "OKAY": "ٹھیک ہے",
     "HELD_EVERY_WEEK_ON": "ہر ہفتے {{days}} کو منعقد ہوتا ہے",
@@ -144,7 +143,32 @@
     "SORT_BY_NAMES": "ناموں کے ذریعے ترتیب دیں",
     "INCORRECT_DATA_ENTRY": "غلط ڈیٹا انٹری",
     "DUPLICATED_USER": "ڈپلیکیٹ صارف",
-    "SUPPORT_REQUEST":"سروس کی درخواست"
+    "SUPPORT_REQUEST":"سروس کی درخواست",
+    "RESIGNATION": "استعفیٰ",
+    "WE_ARE_HERE_TO_HELP": "ہم آپ کی مدد کے لیے موجود ہیں",
+    "SUBMIT_YOUR_REQUEST_FOR_ISSUES": "اپنی درخواست جمع کریں اور ہمیں کسی بھی مسئلے یا تشویش میں آپ کی مدد کرنے دیں۔",
+    "INSTALL": "اب انسٹال کریں",
+    "INSTALL_APP_MESSAGE": "آسان رسائی کے لیے، اب ایپ انسٹال کریں",
+    "INSTALL_APP_DESCRIPTION": "پہلا لرننگ مینجمنٹ پورٹل (LMP) اپنی انگلیوں پر حاصل کریں، اپنے ڈیوائس پر انسٹال کرکے۔",
+    "RELOAD": "اب اپ ڈیٹ کریں",
+    "UPDATE_AVAILABLE": "نیا اپ ڈیٹ دستیاب ہے!",
+    "RELOAD_TO_UPDATE": "تازہ ترین خصوصیات اور بہتریوں سے فائدہ اٹھانے کے لیے اب اپ ڈیٹ کریں اور ایک ہموار تجربے کا لطف اٹھائیں!",
+    "NO_ASSIGNED_BOARDS": "منتخب کردہ سینٹر کے لیے کوئی بورڈ تفویض نہیں",
+    "YOU_HAVE_UNSAVED_CHANGES": "آپ کے پاس غیر محفوظ شدہ تبدیلیاں ہیں۔ کیا آپ واقعی واپس جانا چاہتے ہیں؟",
+    "ATTENDANCE_IS_USUALLY": "حاضری عام طور پر دن کے پہلے سیشن کے بعد خودکار طور پر نشان زد کی جاتی ہے۔",
+    "ARE_YOU_SURE_MANUALLY": "کیا آپ واقعی دستی طور پر حاضری نشان زد کرنا چاہتے ہیں؟",
+    "USE_MANUAL": "دستی نشان دہی کا استعمال صرف تکنیکی مسائل، دیگر پلیٹ فارمز پر سیشنز، یا آن لائن منعقد نہ ہونے کی صورت میں کریں۔",
+    "NOTE_MANUALLY": "نوٹ: دستی طور پر نشان زد کی گئی حاضری خودکار حاضری کو اوور رائیڈ کر دے گی اگر یہ بعد میں درج کی جاتی ہے۔",
+    "YES_MANUALLY": "ہاں، دستی طور پر نشان زد کریں",
+    "NO_CENTER_AND_BATCH_FOUND": "کوئی سینٹر اور بیچ نہیں ملا",
+    "NO_BATCH_FOUND": "کوئی بیچ نہیں ملا",
+    "BATCH": "بیچ",
+    "BATCHES": "بیچز",
+    "BATCH_SESSIONS": "بیچ سیشنز",
+    "NOT_ABLE_CREATE_LEARNER": "سیکھنے والا بنانے میں ناکام",
+    "NOT_ABLE_CREATE_FACILITATOR": "سہولت کار بنانے میں ناکام",
+    "PLEASE_SELECT_THE_CENTER": "براہ کرم سینٹر منتخب کریں",
+    "USERS_&VILLAGES": "صارفین اور دیہات"
   },
 
   "LOGIN_PAGE": {
@@ -249,7 +273,11 @@
     "CENTER_NAME": "مرکز کا نام",
     "ALL_CENTERS": "تمام مراکز",
     "NO_LEARNER_WITH_LOW_ATTENDANCE": "کوئی نہیں",
-    "ATTENDANCE_MARKED_OUT_OF_DAYS": "حاضری نشان زد: {{count}} پچھلے 7 دنوں میں سے"
+    "ATTENDANCE_MARKED_OUT_OF_DAYS": "حاضری نشان زد: {{count}} پچھلے 7 دنوں میں سے",
+    "MARK_MANUAL_ATTENDANCE_CONFIRMATION": "کیا آپ واقعی دستی طور پر حاضری نشان زد کرنا چاہتے ہیں؟",
+    "MANUAL_ATTENDANCE_INFO": "حاضری عام طور پر دن کے پہلے سیشن کے بعد خودکار طور پر نشان زد کی جاتی ہے۔ دستی نشان دہی کا استعمال صرف تکنیکی مسائل، دیگر پلیٹ فارمز پر سیشنز، یا آن لائن منعقد نہ ہونے کی صورت میں کریں۔",
+    "MANUAL_ATTENDANCE_NOTE": "نوٹ: دستی طور پر نشان زد کی گئی حاضری خودکار حاضری کو اوور رائیڈ کر دے گی اگر یہ بعد میں درج کی جاتی ہے۔",
+    "NO_BATCHES_ASSIGNED": "کوئی بیچ تفویض نہیں"
   },
   "PROFILE": {
     "EDIT_PROFILE": "پروفائل میں ترمیم کریں",
@@ -380,7 +408,8 @@
     "THE_USER_BELONGS_TO_THE_FOLLOWING_COHORT": "صارف مندرجہ ذیل مرکز سے تعلق رکھتا ہے: ",
     "PLEASE_REMOVE_THE_USER_FROM_COHORT": "براہ کرم حذف کرنے سے پہلے صارف کو ان مراکز سے ہٹا دیں۔",
     "ERROR_EMPTY": "مرکز کا نام خالی نہیں ہو سکتا",
-    "ERROR_NUMBER": "مرکز کا نام نمبر نہیں ہو سکتا"
+    "ERROR_NUMBER": "مرکز کا نام نمبر نہیں ہو سکتا",
+    "RENAME_BATCH": "بیچ کا نام تبدیل کریں"
   },
   "CENTER_SESSION": {
     "THIS_SESSION": "یہ سیشن",
@@ -463,7 +492,9 @@
     "MEETING_URL_ERROR": "براہ کرم ایک درست میٹنگ URL فراہم کریں۔",
     "COMPLETED": "مکمل",
     "INPROGRESS": "جاری",
-    "NOTSTARTED": "آغاز نہیں کیا گیا"
+    "NOTSTARTED": "آغاز نہیں کیا گیا",
+    "START_DATE_MUST_BE_TODAY_OR_FUTURE_DATE": "شروع کی تاریخ آج یا مستقبل کی تاریخ ہونی چاہیے",
+    "DATE_MUST_BE_TODAY_OR_FUTURE_DATE": "تاریخ آج یا مستقبل کی تاریخ ہونی چاہیے"
   },
   "MANAGE_USERS": {
     "CENTERS_REQUESTED_SUCCESSFULLY": "مرکز کامیابی سے درخواست کی گئی",
@@ -553,7 +584,35 @@
     "SCIENCE": "سائنس",
     "SOCIAL_SCIENCE": "سماجی سائنس",
     "LIFE_SKILLS": "زندگی کی مہارتیں",
-    "USERNAME": "صارف نام"
+    "USERNAME": "صارف نام",
+    "PREFERRED_LANGUAGE": "ترجیحی زبان",
+    "FIRST_NAME": "پہلا نام",
+    "MIDDLE_NAME_OR_FATHER_NAME": "درمیانی نام یا والد کا نام",
+    "LAST_NAME": "آخری نام",
+    "MOTHER_NAME": "ماں کا نام",
+    "DATE_OF_BIRTH": "تاریخ پیدائش",
+    "NAME_OF_GUARDIAN": "سرپرست کا نام",
+    "RELATION_WITH_GUARDIAN": "سرپرست کے ساتھ تعلق",
+    "PHONE_NUMBER": "فون نمبر",
+    "DOES_THIS_PHONE_BELONG_TO_YOU": "کیا یہ فون آپ کا ہے؟",
+    "HIGHEST_EDCATIONAL_QUALIFICATION_OR_LAST_PASSED_GRADE": "اعلیٰ تعلیمی قابلیت یا آخری پاس کردہ گریڈ",
+    "WHAT_IS_YOUR_PREFERRED_MODE_OF_LEARNING": "آپ کا ترجیحی تعلیمی طریقہ کیا ہے؟",
+    "ARE_YOU_CURRENTLY_WORKING_IF_YES_CHOOSE_THE_DOMAIN": "کیا آپ فی الحال کام کر رہے ہیں؟ اگر ہاں، تو ڈومین منتخب کریں",
+    "HAVE_YOU_RECEIVE_ANY_PRIOR_TRAINING": "کیا آپ کو کوئی سابقہ تربیت حاصل ہوئی ہے؟",
+    "WHAT_DO_YOU_WANT_TO_BECOME": "آپ کیا بننا چاہتے ہیں؟",
+    "EDUCATIONAL_INSTITUTE": "تعلیمی ادارہ",
+    "UNEMPLOYED_OR_DOMESTIC_WORK": "بے روزگار یا گھریلو کام",
+    "SELF_PLACED": "خود ملازمت",
+    "TRANSGENDER": "خواجہ سرا",
+    "HINDI": "ہندی",
+    "MARATHI": "مراٹھی",
+    "URDU": "اردو",
+    "DIVORCED/WIDOW": "طلاق یافتہ/بیوہ",
+    "AVAILABLE_SUGGESTIONS": "دستیاب تجاویز:",
+    "USERNAME_ALREADY_EXIST": "یہ صارف نام پہلے سے موجود ہے",
+    "EMAIL_ALREADY_EXIST": "ای میل پہلے سے موجود ہے",
+    "GRADUATE": "گریجویٹ",
+    "POST_GRADUATE": "پوسٹ گریجویٹ"
   },
   "FORM_ERROR_MESSAGES": {
     "INVALID_INPUT": "غلط ان پٹ۔",
@@ -570,7 +629,10 @@
     "ENTER_VALID_YEAR": "براہ کرم درست سال درج کریں",
     "MUST_BE_LESS_THAN": "{{fieldname}} {{maxLength}} سے کم ہونا چاہئے",
     "MUST_BE_GREATER_THAN": "{{fieldname}} {{minLength}} سے زیادہ ہونا چاہئے",
-    "ENTER_VALID_CENTER_NAME": "براہ کرم درست مرکز کا نام درج کریں"
+    "ENTER_VALID_CENTER_NAME": "براہ کرم درست مرکز کا نام درج کریں",
+    "SPACE_AND_SPECIAL_CHARACTERS_NOT_ALLOWED": "خالی جگہ اور خصوصی حروف کی اجازت نہیں ہے",
+    "DATE_MUST_BE_ON_OR_BEFORE": "تاریخ {{date}} کو یا اس سے پہلے ہونی چاہیے",
+    "DATE_MUST_BE_ON_OR_AFTER": "تاریخ {{date}} کو یا اس کے بعد ہونی چاہیے"
   },
   "COURSE_PLANNER": {
     "COURSE_PLANNER": "نصابی منصوبہ",
@@ -584,6 +646,7 @@
     "SUBTOPICS_SELECTED": "منتخب ذیلی موضوعات",
     "NO_RESOURCES_FOUND": "کوئی وسائل نہیں ملے",
     "INVALID_RESOURCE": "غلط وسیلہ"
+    
   },
   "ASSESSMENTS": {
     "ASSESSMENTS": "جائزے",
@@ -605,7 +668,8 @@
     "NUMBER_OUT_OF_COMPLETED": "{{completedCount}} میں سے {{totalCount}} مکمل",
     "NO_SUBTOPIC_SELECTED": "کوئی ذیلی موضوع منتخب نہیں کیا گیا",
     "NO_SUBJECT_FOUND": "کوئی مضمون نہیں ملا",
-    "NO_ASSIGNED": "کوئی تفویض نہیں"
+    "NO_ASSIGNED": "کوئی تفویض نہیں",
+    "OUT_OF": "میں سے"
   },
   "BOARD_ENROLMENT": {
     "BOARD_ENROLLMENT": "بورڈ میں داخلہ",
@@ -654,7 +718,8 @@
     "SURVEY_FORMS": "سروے فارم",
     "OBSERVATION_STATUS": "سروے کی حیثیت",
     "OBSERVATION_NOT_STARTED_YET": "سروے ابھی شروع نہیں ہوا",
-    "EXPIRED": "ختم ہو چکا"
+    "EXPIRED": "ختم ہو چکا",
+    "ARE_YOU_SURE_YOU_TO_SUBMIT_FORM": "کیا آپ واقعی فارم جمع کرنا چاہتے ہیں؟"
   },
   "YOUTHNET": {
     "SURVEY": {
@@ -667,11 +732,140 @@
     "DASHBOARD": {
       "VILLAGES_MANAGED_BY_YOU": "آپ کے ذریعے منظم کیے گئے گاؤں: {{totalVillageCount}}",
       "MONTHLY_REGISTRATIONS_OVERVIEW": "ماہانہ رجسٹریشن کا جائزہ",
-      "CLOSED_ON": "بند کیا گیا"
-    },
+      "CLOSED_ON": "بند کیا گیا",
+      "USERS_&VILLAGES": "صارفین اور دیہات",
+    "VILLAGES": "دیہات",
+    "YOUTH_VOLUNTEERS": "نوجوان/رضاکار",
+    "SEARCH_VILLAGES": "دیہات تلاش کریں"
+    }
+  },
     "VOLUNTEERLIST": {
       "ENTRIES": "اندراجات",
       "VOLUNTEERS_ASSIGNED": "رضاکار تفویض کیے گئے"
-    }
+    },
+    "YOUTHNET_DASHlBOARD": {
+    "MANAGES": "منتظم کرتا ہے",
+    "ABOVE_18": "18 سے زائد",
+    "BELOW_18": "18 سے کم",
+    "VLLAGE_18": "دیہات 18"
+  },
+  "YOUTHNET_USERS_AND_VILLAGES": {
+    "MENTORS": "مرشدین",
+    "CSV": "سی ایس وی",
+    "SEARCH_MENTORS": "مرشدین تلاش کریں...",
+    "MARK_AS_VOLUNTEER": "رضاکار کے طور پر نشان زد کریں",
+    "ADD_OR_REASSIGN_VILLAGES": "دیہات شامل کریں یا دوبارہ تفویض کریں",
+    "REQUEST_TO_REASSIGN_DISTRICT": "ضلع دوبارہ تفویض کرنے کی درخواست",
+    "DELETE_USER_PERMANENTLY": "صارف کو مستقل طور پر حذف کریں",
+    "REQUEST_USER_TO_DIFFERENT_MENTOR": "صارف کو کسی دوسرے مرشد لیڈر کو دوبارہ تفویض کریں",
+    "SAVE_PROGRESS": "پیشرفت محفوظ کریں",
+    "FINISH_ASSIGN": "مکمل کریں اور تفویض کریں",
+    "SEND_REQUEST_TO_ADMIN_TEXT": "آپ اس صارف کو کسی دوسرے ضلع میں دوبارہ تفویض کرنے کے لیے ریاستی ایڈمنسٹریٹر کو درخواست بھیج رہے ہیں",
+    "SELECT_STATE": "ریاست منتخب کریں",
+    "SELECT_DISTRICT": "ضلع منتخب کریں",
+    "SELECT": "منتخب کریں",
+    "ASSIGN_VILLAGES_FROM_BLOCK": "بلاک سے دیہات تفویض کریں",
+    "ASSIGN_VILLAGES_FROM_BLOCK_INFO": "آپ اسے بعد میں اپنی سہولت کے مطابق مکمل کر سکتے ہیں۔ تاہم، دیہات صرف 'مکمل' پر کلک کرنے پر ہی تفویض ہوں گے۔"
+  },
+  "SURVEYS": {
+    "SURVEYS": "سروے",
+    "ACTIVE_SURVEYS": "فعال سروے",
+    "PREVIOUS_SURVEYS": "پچھلے سروے",
+    "VILLAGES": "دیہات",
+    "SUBMISSION": "جمع کرانے",
+    "SUMMARY": "خلاصہ"
+  },
+  "FACILITATORS": {
+    "NEW_FACILITATOR": "نیا سہولت کار"
+  },
+  "MENTOR": {
+    "BACK_TO_FORM": "فارم پر واپس جائیں",
+    "FINISH_ASSIGN": "مکمل کریں اور تفویض کریں"
+  },
+  "LEARNERS": {
+    "NEW_LEARNER": "نیا سیکھنے والا"
+  },
+  "VILLAGE": "دیہات",
+  "first_name": "پہلا نام",
+  "middle_name": "درمیانی نام",
+  "last_name": "آخری نام",
+  "dob": "تاریخ پیدائش",
+  "WHATS_YOUR_GENDER": "جنس",
+  "Male": "مرد",
+  "Female": "عورت",
+  "Transgender": "خواجہ سرا",
+  "email": "ای میل",
+  "phone_number": "فون نمبر",
+  "DESIGNATION": "عہدہ",
+  "Facilitator": "سہولت کار",
+  "MY_MAIN_SUBJECTS": "میرے اہم مضامین",
+  "English": "انگریزی",
+  "Home Science": "گھریلو سائنس",
+  "Math": "ریاضی",
+  "Language": "زبان",
+  "Science": "سائنس",
+  "Social Science": "سماجی سائنس",
+  "Life Skills": "زندگی کے ہنر",
+  "SUBJECTS_I_TEACH": "وہ مضامین جو میں پڑھاتا ہوں",
+  "MOTHER_NAME": "ماں کا نام",
+  "HIGHEST_EDCATIONAL_QUALIFICATION_OR_LAST_PASSED_GRADE": "اعلیٰ تعلیمی قابلیت یا آخری پاس کردہ گریڈ",
+  "MARITAL_STATUS": "ازدواجی حیثیت",
+  "TYPE_OF_PHONE_AVAILABLE": "دستیاب فون کی قسم",
+  "Smartphone": "اسمارٹ فون",
+  "Keypad": "کی پیڈ",
+  "DOES_THIS_PHONE_BELONG_TO_YOU": "کیا یہ فون آپ کا ہے؟",
+  "USERNAME": "صارف نام",
+  "NAME_OF_GUARDIAN": "سرپرست کا نام",
+  "RELATION_WITH_GUARDIAN": "سرپرست کے ساتھ تعلق",
+  "PARENT_GUARDIAN_PHONE_NO": "والدین/سرپرست کا فون نمبر",
+  "WHAT_IS_YOUR_PREFERRED_MODE_OF_LEARNING": "آپ کا ترجیحی تعلیمی طریقہ کیا ہے؟",
+  "REASON_FOR_DROP_OUT_FROM_SCHOOL": "اسکول سے ڈراپ آؤٹ کی وجہ",
+  "ARE_YOU_CURRENTLY_WORKING_IF_YES_CHOOSE_THE_DOMAIN": "کیا آپ فی الحال کام کر رہے ہیں؟ اگر ہاں، تو ڈومین منتخب کریں",
+  "WHAT_DO_YOU_WANT_TO_BECOME": "آپ کیا بننا چاہتے ہیں؟",
+  "UNMARRIED": "غیر شادی شدہ",
+  "MARRIED": "شادی شدہ",
+  "DIVORCED": "طلاق یافتہ",
+  "SELF_PLACED": "خود ملازمت",
+  "REMOTE": "ریموٹ",
+  "REGULAR": "باقاعدہ",
+  "SCHOOL_INACCESSIBLE": "اسکول تک رسائی نہیں",
+  "FINANCIAL_CONSTRAINTS": "مالیاتی رکاوٹیں",
+  "LACK_OF_INTEREST": "دلچسپی کی کمی",
+  "FAMILY_RESPONSIBILITIES": "خاندانی ذمہ داریاں",
+  "FAILED": "ناکام",
+  "ILLNESS": "بیماری",
+  "MARRIAGE": "شادی",
+  "MIGRATION": "ہجرت",
+  "STARTED_VOCATIONAL_COURSE": "ووکیشنل کورس شروع کیا",
+  "STARTED_JOB": "نوکری شروع کی",
+  "SCHOOL_CLOSURE_DUE_TO_COVID": "کووڈ کی وجہ سے اسکول بند",
+  "ENROLLED_IN_EDUCATIONAL_INSTITUTE": "تعلیمی ادارے میں داخلہ",
+  "OWN_FARMING": "خود کی کاشتکاری",
+  "AGRICULTURAL_FARM_LABORER": "زرعی مزدور",
+  "NON_AGRICULTURAL_LABORER": "غیر زرعی مزدور",
+  "SALARIED_WORK": "تنخواہ دار کام",
+  "SELF_EMPLOYMENT": "خود روزگار",
+  "UNEMPLOYED_OR_DOMESTIC_WORK": "بے روزگار یا گھریلو کام",
+  "SCP_PROFILE": {
+    "MY_PROFILE": "میری پروفائل",
+    "ACTIVITIES_CONDUCTED": "منعقد کردہ سرگرمیاں",
+    "PROFILE_DETAILS": "پروفائل کی تفصیلات",
+    "FULL_NAME": "مکمل نام",
+    "EMAIL_ID": "ای میل آئی ڈی",
+    "STATE_DISTRICT_BLOCK": "ریاست ضلع بلاک",
+    "DESIGNATION": "عہدہ",
+    "JOINED_ON": "شامل ہونے کی تاریخ",
+    "PHONE_NUMBER": "فون نمبر",
+    "MENTOR_ID": "مرشد آئی ڈی",
+    "GENDER": "جنس",
+    "AGE": "عمر",
+    "VOLUNTEERING_DETAILS": "رضاکارانہ تفصیلات",
+    "MARK_AS_VOLUNTEER": "رضاکار کے طور پر نشان زد کریں",
+    "DOB": "تاریخ پیدائش",
+    "STATE_DISTRICT_BLOCK_VILLAGE": "دیہات بلاک ضلع ریاست",
+    "USERNAME": "صارف نام",
+    "SUBJECTS_I_TEACH": "وہ مضامین جو میں پڑھاتا ہوں",
+    "MY_MAIN_SUBJECTS": "میرے اہم مضامین"
   }
+
 }

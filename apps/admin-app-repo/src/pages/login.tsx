@@ -31,7 +31,7 @@ import Link from '@mui/material/Link';
 import loginImage from '../../public/loginImage.jpg';
 import { useUserIdStore } from '@/store/useUserIdStore';
 import { getUserDetailsInfo } from '@/services/UserList';
-import { Storage, youthNetTenantName } from '@/utils/app.constant';
+import { Storage, TenantName } from '@/utils/app.constant';
 import useSubmittedButtonStore from '@/utils/useSharedState';
 import { Role } from '@/utils/app.constant';
 import { AcademicYear } from '@/utils/Interfaces';
@@ -56,14 +56,13 @@ const LoginPage = () => {
   const setIsActiveYearSelected = useStore(
     (state: { setIsActiveYearSelected: any }) => state.setIsActiveYearSelected
   );
-
+  console.log(setIsActiveYearSelected + 'snehallltest');
   const theme = useTheme<any>();
   const router = useRouter();
   const { setUserId } = useUserIdStore();
   const setAdminInformation = useSubmittedButtonStore(
     (state: any) => state.setAdminInformation
   );
-
   // Use useMediaQuery to detect screen size
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isMedium = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -92,31 +91,50 @@ const LoginPage = () => {
               } else {
                 router.push('/course-planner', undefined, { locale: locale });
               }
-            } else if (role?.role === Role.CENTRAL_ADMIN && role?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
+            } else if (
+              role?.role === Role.CENTRAL_ADMIN &&
+              role?.tenantData[0]?.tenantName ==
+                TenantName.SECOND_CHANCE_PROGRAM
+            ) {
               router.push('/programs', undefined, { locale: locale });
+            } else if (
+              role?.role === Role.ADMIN &&
+              role?.tenantData[0]?.tenantName ==
+                TenantName.SECOND_CHANCE_PROGRAM
+            ) {
+              router.push('/centers', undefined, { locale: locale });
+            } else if (
+              role?.role === Role.ADMIN &&
+              role?.tenantData[0]?.tenantName == TenantName.YOUTHNET
+            ) {
+              router.push('/mentor');
             }
-            else if (role?.role === Role.ADMIN && role?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
-              router.push("/centers", undefined, { locale: locale });
-            } else if (role?.role === Role.ADMIN && role?.tenantData[0]?.tenantName == youthNetTenantName.YOUTHNET) {
-              router.push("/mentor");
-            }
-
           }
-        }
-        else {
+        } else {
           let role;
           if (storedUserData) {
             role = JSON.parse(storedUserData);
             if (role?.role === Role.SCTA || role?.role === Role.CCTA) {
-              router.push("/course-planner");
+              router.push('/course-planner');
             }
-            if (role?.role === Role.CENTRAL_ADMIN && role?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
-              router.push("/programs");
-            }
-            else if (role?.role === Role.ADMIN && role?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
-              router.push("/centers");
-            } else if (role?.role === Role.ADMIN && role?.tenantData[0]?.tenantName == youthNetTenantName.YOUTHNET) {
-              router.push("/mentor");
+            if (
+              role?.role === Role.CENTRAL_ADMIN &&
+              role?.tenantData[0]?.tenantName ==
+                TenantName.SECOND_CHANCE_PROGRAM
+            ) {
+              router.push('/programs');
+            } else if (
+              role?.role === Role.ADMIN &&
+              role?.tenantData[0]?.tenantName ==
+                TenantName.SECOND_CHANCE_PROGRAM
+            ) {
+              router.push('/centers');
+            } else if (
+              (role?.role === Role.CENTRAL_ADMIN ||
+                role?.role === Role.ADMIN) &&
+              role?.tenantData[0]?.tenantName == TenantName.YOUTHNET
+            ) {
+              router.push('/mentor');
             }
           }
         }
@@ -166,12 +184,12 @@ const LoginPage = () => {
         if (typeof window !== 'undefined' && window.localStorage) {
           if (userInfo) {
             if (userInfo?.customFields) {
-              const boardValues = userInfo.customFields
-                .filter((field: any) => field.label === 'BOARD')
-                .flatMap((field: any) => field.value.split(','))
-                .map((board: string) => board.trim());
+              const boardField = userInfo.customFields.find(
+                (field: any) => field.label === 'BOARD'
+              );
 
-              // Check if boardValues is not empty
+              const boardValues = boardField?.selectedValues || [];
+
               if (boardValues.length > 0) {
                 console.log(boardValues);
                 localStorage.setItem(
@@ -184,98 +202,141 @@ const LoginPage = () => {
                 );
               }
             }
+
             localStorage.setItem('adminInfo', JSON.stringify(userInfo));
+            const roleId = userInfo.tenantData?.[0]?.roleId || '';
+            const roleName = userInfo.tenantData?.[0]?.roleName || '';
+            const program = userInfo.tenantData?.[0]?.tenantName || '';
+
+            localStorage.setItem('roleId', roleId);
+            localStorage.setItem('roleName', roleName);
+            localStorage.setItem('program', program);
           }
-          localStorage.setItem(
-            'stateName',
-            transformLabel(
-              userInfo?.customFields?.find(
-                (item: { label: string }) => item.label === 'STATE'
-              )?.value
-            )
+          const selectedStateName = transformLabel(
+            userInfo?.customFields?.find(
+              (field: { label: string }) => field?.label === 'STATE'
+            )?.selectedValues?.[0]?.value
           );
+          if (selectedStateName) {
+            localStorage.setItem('stateName', selectedStateName);
+          }
+          const selectedStateId = userInfo?.customFields?.find(
+            (field: { label: string }) => field?.label === 'STATE'
+          )?.selectedValues?.[0]?.id;
+          if (selectedStateId) {
+            localStorage.setItem('stateId', selectedStateId);
+          }
         }
-        if (
-          userInfo?.role !== Role.ADMIN &&
-          userInfo?.role !== Role.CENTRAL_ADMIN &&
-          userInfo?.role !== Role.SCTA &&
-          userInfo?.role !== Role.CCTA
-        ) {
-          // const errorMessage = t("LOGIN_PAGE.YOU_DONT_HAVE_APPROPRIATE_PRIVILEGES_TO_ACCESS");
-          // showToastMessage(errorMessage, "error");
-          //localStorage.removeItem("token");
-          localStorage.setItem('previousPage', 'login');
-          router.push({
-            pathname: '/unauthorized',
-            query: { role: userInfo?.role }, // Pass your query parameters here
-          });
-        } else {
-          setAdminInformation(userInfo);
-          const getAcademicYearList = async () => {
-            const academicYearList: AcademicYear[] = await getAcademicYear();
-            if (academicYearList) {
-              localStorage.setItem(
-                'academicYearList',
-                JSON.stringify(academicYearList)
-              );
-              const extractedAcademicYears = academicYearList?.map(
-                ({ id, session, isActive }) => ({ id, session, isActive })
-              );
-              const activeSession = extractedAcademicYears?.find(
-                (item) => item.isActive
-              );
-              const activeSessionId = activeSession ? activeSession.id : '';
-              localStorage.setItem('academicYearId', activeSessionId);
-              if (activeSessionId) {
-                setIsActiveYearSelected(true);
-                // router.push("/centers");
+        // if (
+        //   userInfo?.role !== Role.ADMIN &&
+        //   userInfo?.role !== Role.CENTRAL_ADMIN &&
+        //   userInfo?.role !== Role.SCTA &&
+        //   userInfo?.role !== Role.CCTA
+        // ) {
+        //   // const errorMessage = t("LOGIN_PAGE.YOU_DONT_HAVE_APPROPRIATE_PRIVILEGES_TO_ACCESS");
+        //   // showToastMessage(errorMessage, "error");
+        //   //localStorage.removeItem("token");
+        //   localStorage.setItem('previousPage', 'login');
+        //   router.push({
+        //     pathname: '/unauthorized',
+        //     query: { role: userInfo?.role }, // Pass your query parameters here
+        //   });
+        // } else {
+        setAdminInformation(userInfo);
+        const getAcademicYearList = async () => {
+          const academicYearList: AcademicYear[] = await getAcademicYear();
+          if (academicYearList) {
+            localStorage.setItem(
+              'academicYearList',
+              JSON.stringify(academicYearList)
+            );
+            const extractedAcademicYears = academicYearList?.map(
+              ({ id, session, isActive }) => ({ id, session, isActive })
+            );
+            const activeSession = extractedAcademicYears?.find(
+              (item) => item.isActive
+            );
+            const activeSessionId = activeSession ? activeSession.id : '';
+            localStorage.setItem('academicYearId', activeSessionId);
+            if (activeSessionId) {
+              setIsActiveYearSelected(true);
+              // router.push("/centers");
+              if (
+                userInfo?.role === Role.SCTA ||
+                userInfo?.role === Role.CCTA
+              ) {
+                const { locale } = router;
+                // To do :- hardcoding to be removed
                 if (
-                  userInfo?.role === Role.SCTA ||
-                  userInfo?.role === Role.CCTA
+                  userInfo?.tenantData[0]?.tenantName !=
+                  TenantName.SECOND_CHANCE_PROGRAM
                 ) {
-                  const { locale } = router;
-                  // To do :- hardcoding to be removed
-                  if(userInfo?.tenantData[0]?.tenantName != youthNetTenantName.SECOND_CHANCE_PROGRAM ) {
-                    window.location.href = "/workspace"; 
-                    router.push("/workspace");
-                  } else {
-                    window.location.href = '/course-planner';
-                    if (locale) {
-                      router.push('/course-planner', undefined, {
-                        locale: locale,
-                      });
-                    } else router.push('/course-planner');
+                  window.location.href = '/workspace';
+                  router.push('/workspace');
+                } else {
+                  window.location.href = '/course-planner';
+                  if (locale) {
+                    router.push('/course-planner', undefined, {
+                      locale: locale,
+                    });
+                  } else router.push('/course-planner');
+                }
+              } else {
+                //window.location.href = "/centers";
+                const { locale } = router;
+                if (locale) {
+                  if (
+                    userInfo?.role === Role.CENTRAL_ADMIN &&
+                    userInfo?.tenantData[0]?.tenantName ==
+                      TenantName.SECOND_CHANCE_PROGRAM
+                  ) {
+                    window.location.href = '/programs';
+                    router.push('/programs', undefined, { locale: locale });
+                  } else if (
+                    userInfo?.role === Role.ADMIN &&
+                    userInfo?.tenantData[0]?.tenantName ==
+                      TenantName.SECOND_CHANCE_PROGRAM
+                  ) {
+                    window.location.href = '/centers';
+                    router.push('/centers', undefined, { locale: locale });
+                  } else if (
+                    userInfo?.role === Role.ADMIN ||
+                    (Role.CENTRAL_ADMIN &&
+                      userInfo?.tenantData[0]?.tenantName ==
+                        TenantName.YOUTHNET)
+                  ) {
+                    window.location.href = '/mentor';
+                    router.push('/mentor', undefined, { locale: locale });
                   }
                 } else {
-                  //window.location.href = "/centers";
-                  const { locale } = router;
-                  if (locale) {
-                    if (userInfo?.role === Role.CENTRAL_ADMIN && userInfo?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
-                      router.push("/programs", undefined, { locale: locale }); }
-                    else if (userInfo?.role === Role.ADMIN && userInfo?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM){
-                      router.push("/centers", undefined, { locale: locale });
-                    }
-                    else if (userInfo?.role === Role.ADMIN && userInfo?.tenantData[0]?.tenantName == youthNetTenantName.YOUTHNET){
-                      router.push("/mentor", undefined, { locale: locale });
-                    }
-                  }
-                  else {
-                    if (userInfo?.role === Role.CENTRAL_ADMIN && userInfo?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
-                      router.push("/programs");
-                    }
-                    else if (userInfo?.role === Role.ADMIN && userInfo?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) {
-                      router.push("/centers");
-                    } else if (userInfo?.role === Role.ADMIN && userInfo?.tenantData[0]?.tenantName == youthNetTenantName.YOUTHNET) {
-                      router.push("/mentor");
-                    }
-
+                  if (
+                    userInfo?.role === Role.CENTRAL_ADMIN &&
+                    userInfo?.tenantData[0]?.tenantName ==
+                      TenantName.SECOND_CHANCE_PROGRAM
+                  ) {
+                    window.location.href = '/programs';
+                    router.push('/programs');
+                  } else if (
+                    userInfo?.role === Role.ADMIN &&
+                    userInfo?.tenantData[0]?.tenantName ==
+                      TenantName.SECOND_CHANCE_PROGRAM
+                  ) {
+                    window.location.href = '/centers';
+                    router.push('/centers');
+                  } else if (
+                    userInfo?.role === Role.ADMIN &&
+                    userInfo?.tenantData[0]?.tenantName == TenantName.YOUTHNET
+                  ) {
+                    window.location.href = '/mentor';
+                    router.push('/mentor');
                   }
                 }
               }
             }
-          };
-          getAcademicYearList();
-        }
+          }
+        };
+        getAcademicYearList();
+        //}
       }
     } catch (error) {
       console.log(error);
@@ -310,6 +371,12 @@ const LoginPage = () => {
 
             if (userResponse) {
               localStorage.setItem('userId', userResponse?.userId);
+              console.log(userResponse?.tenantData);
+              localStorage.setItem(
+                'templtateId',
+                userResponse?.tenantData?.[0]?.templateId
+              );
+
               localStorage.setItem('userIdName', userResponse?.username);
               // Update Zustand store
               setUserId(userResponse?.userId || '');
@@ -324,10 +391,13 @@ const LoginPage = () => {
                 Storage.USER_DATA,
                 JSON.stringify(userResponse)
               );
-              const tenantId =
-                userResponse?.tenantData?.[0]?.tenantId ||
-                process.env.NEXT_PUBLIC_TENANT_ID;
+              const tenantId = userResponse?.tenantData?.[0]?.tenantId;
+              const frameworkId =
+                userResponse?.tenantData?.[0]?.collectionFramework;
+              const channel = userResponse?.tenantData?.[0]?.channelId;
               TenantService.setTenantId(tenantId);
+              localStorage.setItem('collectionFramework', frameworkId);
+              localStorage.setItem('channelId', channel);
               localStorage.setItem('tenantId', tenantId);
             }
 

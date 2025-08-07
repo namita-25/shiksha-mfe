@@ -36,5 +36,14 @@ module.exports = {
         NODE_ENV: 'production',
       },
     },
+    {
+      name: 'players',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 4107',
+      cwd: 'mfes/players',
+      env: {
+        NODE_ENV: 'production',
+      },
+    },
   ],
 };

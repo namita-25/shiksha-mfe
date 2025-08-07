@@ -8,6 +8,11 @@ export function middleware(request: { nextUrl: { clone: () => any } }) {
     url.port = '4104';
     return NextResponse.rewrite(url);
   }
+  if (url.pathname.startsWith('/sbplayer')) {
+    url.hostname = 'localhost';
+    url.port = '4106';
+    return NextResponse.rewrite(url);
+  }
 
   return NextResponse.next();
 }

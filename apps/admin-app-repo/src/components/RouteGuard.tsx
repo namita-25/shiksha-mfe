@@ -1,4 +1,4 @@
-import { Role, RoleId, youthNetTenantName } from "@/utils/app.constant";
+import { Role, RoleId, TenantName } from "@/utils/app.constant";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 
@@ -77,10 +77,6 @@ const RouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       '/team-leader',
       '/faciliator',
       '/learners',
-      '/certificate-issuance',
-      '/state',
-      '/district',
-      '/block',
       '/notification-templates',
       '/course-planner',
       '/stateDetails',
@@ -133,20 +129,23 @@ const RouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     if (
       user.role === Role.ADMIN &&
-      user?.tenantData[0]?.tenantName === youthNetTenantName.YOUTHNET &&
+      user?.tenantData[0]?.tenantName === TenantName.YOUTHNET &&
       youthNetNotAllowed.some(route => router.pathname.startsWith(route))
     ) {
       router.push("/unauthorized");
     }
 
-    if ((((user.role === Role.ADMIN && user?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) || (user.role === Role.CENTRAL_ADMIN && user?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM)) && (allowedPaths.includes(router.pathname) || isWorkspaceContent || isCoursePlannerContent)) || (user.role === Role.ADMIN && (router.pathname === "/programs" || router.pathname === "/notification-templates"))) {
-    
+    if ((((user.role === Role.ADMIN && user?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM) || (user.role === Role.CENTRAL_ADMIN && user?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM)) && (allowedPaths.includes(router.pathname) || isWorkspaceContent || isCoursePlannerContent)) || (user.role === Role.ADMIN && (router.pathname === "/programs" || router.pathname === "/notification-templates"))) {       
       if (router.pathname !== "/login" && router.pathname !== "/logout" && router.pathname !== "/edit-password") {
 
         router.push("/unauthorized");
       }
+      if(user?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM &&  router.pathname === "/certificate-issuance")
+      {
+        router.push("/unauthorized");
+      }
     }
-    if((user.role === Role.CENTRAL_ADMIN  && user?.tenantData[0]?.tenantName == youthNetTenantName.SECOND_CHANCE_PROGRAM) && notAllowedPathsForCentralAdmin.includes(router.pathname))
+    if((user.role === Role.CENTRAL_ADMIN  && user?.tenantData[0]?.tenantName == TenantName.SECOND_CHANCE_PROGRAM) && notAllowedPathsForCentralAdmin.includes(router.pathname))
     {
       if (router.pathname !== "/login" && router.pathname !== "/logout" && router.pathname !== "/edit-password") {
 

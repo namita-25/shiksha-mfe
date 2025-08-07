@@ -220,7 +220,7 @@ const ProgramCard: React.FC<ProgramCardProps> = ({
     <>
       <Card
         sx={{
-          width: "300px",
+          // width: "300px",
           height: "330px",
           borderRadius: 2,
           border: "1px solid #D0C5B4",

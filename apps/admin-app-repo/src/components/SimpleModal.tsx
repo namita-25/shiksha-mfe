@@ -1,4 +1,4 @@
-import CloseSharpIcon from "@mui/icons-material/CloseSharp";
+import CloseSharpIcon from '@mui/icons-material/CloseSharp';
 import {
   Box,
   Button,
@@ -7,8 +7,8 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-} from "@mui/material";
-import React, { ReactNode } from "react";
+} from '@mui/material';
+import React, { ReactNode } from 'react';
 
 interface SimpleModalProps {
   secondaryActionHandler?: () => void;
@@ -21,7 +21,8 @@ interface SimpleModalProps {
   open: boolean;
   onClose: () => void;
   modalTitle: string;
-  isFullwidth?:boolean
+  isFullwidth?: boolean;
+  id?: any;
 }
 
 const SimpleModal: React.FC<SimpleModalProps> = ({
@@ -35,41 +36,42 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
   footer,
   children,
   modalTitle,
-  isFullwidth=false
+  isFullwidth = false,
+  id = '',
 }) => {
   const theme = useTheme<any>();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const isLargeScreen = useMediaQuery(theme.breakpoints.up("lg"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
+  const isLargeScreen = useMediaQuery(theme.breakpoints.up('lg'));
 
   const modalStyle = {
-    display: "flex",
-    flexDirection: "column" as const,
-    position: "absolute" as const,
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    maxWidth:'450px',
-    width:'100%',
-    maxHeight: isFullwidth ? "60vh":"60vh",
-    backgroundColor: "#fff",
-    borderRadius: "8px",
-    boxShadow: theme.shadows[5]
+    display: 'flex',
+    flexDirection: 'column',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '40%',
+    maxHeight: '80vh',
+    backgroundColor: 'rgb(255, 255, 255)',
+    borderRadius: '8px',
+    boxShadow:
+      'rgba(0, 0, 0, 0.2) 0px 3px 5px -1px, rgba(0, 0, 0, 0.14) 0px 5px 8px 0px, rgba(0, 0, 0, 0.12) 0px 1px 14px 0px',
   };
 
   const titleStyle = {
-    position: "sticky" as const,
-    top: "0",
-    backgroundColor: "#fff",
+    position: 'sticky' as const,
+    top: '0',
+    backgroundColor: '#fff',
     padding: theme.spacing(2),
     zIndex: 9999,
     borderBottom: `1px solid ${theme.palette.divider}`,
-    borderTopLeftRadius: "8px",
-    borderTopRightRadius: "8px",
+    borderTopLeftRadius: '8px',
+    borderTopRightRadius: '8px',
   };
 
   const contentStyle = {
     flex: 1,
-    overflowY: "auto" as const,
+    overflowY: 'auto' as const,
     padding: theme.spacing(2),
   };
 
@@ -82,7 +84,7 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
     <Modal
       open={open}
       onClose={(event, reason) => {
-        if (reason !== "backdropClick") {
+        if (reason !== 'backdropClick') {
           onClose();
         }
       }}
@@ -99,7 +101,7 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
             {modalTitle}
           </Typography>
           <CloseSharpIcon
-            sx={{ cursor: "pointer" }}
+            sx={{ cursor: 'pointer' }}
             onClick={onClose}
             aria-label="Close"
           />
@@ -116,19 +118,23 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
               justifyContent="center"
               alignItems="center"
               sx={footerStyle}
+              gap={'10px'}
             >
               {primaryText && (
                 <Button
                   variant="contained"
                   color="primary"
                   sx={{
-                    "&.Mui-disabled": {
+                    '&.Mui-disabled': {
                       backgroundColor: theme?.palette?.primary?.main,
                     },
                     padding: theme.spacing(1),
-                    fontWeight: "500",
+                    fontWeight: '500',
+                    width: '100%',
                   }}
                   onClick={primaryActionHandler}
+                  form={id}
+                  type="submit"
                 >
                   {primaryText}
                 </Button>
@@ -138,14 +144,14 @@ const SimpleModal: React.FC<SimpleModalProps> = ({
                   variant="contained"
                   color="primary"
                   sx={{
-                    "&.Mui-disabled": {
+                    '&.Mui-disabled': {
                       backgroundColor: theme?.palette?.primary?.main,
                     },
-                    minWidth: "84px",
-                    height: "2.5rem",
+                    minWidth: '84px',
+                    height: '2.5rem',
                     padding: theme.spacing(1),
-                    fontWeight: "500",
-                    width: "100%",
+                    fontWeight: '500',
+                    width: '100%',
                   }}
                   onClick={secondaryActionHandler}
                 >

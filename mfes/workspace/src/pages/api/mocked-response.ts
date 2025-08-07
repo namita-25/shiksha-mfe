@@ -158,6 +158,7 @@ export const genericEditorReviewFormResponse = {
                         "code": "domain",
                         "visible": true,
                         "depends": [
+                            "subject",
                             "subDomain"
                         ],
                         "editable": true,
@@ -175,6 +176,7 @@ export const genericEditorReviewFormResponse = {
                         "code": "subDomain",
                         "visible": true,
                         "depends": [
+                            "subject"
                         ],
                         "editable": true,
                         "dataType": "list",
@@ -188,11 +190,27 @@ export const genericEditorReviewFormResponse = {
                         "placeholder": "Sub Domain"
                     },
                     {
+                        "code": "subject",
+                        "visible": true,
+                        "depends": [
+                        ],
+                        "editable": true,
+                        "dataType": "list",
+                        "renderingHints": {},
+                        "description": "Subject",
+                        "index": 7,
+                        "label": "Subject",
+                        "required": true,
+                        "name": "Subject",
+                        "inputType": "multiselect",
+                        "placeholder": "Subject"
+                    },
+                    {
                         "code": "targetAgeGroup",
                         "dataType": "list",
                         "description": "Target Age group / Grade level (Who is the content targeted for?)",
                         "editable": true,
-                        "index": 7,
+                        "index": 8,
                         "inputType": "multiselect",
                         "label": "Target Age group",
                         "name": "Target Age group",
@@ -236,7 +254,7 @@ export const genericEditorReviewFormResponse = {
                         "dataType": "list",
                         "description": "Primary User",
                         "editable": true,
-                        "index": 8,
+                        "index": 9,
                         "inputType": "multiselect",
                         "label": "Primary User",
                         "name": "Primary User",
@@ -264,75 +282,83 @@ export const genericEditorReviewFormResponse = {
                         "dataType": "text",
                         "description": "Content Language",
                         "editable": true,
-                        "index": 8,
+                        "index": 10,
                         "inputType": "select",
                         "label": "Content Language",
                         "name": "Content Language",
                         "range": [
-                            {
-                                "key": "Hindi",
-                                "name": "Hindi"
-                            },
-                            {
-                                "key": "English",
-                                "name": "English"
-                            },
-                            {
-                                "key": "Urdu",
-                                "name": "Urdu"
-                            },
-                            {
-                                "key": "Sanskrit",
-                                "name": "Sanskrit"
-                            },
-                            {
-                                "key": "Punjabi",
-                                "name": "Punjabi"
-                            },
-                            {
-                                "key": "Gujarati",
-                                "name": "Gujarati"
-                            },
-                            {
-                                "key": "Marathi",
-                                "name": "Marathi"
-                            },
-                            {
-                                "key": "Tamil",
-                                "name": "Tamil"
-                            },
-                            {
-                                "key": "Telugu",
-                                "name": "Telugu"
-                            },
-                            {
-                                "key": "Kannada",
-                                "name": "Kannada"
-                            },
-                            {
-                                "key": "Malayalam",
-                                "name": "Malayalam"
-                            },
-                            {
-                                "key": "Odia",
-                                "name": "Odia"
-                            },
-                            {
-                                "key": "Assamese",
-                                "name": "Assamese"
-                            },
-                            {
-                                "key": "Bengali",
-                                "name": "Bengali"
-                            },
-                            {
-                                "key": "Manipuri",
-                                "name": "Manipuri"
-                            },
-                            {
-                                "key": "Kashmiri",
-                                "name": "Kashmiri"
-                            }
+                          {
+                              "key": "English",
+                              "name": "English"
+                          },
+                          {
+                              "key": "Marathi",
+                              "name": "Marathi"
+                          },
+                          {
+                              "key": "Hindi",
+                              "name": "Hindi"
+                          },
+                          {
+                              "key": "Assamese",
+                              "name": "Assamese"
+                          },
+                          {
+                              "key": "Bengali",
+                              "name": "Bengali"
+                          },
+                          {
+                              "key": "Gujarati",
+                              "name": "Gujarati"
+                          },
+                          {
+                              "key": "Kannada",
+                              "name": "Kannada"
+                          },
+                          {
+                              "key": "Kashmiri",
+                              "name": "Kashmiri"
+                          },
+                          {
+                              "key": "Khasi",
+                              "name": "Khasi"
+                          },
+                          {
+                              "key": "Malayalam",
+                              "name": "Malayalam"
+                          },
+                          {
+                              "key": "Manipuri",
+                              "name": "Manipuri"
+                          },
+                          {
+                              "key": "Odia",
+                              "name": "Odia"
+                          },
+                          {
+                              "key": "Punjabi",
+                              "name": "Punjabi"
+                          },
+                          {
+                              "key": "Rabha (Rongdani)",
+                              "name": "Rabha (Rongdani)"
+                          },
+                          {
+                              "key": "Sanskrit",
+                              "name": "Sanskrit"
+                          },
+                          {
+                              "key": "Tamil",
+                              "name": "Tamil"
+                          },
+                          {
+                              "key": "Telugu",
+                              "name": "Telugu"
+                          },
+                          {
+                              "key": "Urdu",
+                              "name": "Urdu"
+                          }
                         ],
                         "placeholder": "Content Language",
                         "renderingHints": {},
@@ -344,39 +370,67 @@ export const genericEditorReviewFormResponse = {
                         "dataType": "list",
                         "description": "Program",
                         "editable": true,
-                        "index": 10,
+                        "index": 11,
                         "inputType": "multiselect",
                         "label": "Program",
                         "name": "Program",
                         "range": [
-                            {
-                                "name": "Early Years",
-                                "Value": "Early Years"
-                            },
-                            {
-                                "name": "TaRL(Elementary Education)",
-                                "Value": "TaRL(Elementary Education)"
-                            },
-                            {
-                                "name": "SCP",
-                                "Value": "SCP"
-                            },
-                            {
-                                "name": "YouthNet",
-                                "value": "YouthNet"
-                            },
-                            {
-                                "name": "Skilling Other",
-                                "value": "Skilling Other"
-                            },
-                            {
-                                "name": "Open School",
-                                "value": "Open School"
-                            },
-                            {
+                          {
+                              "name": "Hamara Gaon",
+                              "value": "Hamara Gaon"
+                          },
+                          {
+                              "name": "Early Childhood Education",
+                              "value": "Early Childhood Education"
+                          },
+                          {
+                              "name": "Inclusive Education (ENABLE)",
+                              "value": "Inclusive Education (ENABLE)"
+                          },
+                          {
+                              "name": "Elementary",
+                              "value": "Elementary"
+                          },
+                          {
+                              "name": "Second Chance",
+                              "value": "Second Chance"
+                          },
+                          {
+                              "name": "Digital Initiatives",
+                              "value": "Digital Initiatives"
+                          },
+                          {
+                              "name": "Vocational Training",
+                              "value": "Vocational Training"
+                          },
+                          {
+                              "name": "Pratham Council For Vulnerable Children",
+                              "value": "Pratham Council For Vulnerable Children"
+                          },
+                          {
+                              "name": "Annual Status of Education Report",
+                              "value": "Annual Status of Education Report"
+                          },
+                          {
+                              "name": "Pragyanpath",
+                              "value": "Pragyanpath"
+                          },
+                          {
+                              "name": "Open School",
+                              "value": "Open School"
+                          },
+                          {
+                              "name": "Experimento India",
+                              "value": "Experimento India"
+                          },
+                          {
+                              "name": "Camp to Club",
+                              "value": "Camp to Club"
+                          },
+                          {
                               "name": "Other",
                               "value": "Other"
-                            }
+                          }
                         ],
                         "placeholder": "Please select an option",
                         "renderingHints": {},

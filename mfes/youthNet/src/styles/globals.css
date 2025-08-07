@@ -24,7 +24,7 @@ body {
 .drawer-select div div {
   display: flex;
   align-items: center;
-  height: 32px !important;
+  height: 53px !important;
   padding: 0 10px;
   font-weight: 500;
   font-size: 14px;
@@ -947,6 +947,9 @@ main {
   } */
   .mt-md-16 {
     margin-top: 10px;
+  }
+  .mt-md-24{
+    margin-top: 24px;
   }
 
   .ps-md-ab {

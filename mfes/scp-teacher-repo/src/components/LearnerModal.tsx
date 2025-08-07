@@ -1,12 +1,4 @@
-
-import {
-  Box,
-  Button,
-  Divider,
-  Grid,
-  Modal,
-  Typography
-} from '@mui/material';
+import { Box, Button, Divider, Grid, Modal, Typography } from '@mui/material';
 
 import { modalStyles } from '@/styles/modalStyles';
 import { toPascalCase, translateString } from '@/utils/Helper';
@@ -67,7 +59,7 @@ const fieldValueStyles = (theme: any) => ({
 const buttonContainerStyles = {
   padding: '20px',
   display: 'flex',
-  gap:'20px',
+  gap: '20px',
   justifyContent: 'flex-end',
 };
 
@@ -99,6 +91,8 @@ const LearnerModal = ({
   userName,
   contactNumber,
   enrollmentNumber,
+  gender,
+  email,
 }: {
   userId?: string;
   open: boolean;
@@ -107,6 +101,8 @@ const LearnerModal = ({
   userName?: string;
   contactNumber?: any;
   enrollmentNumber?: any;
+  gender?: any;
+  email?: any;
 }) => {
   const { t } = useTranslation();
 
@@ -117,24 +113,39 @@ const LearnerModal = ({
     router.push(`/learner/${userId}`);
   };
 
-  const learnerDetailsByOrder = [...data]?.map((field) => {
-    if (
-      field.type === 'drop_down' ||
-      (field.type === 'radio' && field.options && field.value.length)
-    ) {
-      const selectedOption = field?.options?.find(
-        (option: any) => option.value === field.value
-      );
-      return {
-        ...field,
-        displayValue: selectedOption ? selectedOption?.label : field.value,
-      };
-    }
-    return {
-      ...field,
-      displayValue: field.value,
-    };
-  });
+  const learnerDetailsByOrder = [
+    {
+      label: t('PROFILE.FULL_NAME'),
+      value: userName ? toPascalCase(userName) : '-',
+    },
+    {
+      label: t('PROFILE.CONTACT_NUMBER'),
+      value: contactNumber || '-',
+    },
+    {
+      label: t('PROFILE.ENROLLMENT_NUMBER'),
+      value: enrollmentNumber || '-',
+    },
+
+    {
+      label: 'Gender',
+      value: toPascalCase(gender) || '-',
+    },
+    {
+      label: 'Email',
+      value: email || '-',
+    },
+    ...data.map((field: any) => ({
+      label: field.label
+        ? t(`FORM.${field.label.toUpperCase()}`, field.label)
+        : field.label,
+      value: Array.isArray(field.selectedValues)
+        ? toPascalCase(
+            field.selectedValues.map((item: any) => item.value).join(', ')
+          )
+        : field.selectedValues || '-',
+    })),
+  ];
 
   return (
     <>
@@ -156,49 +167,13 @@ const LearnerModal = ({
               <Box sx={contentBoxStyles}>
                 <Box sx={fieldContainerStyles}>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={12}>
-                      <Typography sx={fieldTitleStyles(theme)}>
-                        {t('PROFILE.FULL_NAME')}
-                      </Typography>
-                      <Box display="flex">
-                        <Typography className='two-line-text' sx={fieldValueStyles(theme)}>
-                          {userName ? toPascalCase(userName) : ''}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography sx={fieldTitleStyles(theme)}>
-                        {t('PROFILE.CONTACT_NUMBER')}
-                      </Typography>
-                      <Box display="flex">
-                        <Typography sx={fieldValueStyles(theme)}>
-                          {contactNumber || '-'}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Typography sx={fieldTitleStyles(theme)}>
-                        {t('PROFILE.ENROLLMENT_NUMBER')}
-                      </Typography>
-                      <Box display="flex">
-                        <Typography sx={fieldValueStyles(theme)}>
-                          {enrollmentNumber || '-'}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    {learnerDetailsByOrder?.map((item: any, index: number) => (
+                    {learnerDetailsByOrder.map((item: any, index: number) => (
                       <Grid item xs={12} sm={6} key={index}>
                         <Typography sx={fieldTitleStyles(theme)}>
-                          {item?.label
-                            ? t(`FORM.${item.label.toUpperCase()}`, item.label)
-                            : item.label}
+                          {item.label}
                         </Typography>
                         <Typography sx={fieldValueStyles(theme)}>
-                          {Array.isArray(item.displayValue)
-                            ? toPascalCase(item.displayValue.join(', '))
-                            : item?.displayValue
-                              ? translateString(t, item.displayValue)
-                              : '-'}
+                          {item.value}
                         </Typography>
                       </Grid>
                     ))}

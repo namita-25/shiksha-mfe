@@ -104,23 +104,8 @@ const SurveyClassDetails = () => {
       {value === 1 && (
         <Box>
           <Box width="100%">
-            <EntrySlider>
-              <EntryContent
-                date={CAMP_DATA.DATE1}
-                users={entry1}
-                theme="Science"
-                files={files}
-                youthListUsers={youthListUser1}
-              />
-              <EntryContent
-                date={CAMP_DATA.DATE2}
-                users={entry2}
-                theme="Maths"
-                files={files}
-                youthListUsers={youthListUser2}
-              />
-              {/* Add more entries as needed */}
-            </EntrySlider>
+           
+            <></>
           </Box>
         </Box>
       )}

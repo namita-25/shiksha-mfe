@@ -90,8 +90,6 @@ function generateSchemaAndUISchema(fields) {
       type,
       options,
       pattern,
-      isRequired,
-      maxSelection,
       validation,
       maxLength,
       minLength,
@@ -99,7 +97,7 @@ function generateSchemaAndUISchema(fields) {
       api,
       extra,
     } = field;
-
+    let isRequired = false;
     const schemaField = {
       type: 'string',
       title: label,
@@ -111,10 +109,23 @@ function generateSchemaAndUISchema(fields) {
     if (pattern) {
       schemaField.pattern = normalizePattern(pattern);
     }
-    if (maxSelection) {
-      schemaField.maxSelection = parseInt(maxSelection, 10);
-    } else if (validation?.maxSelections) {
+    if (validation?.maxSelections) {
       schemaField.maxSelection = parseInt(validation.maxSelections, 10);
+    }
+    if (validation?.isMultiSelect) {
+      schemaField.isMultiSelect = validation.isMultiSelect;
+      schemaField.uniqueItems = validation.isMultiSelect;
+      schemaField.type = 'array';
+    }
+    if (validation?.isRequired) {
+      schemaField.isRequired = validation.isRequired;
+      isRequired = validation.isRequired;
+    }
+    if (validation?.minValue || validation?.minValue == 0) {
+      schemaField.minValue = validation.minValue;
+    }
+    if (validation?.maxValue) {
+      schemaField.maxValue = validation.maxValue;
     }
     if (maxLength) {
       schemaField.maxLength = parseInt(maxLength, 10);
@@ -139,31 +150,117 @@ function generateSchemaAndUISchema(fields) {
       uiSchema[name]['ui:help'] = hint;
     }
 
-    if (type === 'drop_down' || type === 'radio') {
-      schemaField.enum = options.map((opt) => opt.value);
-      schemaField.enumNames = options.map((opt) => opt.label);
-      uiSchema[name] = { 'ui:widget': type === 'radio' ? 'radio' : 'select' };
-    } else if (type === 'checkbox') {
-      schemaField.type = 'array';
-      schemaField.items = { type: 'string' };
-      schemaField.enum = options?.map((opt) => opt.value) || [];
-      schemaField.enumNames = options?.map((opt) => opt.label) || [];
-      uiSchema[name] = { 'ui:widget': 'checkboxes' };
+    if (type === 'radio') {
+      schemaField.enum = options?.map((opt) => opt.value);
+      schemaField.enumNames = options?.map((opt) => opt.label);
+      uiSchema[name] = {
+        'ui:widget': 'CustomRadioWidget',
+        'ui:options': {
+          hideError: true, // ✅ hides automatic error rendering
+        },
+      };
+    } else if (type === 'drop_down' || type === 'checkbox') {
+      if (schemaField?.isMultiSelect === true) {
+        schemaField.items = {
+          type: 'string',
+          enum: options?.map((opt) => opt.value) || ['Select'],
+          enumNames: options?.map((opt) => opt.label) || ['Select'],
+        };
+      } else {
+        schemaField.enum = options?.map((opt) => opt.value) || ['Select'];
+        schemaField.enumNames = options?.map((opt) => opt.label) || ['Select'];
+      }
+      uiSchema[name] = {
+        'ui:widget':
+          type === 'checkbox'
+            ? //? 'checkboxes'
+              'CustomCheckboxWidget'
+            : schemaField?.isMultiSelect === true
+            ? 'CustomMultiSelectWidget'
+            : 'CustomSingleSelectWidget',
+        'ui:options': {
+          multiple: schemaField?.isMultiSelect === true ? true : false,
+          uniqueItems: schemaField?.isMultiSelect === true ? true : false,
+          hideError: schemaField?.isMultiSelect === true ? false : true,
+        },
+      };
     } else if (type === 'date') {
+      let minDateCount = 0;
+      let maxDateCount = 100;
+      if (schemaField?.minValue) {
+        minDateCount = schemaField?.minValue;
+      }
+      if (schemaField?.minValue) {
+        maxDateCount = schemaField?.maxValue;
+      }
+
+      //set dates
+      // Get current date
+      const currentDate = new Date();
+
+      // Calculate min and max date range based on age limit
+      const maxDate = new Date(
+        currentDate.getFullYear() - minDateCount,
+        currentDate.getMonth(),
+        currentDate.getDate()
+      )
+        .toISOString()
+        .split('T')[0]; // 18 years ago
+
+      const minDate = new Date(
+        currentDate.getFullYear() - maxDateCount,
+        currentDate.getMonth(),
+        currentDate.getDate()
+      )
+        .toISOString()
+        .split('T')[0]; // 50 years ago
+
       schemaField.format = 'date';
-      uiSchema[name] = { 'ui:widget': 'date' };
+
+      uiSchema[name] = {
+        'ui:widget': 'CustomDateWidget',
+        'ui:options': {
+          minValue: minDate, // Default minValue (optional)
+          maxValue: maxDate, // Default maxValue (optional)
+          hideError: true,
+        },
+      };
+    } else if (type === 'file') {
+      uiSchema[name] = { 'ui:widget': 'dateTime' };
     } else if (type === 'dateTime') {
       schemaField.format = 'date-time';
       uiSchema[name] = { 'ui:widget': 'dateTime' };
     } else {
-      uiSchema[name] = { 'ui:widget': 'text' };
+      uiSchema[name] = {
+        'ui:widget': 'CustomTextFieldWidget',
+        'ui:options': { validateOnBlur: true, hideError: true },
+      };
     }
 
     //Our custom RJSF field attributes
-    if (api) {
+    if (api && type !== 'file') {
       schemaField.api = api;
-      schemaField.enum = ['select'];
-      schemaField.enumNames = ['Select'];
+      if (schemaField?.isMultiSelect === true) {
+        schemaField.items = {
+          type: 'string',
+          enum: ['Select'],
+          enumNames: ['Select'],
+        };
+      } else {
+        schemaField.enum = ['Select'];
+        schemaField.enumNames = ['Select'];
+      }
+    } else if (type === 'file' && schemaField?.isMultiSelect === true) {
+      schemaField.items = { type: 'string', format: 'uri' };
+      uiSchema[name] = {
+        'ui:widget': 'CustomFileUpload',
+        'ui:options': {
+          isRequired: schemaField?.isRequired,
+          isMultiSelect: schemaField?.isMultiSelect,
+          maxSelections: schemaField?.maxSelection,
+          allowedFormats: ['.jpg', '.png', '.jpeg'],
+        },
+      };
     }
 
     if (extra) {
@@ -173,5 +270,33 @@ function generateSchemaAndUISchema(fields) {
     schema.properties[name] = schemaField;
   });
 
+  //form order schema
+  let originalOrder = Object.keys(schema.properties);
+  const finalUiOrder = reorderUiOrder(originalOrder, preferredOrder);
+  uiSchema['ui:order'] = finalUiOrder;
+
   return { schema, uiSchema };
 }
+
+const reorderUiOrder = (originalOrder, preferredOrder) => {
+  const preferredSet = new Set(preferredOrder);
+
+  const ordered = [
+    ...preferredOrder.filter((field) => originalOrder.includes(field)),
+    ...originalOrder.filter((field) => !preferredSet.has(field)),
+  ];
+
+  return ordered;
+};
+const preferredOrder = [
+  'state',
+  'district',
+  'block',
+  'village',
+  'center',
+  'parentId',
+  'batch',
+  'board',
+  'medium',
+  'grade',
+];

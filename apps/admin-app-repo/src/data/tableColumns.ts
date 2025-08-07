@@ -364,7 +364,7 @@ export const getCoursesTableData = (t: any, isMobile: boolean, isArchived?:any) 
      { key: 'userId', titleKey: 'TABLE_TITLE.USER_ID', dataType: DataType.String, width: 180,  },
      { key: 'courseId', titleKey: 'TABLE_TITLE.COURSE_ID', dataType: DataType.String, width: 180,  },
      
-     { key: 'actions', titleKey: 'TABLE_TITLE.ACTIONS', dataType: DataType.String, width: 180,  },
+     { key: 'actions', titleKey: 'TABLE_TITLE.ACTIONS', dataType: DataType.String, width: 250,  },
 
 
 ];

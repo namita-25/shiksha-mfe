@@ -2,13 +2,22 @@ import NoDataFound from '../../components/common/NoDataFound';
 import Header from '../../components/Header';
 import BackHeader from '../../components/youthNet/BackHeader';
 import Surveys from '../../components/youthNet/Surveys';
-import { surveysData } from '../../components/youthNet/tempConfigs';
+import {
+  surveysData,
+  YOUTHNET_USER_ROLE,
+} from '../../components/youthNet/tempConfigs';
 import { Box, Grid, Tab, Tabs } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useRouter } from 'next/router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { targetSolution } from '../../services/youthNet/Survey/suveyService';
+import Dropdown from '../../components/youthNet/DropDown';
+import Loader from '../../components/Loader';
+import { getStateBlockDistrictList } from '../../services/youthNet/Dashboard/VillageServices';
+import { cohortHierarchy } from '../../utils/app.constant';
+import { getLoggedInUserRole } from '../../utils/Helper';
 
 const Survey = () => {
   const { t } = useTranslation();
@@ -16,8 +25,14 @@ const Survey = () => {
   const router = useRouter();
 
   const [value, setValue] = useState<number>(1);
-  // const [searchInput, setSearchInput] = useState('');
+  const [surveysData, setSurveysData] = useState<any>();
+  const [expiredSurveysData, setExpiredSurveysData] = useState<any>();
 
+  const [districtData, setDistrictData] = useState<any>(null);
+  const [blockData, setBlockData] = useState<any>(null);
+  // const [searchInput, setSearchInput] = useState('');
+  const [selectedBlockValue, setSelectedBlockValue] = useState<any>('');
+  const [selectedDistrictValue, setSelectedDistrictValue] = useState<any>('');
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
@@ -25,10 +40,115 @@ const Survey = () => {
     router.push(`/campDetails/${villageNameStringNew}${title}`);
   };
 
-  const handleAddVolunteers = () => {
-    router.push('/volunteerList');
+  const handleAddVolunteers = (observationId: any, solutionId: any) => {
+    console.log(observationId);
+    router.push({
+      pathname: `/volunteerList`,
+      query: {
+        blockId: selectedBlockValue,
+        observationId: observationId,
+        solutionId: solutionId,
+      },
+    });
   };
+  useEffect(() => {
+    const getData = async () => {
+      let userDataString = localStorage.getItem('userData');
+      let userData: any = userDataString ? JSON.parse(userDataString) : null;
+      const districtResult = userData?.customFields?.find(
+        (item: any) => item.label === cohortHierarchy.DISTRICT
+      );
+      console.log(districtResult?.selectedValues);
+      const transformedData = districtResult?.selectedValues?.map(
+        (item: any) => ({
+          id: item?.id,
+          name: item?.value,
+        })
+      );
+      setDistrictData(transformedData);
+      setSelectedDistrictValue(transformedData[0]?.id);
+      const controllingfieldfk = [transformedData[0]?.id?.toString()];
+      const fieldName = 'block';
+      const blockResponce = await getStateBlockDistrictList({
+        controllingfieldfk,
+        fieldName,
+      });
+      console.log(blockResponce);
 
+      const transformedBlockData = blockResponce?.result?.values?.map(
+        (item: any) => ({
+          id: item?.value,
+          name: item?.label,
+        })
+      );
+      setBlockData(transformedBlockData);
+      setSelectedBlockValue(transformedBlockData[0]?.id);
+    };
+    if (YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()) getData();
+  }, []);
+  useEffect(() => {
+    const fetchObservationData = async () => {
+      try {
+        let userDataString = localStorage.getItem('userData');
+        let userData: any = userDataString ? JSON.parse(userDataString) : null;
+        const districtResult = userData.customFields.find(
+          (item: any) => item.label === cohortHierarchy.DISTRICT
+        );
+        const stateResult = userData.customFields.find(
+          (item: any) => item.label === cohortHierarchy.STATE
+        );
+        const blockResult = userData.customFields.find(
+          (item: any) => item.label === cohortHierarchy.BLOCK
+        );
+        const state = stateResult?.selectedValues?.[0]?.id?.toString();
+        const district = districtResult?.selectedValues?.[0]?.id?.toString();
+        const block =
+          YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole()
+            ? selectedBlockValue.toString()
+            : blockResult?.selectedValues?.[0]?.id?.toString();
+        const response = await targetSolution({ state, district });
+        const surveysData2 = response?.result?.data.map((survey: any) => ({
+          id: survey._id,
+          solutionId: survey.solutionId,
+          title: survey.name,
+          date: new Date(survey.endDate).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          }),
+          details: {},
+          endDate: new Date(survey.endDate),
+        }));
+        const currentDate = new Date();
+        const activeSurveys = surveysData2.filter(
+          (survey: any) => survey.endDate >= currentDate
+        );
+        const expiredSurveys = surveysData2.filter(
+          (survey: any) => survey.endDate < currentDate
+        );
+
+        setSurveysData(activeSurveys);
+        setExpiredSurveysData(expiredSurveys);
+        console.log(surveysData2);
+
+        // setObservationData(response?.result?.data || []);
+        // const sortedData = [...response?.result?.data].sort((a, b) => {
+        //   const dateA = new Date(a.endDate);
+        //   const dateB = new Date(b.endDate);
+        //   return dateA.getTime() - dateB.getTime();
+        // });
+
+        // setFilteredObservationData(sortedData || []);
+        // const data=response?.result?.data;
+        // data[1].endDate = "2027-11-15T14:26:18.803Z";
+        // setObservationData(data || []);
+        // setFilteredObservationData(data || []);
+      } catch (error) {
+        console.error('Error fetching cohort list:', error);
+      }
+    };
+    fetchObservationData();
+  }, [selectedBlockValue]);
   return (
     <>
       <Box>
@@ -73,7 +193,55 @@ const Survey = () => {
           </Tabs>
         )}
       </Box>
-
+      {YOUTHNET_USER_ROLE.LEAD === getLoggedInUserRole() && (
+        <Box
+          display={'flex'}
+          flexDirection={'row'}
+          sx={{
+            p: '20px',
+          }}
+        >
+          <Box
+            sx={{
+              width: '50%',
+              mr: '20px',
+            }}
+          >
+            {districtData ? (
+              <Dropdown
+                name={districtData?.DISTRICT_NAME}
+                values={districtData}
+                defaultValue={districtData?.[0]?.id}
+                onSelect={(value) => console.log('Selected:', value)}
+                label={t('YOUTHNET_USERS_AND_VILLAGES.DISTRICT')}
+              />
+            ) : (
+              // <Loader showBackdrop={true} />
+              <></>
+            )}
+          </Box>
+          <Box
+            sx={{
+              width: '50%',
+            }}
+          >
+            {blockData ? (
+              <Dropdown
+                name={blockData?.BLOCK_NAME}
+                values={blockData}
+                defaultValue={selectedBlockValue}
+                onSelect={(value) =>
+                  console.log('Selected:', setSelectedBlockValue(value))
+                }
+                label={t('YOUTHNET_USERS_AND_VILLAGES.BLOCK')}
+              />
+            ) : (
+              // <Loader showBackdrop={true} />
+              <></>
+            )}
+          </Box>
+        </Box>
+      )}
       <Box>
         {value === 1 && (
           <Box
@@ -84,7 +252,7 @@ const Survey = () => {
           >
             <Grid container spacing={2}>
               {surveysData && surveysData.length > 0 ? (
-                surveysData?.map((survey, index) => (
+                surveysData?.map((survey: any, index: any) => (
                   <Grid item xs={12} sm={12} md={6} lg={4} key={index}>
                     <Surveys
                       title={survey.title}
@@ -93,7 +261,11 @@ const Survey = () => {
                       status={survey.details.status}
                       actionRequired={survey.details.actionRequired}
                       minHeight="98px"
-                      onClick={handleAddVolunteers}
+                      // onClick={handleAddVolunteers}
+                      onClick={() => {
+                        handleAddVolunteers(survey.id, survey.solutionId);
+                        localStorage.setItem('selectedSurvey', survey.title);
+                      }}
                     />
                   </Grid>
                 ))
@@ -104,10 +276,35 @@ const Survey = () => {
           </Box>
         )}
         {value === 2 && (
-          <Box sx={{ mt: 4, p: 2, background: '#FBF4E4' }}>
-            {/* <GenericForm fields={formFields} /> */}
-            {/* <ExamplePage/> */}
-            {/* <VillageSelector/> */}
+          <Box
+            padding={'15px'}
+            sx={{
+              background: '#FBF4E4',
+            }}
+          >
+            <Grid container spacing={2}>
+              {expiredSurveysData && expiredSurveysData.length > 0 ? (
+                expiredSurveysData?.map((survey: any, index: any) => (
+                  <Grid item xs={12} sm={12} md={6} lg={4} key={index}>
+                    <Surveys
+                      title={survey.title}
+                      date={survey.date}
+                      villages={survey.details.villages}
+                      status={survey.details.status}
+                      actionRequired={survey.details.actionRequired}
+                      minHeight="98px"
+                      // onClick={handleAddVolunteers}
+                      //  onClick={() => {
+                      //   handleAddVolunteers(survey.id, survey.solutionId);
+                      //   localStorage.setItem("selectedSurvey", survey.title);
+                      // }}
+                    />
+                  </Grid>
+                ))
+              ) : (
+                <NoDataFound />
+              )}
+            </Grid>
           </Box>
         )}
       </Box>

@@ -3,7 +3,7 @@ import {
   BulkCreateCohortMembersRequest,
   LearnerListProps,
   UpdateCustomField,
-  UserData
+  UserData,
 } from '@/utils/Interfaces';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -36,6 +36,7 @@ import { useRouter } from 'next/router';
 import ReactGA from 'react-ga4';
 import manageUserStore from '../store/manageUserStore';
 import { showToastMessage } from './Toastify';
+import LearnerManage from '@/shared/LearnerManage/LearnerManage';
 
 type Anchor = 'bottom';
 
@@ -54,6 +55,7 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
   showMiniProfile,
   onLearnerDelete,
   isFromProfile = false,
+  customFields,
 }) => {
   const [state, setState] = React.useState({
     bottom: false,
@@ -75,12 +77,15 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
     contactNumber: '',
     enrollmentNumber: '',
     customFieldsData: [] as UpdateCustomField[],
+    gender: '',
   });
   const userStore = useStore();
   const theme = useTheme<any>();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
   const { t } = useTranslation();
+  const loggedInUserRole = localStorage.getItem('role');
+
   const [openCentersModal, setOpenCentersModal] = React.useState(false);
   const [openDeleteUserModal, setOpenDeleteUserModal] = React.useState(false);
   const [centers, setCenters] = React.useState();
@@ -118,20 +123,20 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
 
   const toggleDrawer =
     (anchor: Anchor, open: boolean) =>
-      (event: React.KeyboardEvent | React.MouseEvent) => {
-        setCohortLearnerDeleteId(cohortMembershipId);
-        setReassignId(userId);
+    (event: React.KeyboardEvent | React.MouseEvent) => {
+      setCohortLearnerDeleteId(cohortMembershipId);
+      setReassignId(userId);
 
-        if (
-          event.type === 'keydown' &&
-          ((event as React.KeyboardEvent).key === 'Tab' ||
-            (event as React.KeyboardEvent).key === 'Shift')
-        ) {
-          return;
-        }
+      if (
+        event.type === 'keydown' &&
+        ((event as React.KeyboardEvent).key === 'Tab' ||
+          (event as React.KeyboardEvent).key === 'Shift')
+      ) {
+        return;
+      }
 
-        setState({ ...state, bottom: open });
-      };
+      setState({ ...state, bottom: open });
+    };
 
   const setLoading = (loading: boolean) => {
     setLearnerState((prevState) => ({ ...prevState, loading }));
@@ -189,7 +194,7 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
           });
           throw new Error(
             response.params?.errmsg ||
-            'An error occurred while updating the user.'
+              'An error occurred while updating the user.'
           );
         } else {
           ReactGA.event('unmark-dropout-student-successful', {
@@ -213,9 +218,10 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
     } else if (name === 'unmark-drop-out') {
       handleUnmarkDropout();
     }
-    if (name === 'reassign-centers') {
+    if (name === 'reassign-batch') {
+      //handle reassign batch functionality here
       setOpenCentersModal(true);
-      getTeamLeadersCenters();
+      // console.log('CustomeFields!!!!!!!!!!!!!', customFields);
     }
     if (name === 'delete-User') {
       setOpenDeleteUserModal(true);
@@ -250,7 +256,7 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
           });
           throw new Error(
             response.params?.errmsg ||
-            'An error occurred while updating the user.'
+              'An error occurred while updating the user.'
           );
         } else {
           ReactGA.event('remove-student-successful', {
@@ -303,7 +309,11 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
           if (data) {
             const userData = data?.userData;
             setUserData(userData);
-            setUserName(userData?.firstName+' '+userData?.middleName+' '+userData?.lastName);
+            setUserName(
+              [userData?.firstName, userData?.middleName, userData?.lastName]
+                .filter(Boolean)
+                .join(' ')
+            );
             setContactNumber(userData?.mobile);
             setEnrollmentNumber(userData?.username);
             const customDataFields = userData?.customFields;
@@ -322,16 +332,18 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
 
   const filteredFields = filterMiniProfileFields(learnerState.customFieldsData);
 
-  const getTeamLeadersCenters = async () => { };
+  console.log('filteredFields', learnerState);
+
+  // const getTeamLeadersCenters = async () => {};
 
   const handleCloseCentersModal = () => {
     setOpenCentersModal(false);
   };
 
-  const handleAssignCenters = async (selectedCenters: any) => {
-    setOpenCentersModal(false);
-    setConfirmationModalReassignCentersOpen(true);
-  };
+  // const handleAssignCenters = async (selectedCenters: any) => {
+  //   setOpenCentersModal(false);
+  //   setConfirmationModalReassignCentersOpen(true);
+  // };
 
   const handleReassignCenterRequest = async () => {
     const attendanceStats = await fetchAttendanceStats(userId);
@@ -408,15 +420,15 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
   const stringAvatar = (name: string) => {
     if (name) {
       const nameParts = name.split(' ');
-  
+
       return {
         children:
           nameParts.length === 1
             ? nameParts[0][0]
-            : `${nameParts[0][0]}${nameParts[1]?.[0] || ''}`, 
+            : `${nameParts[0][0]}${nameParts[1]?.[0] || ''}`,
       };
     }
-  
+
     return '';
   };
 
@@ -450,6 +462,8 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
               userName={learnerState.userName}
               contactNumber={learnerState.contactNumber}
               enrollmentNumber={learnerState.enrollmentNumber}
+              gender={learnerState?.userData?.gender}
+              email={learnerState?.userData?.email}
             />
           )}
           <Box
@@ -654,91 +668,96 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
         optionList={
           block
             ? [
-              // TODO: Integrate todo service
-              // {
-              //   label: t('COMMON.REASSIGN_BLOCKS_REQUEST'),
-              //   icon: (
-              //     <LocationOnOutlinedIcon
-              //       sx={{ color: theme.palette.warning['300'] }}
-              //     />
-              //   ),
-              //   name: 'reassign-block-request',
-              // },
-              {
-                label: t('COMMON.REASSIGN_CENTERS'),
-                icon: (
-                  <ApartmentIcon
-                    sx={{ color: theme.palette.warning['300'] }}
-                  />
-                ),
-                name: 'reassign-centers',
-              },
-              {
-                label: isDropout
-                  ? t('COMMON.UNMARK_DROP_OUT')
-                  : t('COMMON.MARK_DROP_OUT'),
-                icon: (
-                  <NoAccountsIcon
-                    sx={{ color: theme.palette.warning['300'] }}
-                  />
-                ),
-                name: isDropout ? 'unmark-drop-out' : 'mark-drop-out',
-              },
-              {
-                label: t('COMMON.DELETE_USER'),
-                icon: (
-                  <DeleteOutlineIcon
-                    sx={{ color: theme.palette.warning['300'] }}
-                  />
-                ),
-                name: 'delete-User',
-              },
-            ].filter(
-              (option) =>
-                (type === Role.STUDENT ||
-                  (option.name !== 'mark-drop-out' &&
-                    option.name !== 'unmark-drop-out')) &&
-                (!(isFromProfile || isDropout) ||
-                  option.name !== 'reassign-centers')
-            )
+                // TODO: Integrate todo service
+                // {
+                //   label: t('COMMON.REASSIGN_BLOCKS_REQUEST'),
+                //   icon: (
+                //     <LocationOnOutlinedIcon
+                //       sx={{ color: theme.palette.warning['300'] }}
+                //     />
+                //   ),
+                //   name: 'reassign-block-request',
+                // },
+                {
+                  label: t('COMMON.REASSIGN_CENTERS'),
+                  icon: (
+                    <ApartmentIcon
+                      sx={{ color: theme.palette.warning['300'] }}
+                    />
+                  ),
+                  name: 'reassign-centers',
+                },
+                {
+                  label: isDropout
+                    ? t('COMMON.UNMARK_DROP_OUT')
+                    : t('COMMON.MARK_DROP_OUT'),
+                  icon: (
+                    <NoAccountsIcon
+                      sx={{ color: theme.palette.warning['300'] }}
+                    />
+                  ),
+                  name: isDropout ? 'unmark-drop-out' : 'mark-drop-out',
+                },
+                {
+                  label: t('COMMON.DELETE_USER'),
+                  icon: (
+                    <DeleteOutlineIcon
+                      sx={{ color: theme.palette.warning['300'] }}
+                    />
+                  ),
+                  name: 'delete-User',
+                },
+              ].filter(
+                (option) =>
+                  (type === Role.STUDENT ||
+                    (option.name !== 'mark-drop-out' &&
+                      option.name !== 'unmark-drop-out')) &&
+                  (!(isFromProfile || isDropout) ||
+                    option.name !== 'reassign-centers')
+              )
             : [
-              {
-                label: t('COMMON.REASSIGN_CENTERS'),
-                icon: (
-                  <ApartmentIcon
-                    sx={{ color: theme.palette.warning['300'] }}
-                  />
-                ),
-                name: 'reassign-centers',
-              },
-              {
-                label: isDropout
-                  ? t('COMMON.UNMARK_DROP_OUT')
-                  : t('COMMON.MARK_DROP_OUT'),
-                icon: (
-                  <NoAccountsIcon
-                    sx={{ color: theme.palette.warning['300'] }}
-                  />
-                ),
-                name: isDropout ? 'unmark-drop-out' : 'mark-drop-out',
-              },
-              {
-                label: t('COMMON.DELETE_USER_FROM_CENTER'),
-                icon: (
-                  <DeleteOutlineIcon
-                    sx={{ color: theme.palette.warning['300'] }}
-                  />
-                ),
-                name: 'delete-User',
-              },
-            ].filter(
-              (option) =>
-                (type === Role.STUDENT ||
-                  (option.name !== 'mark-drop-out' &&
-                    option.name !== 'unmark-drop-out')) &&
-                (!(isFromProfile || isDropout) ||
-                  option.name !== 'reassign-centers')
-            )
+                // Only TL will see this option
+                ...(loggedInUserRole === Role.TEAM_LEADER
+                  ? [
+                      {
+                        label: t('COMMON.REASSIGN_BATCH'),
+                        icon: (
+                          <ApartmentIcon
+                            sx={{ color: theme.palette.warning['300'] }}
+                          />
+                        ),
+                        name: 'reassign-batch',
+                      },
+                    ]
+                  : []),
+                {
+                  label: isDropout
+                    ? t('COMMON.UNMARK_DROP_OUT')
+                    : t('COMMON.MARK_DROP_OUT'),
+                  icon: (
+                    <NoAccountsIcon
+                      sx={{ color: theme.palette.warning['300'] }}
+                    />
+                  ),
+                  name: isDropout ? 'unmark-drop-out' : 'mark-drop-out',
+                },
+                {
+                  label: t('COMMON.DELETE_USER_FROM_CENTER'),
+                  icon: (
+                    <DeleteOutlineIcon
+                      sx={{ color: theme.palette.warning['300'] }}
+                    />
+                  ),
+                  name: 'delete-User',
+                },
+              ].filter(
+                (option) =>
+                  (type === Role.STUDENT ||
+                    (option.name !== 'mark-drop-out' &&
+                      option.name !== 'unmark-drop-out')) &&
+                  (!(isFromProfile || isDropout) ||
+                    option.name !== 'reassign-centers')
+              )
         }
         renderCustomContent={renderCustomContent}
       />
@@ -786,15 +805,27 @@ const LearnersListItem: React.FC<LearnerListProps> = ({
         handleCloseModal={handleCloseModal}
         modalOpen={confirmationModalOpen}
       />
+      {/* Onclick of reassign batch this modal opens */}
 
-      <ManageCentersModal
+      {openCentersModal && (
+        <LearnerManage
+          open={openCentersModal}
+          onClose={handleCloseCentersModal}
+          isReassign={true}
+          customFields={customFields}
+          userId={userId}
+        />
+      )}
+
+      {/* Old Reassign flow implementation */}
+      {/* <ManageCentersModal
         open={openCentersModal}
         onClose={handleCloseCentersModal}
         centersName={centersName}
         centers={centers}
         onAssign={handleAssignCenters}
         isForLearner={true}
-      />
+      /> */}
 
       <DeleteUserModal
         type={Role.STUDENT}

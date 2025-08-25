@@ -1,9 +1,9 @@
-import { Box, Tab, Tabs } from '@mui/material';
-import { ContentItem, Loader, useTranslation } from '@shared-lib'; // Updated import
-import React, { memo } from 'react';
-import { ContentSearchResponse } from '@content-mfes/services/Search';
-import ContentCardGrid from '@content-mfes/components/Card/ContentCardGrid';
-import ContentCardCarousel from '@content-mfes/components/Card/ContentCardCarousel';
+import { Box, Tab, Tabs } from "@mui/material";
+import { ContentItem, Loader, useTranslation } from "@shared-lib"; // Updated import
+import React, { memo } from "react";
+import { ContentSearchResponse } from "@content-mfes/services/Search";
+import ContentCardGrid from "@content-mfes/components/Card/ContentCardGrid";
+import ContentCardCarousel from "@content-mfes/components/Card/ContentCardCarousel";
 
 const RenderTabContent = memo(
   ({
@@ -41,9 +41,9 @@ const RenderTabContent = memo(
     const { _box, _tabs } = _config ?? {};
 
     return (
-      <Box sx={{ width: '100%', ...(_box?.sx ?? {}) }}>
+      <Box sx={{ width: "100%", ...(_box?.sx ?? {}) }}>
         {tabs?.length !== undefined && tabs?.length > 1 && (
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
             <Tabs
               {..._tabs}
               value={value ?? 0}
@@ -57,7 +57,7 @@ const RenderTabContent = memo(
                   label={tab.label}
                   {...{
                     id: `simple-tab-${index}`,
-                    'aria-controls': `simple-tabpanel-${index}`,
+                    "aria-controls": `simple-tabpanel-${index}`,
                   }}
                 />
               ))}
@@ -74,7 +74,7 @@ const RenderTabContent = memo(
             isLoading={isPageLoading}
             layoutHeight={197}
             isHideMaxHeight
-            _loader={{ backgroundColor: 'transparent' }}
+            _loader={{ backgroundColor: "transparent" }}
           >
             {contentData?.length > 0 && _config?.isShowInCarousel && (
               <ContentCardCarousel
@@ -86,6 +86,7 @@ const RenderTabContent = memo(
                 hasMoreData={hasMoreData}
                 handleLoadMore={handleLoadMore}
                 isLoadingMoreData={isLoadingMoreData}
+                isHideEmptyDataMessage={isHideEmptyDataMessage}
               />
             )}
             {!_config?.isShowInCarousel && (
@@ -98,6 +99,7 @@ const RenderTabContent = memo(
                 hasMoreData={hasMoreData}
                 handleLoadMore={handleLoadMore}
                 isLoadingMoreData={isLoadingMoreData}
+                isHideEmptyDataMessage={isHideEmptyDataMessage}
               />
             )}
           </Loader>
@@ -107,5 +109,5 @@ const RenderTabContent = memo(
   }
 );
 
-RenderTabContent.displayName = 'RenderTabContent';
+RenderTabContent.displayName = "RenderTabContent";
 export default RenderTabContent;

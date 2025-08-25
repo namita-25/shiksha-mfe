@@ -1,9 +1,9 @@
-import { CommonCard, ContentItem } from '@shared-lib';
-import { Box } from '@mui/material';
-import AppConst from '../../utils/AppConst/AppConst';
-import Description from './Description';
-import { StatusIcon } from '../CommonCollapse';
-import { CardWrap } from './ContentCard';
+import { CommonCard, ContentItem } from "@shared-lib";
+import { Box } from "@mui/material";
+import AppConst from "../../utils/AppConst/AppConst";
+import Description from "./Description";
+import { StatusIcon } from "../CommonCollapse";
+import { CardWrap } from "./ContentCard";
 
 const UnitCard = ({
   item,
@@ -38,7 +38,7 @@ const UnitCard = ({
     <CardWrap isWrap>
       <CommonCard
         minheight="100%"
-        title={(item?.name || '').trim()}
+        title={(item?.name || "").trim()}
         image={
           item?.posterImage
             ? item?.posterImage
@@ -51,23 +51,23 @@ const UnitCard = ({
         type={type}
         onClick={() => handleCardClick(item)}
         _card={{
-          _contentParentText: { sx: { height: '156px' } },
-          _cardMedia: { sx: { maxHeight: '132px' } },
+          _contentParentText: { sx: { height: "156px" } },
+          _cardMedia: { sx: { maxHeight: "132px" } },
           ..._card,
         }}
         actions={
           <StatusIcon
             showMimeTypeIcon
-            mimeType={'application/unit'}
+            mimeType={"application/unit"}
             _icon={{
               isShowText: true,
               _box: {
-                py: '7px',
-                px: '8px',
-                borderRadius: '10px',
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                borderColor: '#79747E',
+                py: "7px",
+                px: "8px",
+                borderRadius: "10px",
+                borderWidth: "1px",
+                borderStyle: "solid",
+                borderColor: "#79747E",
               },
             }}
           />

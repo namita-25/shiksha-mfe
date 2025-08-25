@@ -1,5 +1,5 @@
-import { post } from '@shared-lib';
-import axios, { AxiosRequestConfig } from 'axios';
+import { post } from "@shared-lib";
+import axios, { AxiosRequestConfig } from "axios";
 export interface ContentSearchResponse {
   ownershipType?: string[];
   publish_type?: string;
@@ -135,10 +135,10 @@ export const ContentSearch = async ({
     // Ensure the environment variable is defined
     const searchApiUrl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
     if (!searchApiUrl) {
-      throw new Error('Search API URL environment variable is not configured');
+      throw new Error("Search API URL environment variable is not configured");
     }
     // Axios request configuration
-
+    console.log("type===", type);
     const data = {
       request: {
         filters: {
@@ -147,26 +147,27 @@ export const ContentSearch = async ({
           //need below after login user channel for dynamic load content
           // channel: '0135656861912678406',
           ...filters,
-          status: ['live'],
-          primaryCategory:
-            type?.toLowerCase() === 'course'
-              ? ['Course']
-              : ['Learning Resource', 'Practice Question Set'],
-          channel: localStorage.getItem('channelId'),
+          status: ["live"],
+          primaryCategory: type,
+          // primaryCategory:
+          //   type?.toLowerCase() === "course"
+          //     ? ["Course"]
+          //     : ["Learning Resource", "Practice Question Set"],
+          channel: localStorage.getItem("channelId"),
         },
         fields: [
-          'name',
-          'appIcon',
-          'description',
-          'posterImage',
-          'mimeType',
-          'identifier',
-          'resourceType',
-          'primaryCategory',
-          'contentType',
-          'trackable',
-          'children',
-          'leafNodes',
+          "name",
+          "appIcon",
+          "description",
+          "posterImage",
+          "mimeType",
+          "identifier",
+          "resourceType",
+          "primaryCategory",
+          "contentType",
+          "trackable",
+          "children",
+          "leafNodes",
         ],
         query,
         limit,
@@ -183,7 +184,7 @@ export const ContentSearch = async ({
 
     return res;
   } catch (error) {
-    console.error('Error in ContentSearch:', error);
+    console.error("Error in ContentSearch:", error);
     throw error;
   }
 };

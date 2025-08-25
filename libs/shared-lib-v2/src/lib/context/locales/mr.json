@@ -154,7 +154,7 @@
       "EXPLORE_ADDITIONAL_COURSES": "अतिरिक्त अभ्यासक्रम पाहा"
     },
     "HOME": {
-      "WELCOME_TITLE": "Pratham myLearning मध्ये तुमचे स्वागत आहे!",
+      "WELCOME_TITLE": "Shiksha myLearning मध्ये तुमचे स्वागत आहे!",
       "WELCOME_SUBTITLE": "येथून तुमची शिकण्याची यात्रा सुरू होते",
       "SIGN_UP_BUTTON": "आता प्रोग्रामसाठी साइन अप करा!",
       "ALREADY_SIGNED_UP": "आधीच साइन अप केले आहे का?",
@@ -162,14 +162,14 @@
       "GET_THE_APP": "अॅप मिळवा",
       "POINT_CAMERA": "तुमचा फोन कॅमेरा येथे ठेवा",
       "OR": "किंवा",
-      "SEARCH_PLAYSTORE": "प्लेस्टोअरमध्ये \"Pratham myLearning\" शोधा",
-      "ABOUT_PRATHAM_TITLE": "Pratham बद्दल",
-      "ABOUT_PRATHAM_DESC": "Pratham शिक्षण प्रणालींमधील अंतर कमी करण्यासाठी नाविन्यपूर्ण, कमी खर्चिक, पुनरावृत्तीक्षम हस्तक्षेप वापरते जे वयोगटभर पसरलेले आहेत. \"प्रत्यक्ष\" कामात, Pratham प्रशिक्षक शाळेत किंवा समाजात मुलांबरोबर काम करतो, तर \"भागीदारी\" मॉडेलमध्ये Pratham टीम राज्य, जिल्हा किंवा शहर पातळीवर सरकारी टीमसोबत मिळून कार्यक्रम डिझाइन आणि अंमल करते. शिक्षण परिणामांमध्ये सुधारणा करण्यासाठी Pratham चे दृष्टिकोन भारतात आणि परदेशात मॉडेल म्हणून कार्यरत आहे.",
+      "SEARCH_PLAYSTORE": "प्लेस्टोअरमध्ये \"Shiksha myLearning\" शोधा",
+      "ABOUT_PRATHAM_TITLE": "Shiksha बद्दल",
+      "ABOUT_PRATHAM_DESC": "Shiksha शिक्षण प्रणालींमधील अंतर कमी करण्यासाठी नाविन्यपूर्ण, कमी खर्चिक, पुनरावृत्तीक्षम हस्तक्षेप वापरते जे वयोगटभर पसरलेले आहेत. \"प्रत्यक्ष\" कामात, Shiksha प्रशिक्षक शाळेत किंवा समाजात मुलांबरोबर काम करतो, तर \"भागीदारी\" मॉडेलमध्ये Shiksha टीम राज्य, जिल्हा किंवा शहर पातळीवर सरकारी टीमसोबत मिळून कार्यक्रम डिझाइन आणि अंमल करते. शिक्षण परिणामांमध्ये सुधारणा करण्यासाठी Shiksha चे दृष्टिकोन भारतात आणि परदेशात मॉडेल म्हणून कार्यरत आहे.",
       "OUR_PROGRAMS": "आमचे कार्यक्रम",
       "SIGN_UP": "साइन अप करा"
     },
     "LOGIN": {
-      "welcome_title": "Pratham myLearning मध्ये तुमचे स्वागत आहे!",
+      "welcome_title": "Shiksha myLearning मध्ये तुमचे स्वागत आहे!",
       "welcome_subtitle": "येथून तुमची शिकण्याची यात्रा सुरू होते",
       "welcome_image_alt": "हसतलेले चेहरे",
       "qr_get_app": "अॅप मिळवा",
@@ -177,7 +177,7 @@
       "qr_image_alt": "QR कोड",
       "or": "किंवा",
       "playstore_image_alt": "प्लेस्टोअरमध्ये मिळवा",
-      "playstore_instruction": "प्लेस्टोअरमध्ये \"Pratham myLearning\" शोधा",
+      "playstore_instruction": "प्लेस्टोअरमध्ये \"Shiksha myLearning\" शोधा",
       "on_playstore": "प्लेस्टोअरवर",
       "login_title": "लॉगिन",
       "username_label": "वापरकर्तानाव",
@@ -191,7 +191,7 @@
       "POINT_YOUR_PHONE": "तुमचा फोन येथे ठेवा",
       "POINT_CAMERA": "कॅमेरा येथे ठेवा",
       "OR": "किंवा",
-      "SEARCH_PLAYSTORE": "\"Pratham myLearning\" प्लेस्टोअरमध्ये शोधा",
+      "SEARCH_PLAYSTORE": "\"Shiksha myLearning\" प्लेस्टोअरमध्ये शोधा",
       "ON_PLAYSTORE": "प्लेस्टोअरवर"
     },
     "L_ONE_COURSE": {
@@ -316,7 +316,7 @@
       "CAMERA_HERE": "कॅमेरा येथे ठेवा",
       "OR": "किंवा",
       "SEARCH_TEXT": "शोधा",
-      "APP_NAME": "Pratham myLearning",
+      "APP_NAME": "Shiksha myLearning",
       "ON_PLAYSTORE": "प्लेस्टोअरवर"
     }
   },

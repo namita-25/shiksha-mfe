@@ -1,5 +1,5 @@
-'use client';
-import React, { useCallback, useEffect, useState } from 'react';
+"use client";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -18,12 +18,12 @@ import {
   FormControl,
   ListItemText,
   FormHelperText,
-} from '@mui/material';
-import { filterContent, staticFilterContent } from '../../utils/AuthService';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { Loader } from '../Loader/Loader';
-import { sortJsonByArray } from '../../utils/helper';
-import SpeakableText from '../textToSpeech/SpeakableText';
+} from "@mui/material";
+import { filterContent, staticFilterContent } from "../../utils/AuthService";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { Loader } from "../Loader/Loader";
+import { sortJsonByArray } from "../../utils/helper";
+import SpeakableText from "../textToSpeech/SpeakableText";
 
 export interface TermOption {
   code: string;
@@ -59,7 +59,7 @@ interface FilterSectionProps {
   _checkbox?: any;
   inputType?: Record<
     string,
-    'checkbox' | 'dropdown' | 'dropdown-single' | 'dropdown-multi'
+    "checkbox" | "dropdown" | "dropdown-single" | "dropdown-multi"
   >;
   _box?: any;
   _selectOptionBox?: any;
@@ -107,8 +107,8 @@ export function FilterForm({
     const fetchData = async (noFilter = true) => {
       const instantId =
         _config?.COLLECTION_FRAMEWORK ??
-        localStorage.getItem('collectionFramework') ??
-        '';
+        localStorage.getItem("collectionFramework") ??
+        "";
       let data: any = {};
 
       if (memoizedFilterFramework) {
@@ -121,7 +121,7 @@ export function FilterForm({
       const transformedRenderForm = transformRenderForm(categories);
       // Fetch static filter content
       const instantFramework =
-        _config?.CHANNEL_ID ?? localStorage.getItem('channelId') ?? '';
+        _config?.CHANNEL_ID ?? localStorage.getItem("channelId") ?? "";
       const staticResp = await staticFilterContent({ instantFramework });
       const props =
         staticResp?.objectCategoryDefinition?.forms?.create?.properties ?? [];
@@ -182,7 +182,7 @@ export function FilterForm({
             const cat: any = renderForm.find(
               (f: { code: string; old_code?: string }) =>
                 f.code === code &&
-                Object.prototype.hasOwnProperty.call(f, 'old_code')
+                Object.prototype.hasOwnProperty.call(f, "old_code")
             );
             let filterValue = { ...formData, [code]: next };
             if (cat) {
@@ -235,7 +235,7 @@ const formatPayload = (payload: any) => {
 function filterObjectsWithSourceCategory(data: any[], filteredNames: string[]) {
   const filtered = data.filter((section) =>
     section.fields?.some((f: any) =>
-      Object.prototype.hasOwnProperty.call(f, 'sourceCategory')
+      Object.prototype.hasOwnProperty.call(f, "sourceCategory")
     )
   );
   return filtered.map((cat) => ({
@@ -364,8 +364,8 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   return (
     <Box
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
+        display: "flex",
+        flexDirection: "column",
         gap: 1,
         ...(_box?.sx ?? {}),
       }}
@@ -376,14 +376,14 @@ const FilterSection: React.FC<FilterSectionProps> = ({
         const selected = selectedValues[code] ?? [];
         const optionsToShow = showMore.includes(code)
           ? values
-          : values.slice(0, 3);
+          : values.slice(0, 5);
         const staticValues = Array.isArray(staticFormData?.[code])
           ? staticFormData[code]
           : [];
         const fieldError = errors[code];
         const isRequired = required[code];
-        const isDropdownSingle = inputType[code] === 'dropdown-single';
-        const isDropdownMulti = inputType[code] === 'dropdown-multi';
+        const isDropdownSingle = inputType[code] === "dropdown-single";
+        const isDropdownMulti = inputType[code] === "dropdown-multi";
         if (
           Array.isArray(staticValues) &&
           staticValues.length > 0 &&
@@ -397,8 +397,8 @@ const FilterSection: React.FC<FilterSectionProps> = ({
             <Box
               key={`${code}-${idx}`}
               sx={{
-                display: 'flex',
-                flexDirection: 'column',
+                display: "flex",
+                flexDirection: "column",
                 gap: 1,
                 px: 1,
                 pb: 1,
@@ -408,7 +408,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 /* @ts-expect-error: MUI Typography variant 'body5' is not in the type definition, but is used for custom styling */
                 variant="body5"
                 component="div"
-                sx={{ fontWeight: '500', color: '#181D27' }}
+                sx={{ fontWeight: "500", color: "#181D27" }}
               >
                 <SpeakableText>{field.name}</SpeakableText>
               </Typography>
@@ -416,7 +416,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 <Chip
                   key={`${code}-chip-${idx}`}
                   label={item.name ?? item}
-                  sx={{ fontSize: '12px' }}
+                  sx={{ fontSize: "12px" }}
                 />
               ))}
             </Box>
@@ -443,8 +443,8 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   id={`select-label-${code}`}
                   error={!!fieldError}
                   sx={{
-                    background: 'white',
-                    padding: '0 5px',
+                    background: "white",
+                    padding: "0 5px",
                   }}
                 >
                   {field.name}
@@ -461,7 +461,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                       : selected[0]?.code ??
                         selected[0]?.name ??
                         selected[0] ??
-                        ''
+                        ""
                   }
                   onChange={(e) => {
                     if (isDropdownMulti) {
@@ -489,7 +489,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                                   item.code === val || item.name === val
                               )?.name ?? val
                           )
-                          .join(', ')
+                          .join(", ")
                       : values.find(
                           (item: any) =>
                             item.code === selectedVals ||
@@ -511,7 +511,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                               (s?.name &&
                                 s?.name === (item.name ?? item.code ?? item)) ||
                               s ===
-                                (typeof item === 'string' ? item : item.icon) ||
+                                (typeof item === "string" ? item : item.icon) ||
                               s === item.name
                           )}
                         />
@@ -543,17 +543,17 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 : isOpenColapsed
             }
             key={code}
-            sx={{ background: 'unset', boxShadow: 'unset' }}
+            sx={{ background: "unset", boxShadow: "unset" }}
           >
             <AccordionSummary
-              expandIcon={<ExpandMoreIcon sx={{ color: '#1C1B1F' }} />}
+              expandIcon={<ExpandMoreIcon sx={{ color: "#1C1B1F" }} />}
               sx={{
                 px: 0,
                 minHeight: 20,
-                '&.Mui-expanded': {
+                "&.Mui-expanded": {
                   minHeight: 20,
-                  '& .MuiAccordionSummary-content': {
-                    margin: '5px 0',
+                  "& .MuiAccordionSummary-content": {
+                    margin: "5px 0",
                   },
                 },
               }}
@@ -562,18 +562,17 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                 /* @ts-expect-error: MUI Typography variant 'body5' is not in the type definition, but is used for custom styling */
                 variant="body5"
                 component="div"
-                sx={{ fontWeight: '500', color: '#181D27' }}
+                sx={{ fontWeight: "500", color: "#181D27" }}
               >
                 <SpeakableText>
-                  {field.name === 'Sub Domain' ? 'Category' : field.name}
+                  {field.name === "Sub Domain" ? "Category" : field.name}
                 </SpeakableText>
               </Typography>
             </AccordionSummary>
             <AccordionDetails
               sx={{
-                padding: '0px',
-                overflow: 'auto',
-                maxHeight: '150px',
+                padding: "0px",
+                overflow: "hidden",
               }}
             >
               <FormGroup>
@@ -581,7 +580,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   const isChecked =
                     Array.isArray(selected) &&
                     selected.some((s) =>
-                      typeof s === 'string'
+                      typeof s === "string"
                         ? s === item.name || s === item
                         : s.code === item.code || s.name === item.name
                     );
@@ -615,16 +614,16 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                       }
                       label={<SpeakableText>{item.name ?? item}</SpeakableText>}
                       sx={{
-                        color: '#414651',
-                        fontSize: '14px',
-                        fontWeight: '500',
+                        color: "#414651",
+                        fontSize: "14px",
+                        fontWeight: "500",
                       }}
                     />
                   );
                 })}
               </FormGroup>
             </AccordionDetails>
-            {values.length > 3 && !staticValues.length && (
+            {values.length > 5 && !staticValues.length && (
               <Button
                 /* @ts-expect-error: Custom Button variant 'text-filter-show-more' is not in the type definition, but is used for custom styling */
                 variant="text-filter-show-more"
@@ -640,11 +639,11 @@ const FilterSection: React.FC<FilterSectionProps> = ({
               >
                 {showMore.includes(code)
                   ? t
-                    ? t('COMMON.SHOW_LESS')
-                    : 'Show less'
+                    ? t("COMMON.SHOW_LESS")
+                    : "Show less"
                   : t
-                  ? t('COMMON.SHOW_MORE')
-                  : 'Show more'}
+                  ? t("COMMON.SHOW_MORE")
+                  : "Show more"}
               </Button>
             )}
           </Accordion>

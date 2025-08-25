@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import Card from '@mui/material/Card';
-import CardHeader from '@mui/material/CardHeader';
-import CardMedia from '@mui/material/CardMedia';
-import CardContent from '@mui/material/CardContent';
-import CardActions from '@mui/material/CardActions';
-import Avatar from '@mui/material/Avatar';
-import Typography from '@mui/material/Typography';
-import { red } from '@mui/material/colors';
-import { Box, LinearProgress, useTheme } from '@mui/material';
-import { CircularProgressWithLabel } from '../Progress/CircularProgressWithLabel';
-import SpeakableText from '../textToSpeech/SpeakableText';
-import { capitalize } from 'lodash';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import TripOriginOutlinedIcon from '@mui/icons-material/TripOriginOutlined';
-import PanoramaFishEyeIcon from '@mui/icons-material/PanoramaFishEye';
-import AdjustIcon from '@mui/icons-material/Adjust';
-import { useTranslation } from '../context/LanguageContext';
+import * as React from "react";
+import Card from "@mui/material/Card";
+import CardHeader from "@mui/material/CardHeader";
+import CardMedia from "@mui/material/CardMedia";
+import CardContent from "@mui/material/CardContent";
+import CardActions from "@mui/material/CardActions";
+import Avatar from "@mui/material/Avatar";
+import Typography from "@mui/material/Typography";
+import { red } from "@mui/material/colors";
+import { Box, LinearProgress, useTheme } from "@mui/material";
+import { CircularProgressWithLabel } from "../Progress/CircularProgressWithLabel";
+import SpeakableText from "../textToSpeech/SpeakableText";
+import { capitalize } from "lodash";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import TripOriginOutlinedIcon from "@mui/icons-material/TripOriginOutlined";
+import PanoramaFishEyeIcon from "@mui/icons-material/PanoramaFishEye";
+import AdjustIcon from "@mui/icons-material/Adjust";
+import { useTranslation } from "../context/LanguageContext";
 
 export interface ContentItem {
   name: string;
@@ -30,8 +30,8 @@ export interface ContentItem {
   mimeType: string;
   description: string;
   posterImage: string;
-  leafNodes?: [{}];
-  children: [{}];
+  leafNodes?: any[];
+  children?: any[];
 }
 
 interface CommonCardProps {
@@ -44,7 +44,7 @@ interface CommonCardProps {
   content?: React.ReactNode;
   actions?: React.ReactNode;
   children?: React.ReactNode;
-  orientation?: 'vertical' | 'horizontal';
+  orientation?: "vertical" | "horizontal";
   minheight?: string;
   TrackData?: any[];
   item: ContentItem;
@@ -98,7 +98,7 @@ export const CommonCard: React.FC<CommonCardProps> = ({
 }) => {
   const [statusBar, setStatusBar] = React.useState<StatuPorps>();
   const { t } = useTranslation();
-
+  console.log("TrackData", TrackData);
   React.useEffect(() => {
     const init = () => {
       try {
@@ -108,15 +108,15 @@ export const CommonCard: React.FC<CommonCardProps> = ({
           const newObj = {
             type,
             status:
-              result?.status?.toLowerCase() === 'completed'
-                ? t('COMMON.STATUS.completed')
-                : result?.status?.toLowerCase() === 'in progress'
-                ? t('COMMON.STATUS.in_progress')
+              result?.status?.toLowerCase() === "completed"
+                ? t("COMMON.STATUS.completed")
+                : result?.status?.toLowerCase() === "in progress"
+                ? t("COMMON.STATUS.in_progress")
                 : result?.enrolled === true
-                ? t('COMMON.STATUS.enrolled_not_started')
-                : t('COMMON.STATUS.not_started'),
+                ? t("COMMON.STATUS.enrolled_not_started")
+                : t("COMMON.STATUS.not_started"),
           };
-          if (type === 'Course') {
+          if (type === "Course") {
             if (!_card?.isHideProgress) {
               setStatusBar({
                 ...newObj,
@@ -130,7 +130,7 @@ export const CommonCard: React.FC<CommonCardProps> = ({
           }
         }
       } catch (e) {
-        console.log('error', e);
+        console.log("error", e);
       }
     };
     init();
@@ -139,36 +139,36 @@ export const CommonCard: React.FC<CommonCardProps> = ({
   return (
     <Card
       sx={{
-        display: 'flex',
-        flexDirection: orientation === 'horizontal' ? 'column' : 'row',
-        height: minheight || '100%',
-        cursor: onClick ? 'pointer' : 'default',
-        boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.2)',
-        overflow: 'hidden',
-        '&:hover': {
-          boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
+        display: "flex",
+        flexDirection: orientation === "horizontal" ? "column" : "row",
+        height: minheight || "100%",
+        cursor: onClick ? "pointer" : "default",
+        boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.2)",
+        overflow: "hidden",
+        "&:hover": {
+          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
         },
-        '@media (max-width: 600px)': {
-          flexDirection: 'column',
+        "@media (max-width: 600px)": {
+          flexDirection: "column",
         },
         ..._card?.sx,
       }}
       onClick={onClick}
     >
       {/* Image and Progress Overlay */}
-      <Box sx={{ position: 'relative', width: '100%' }}>
+      <Box sx={{ position: "relative", width: "100%" }}>
         {image && (
           <CardMedia
             title={title}
             component="img"
-            image={image || '/assets/images/default.png'}
-            alt={imageAlt || 'Image'}
+            image={image || "/assets/images/default.png"}
+            alt={imageAlt || "Image"}
             sx={{
-              width: '100%',
-              height: orientation === 'horizontal' ? '140px' : 'auto',
-              objectFit: 'cover', //set contain
-              '@media (max-width: 600px)': {
-                height: '140px',
+              width: "100%",
+              height: orientation === "horizontal" ? "140px" : "auto",
+              objectFit: "cover", //set contain
+              "@media (max-width: 600px)": {
+                height: "140px",
               },
               ..._card?._cardMedia?.sx,
             }}
@@ -208,7 +208,7 @@ export const CommonCard: React.FC<CommonCardProps> = ({
           <CardContent
             sx={{
               pt: 1,
-              pb: '0 !important',
+              pb: "0 !important",
             }}
           >
             <Typography
@@ -219,12 +219,12 @@ export const CommonCard: React.FC<CommonCardProps> = ({
                 fontWeight: 500,
                 // fontSize: '16px',
                 // lineHeight: '24px',
-                whiteSpace: 'wrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitBoxOrient: 'vertical',
-                textTransform: 'capitalize',
+                whiteSpace: "wrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                textTransform: "capitalize",
                 WebkitLineClamp: 2,
               }}
             >
@@ -236,28 +236,28 @@ export const CommonCard: React.FC<CommonCardProps> = ({
           <CardContent
             sx={{
               pt: 0.5,
-              pb: '0 !important',
+              pb: "0 !important",
             }}
           >
             <Typography
               variant="body1"
               component="div"
               // @ts-ignore
-              title={typeof content === 'string' ? content : ''}
+              title={typeof content === "string" ? content : ""}
               sx={{
                 fontWeight: 400,
                 // fontSize: '15.4px',
                 // lineHeight: '22px',
-                color: '#49454F',
-                display: '-webkit-box',
+                color: "#49454F",
+                display: "-webkit-box",
                 WebkitLineClamp: 4,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
                 ..._card?._contentText?.sx,
               }}
             >
-              {typeof content === 'string' ? (
+              {typeof content === "string" ? (
                 <SpeakableText>
                   {capitalize(content[0]) + content.slice(1)}
                 </SpeakableText>
@@ -270,7 +270,7 @@ export const CommonCard: React.FC<CommonCardProps> = ({
       </Box>
       {children && <CardContent>{children}</CardContent>}
       {actions && (
-        <CardActions sx={{ p: 2, pt: '14px' }}>
+        <CardActions sx={{ p: 2, pt: "14px" }}>
           <SpeakableText>{actions}</SpeakableText>
         </CardActions>
       )}
@@ -288,58 +288,58 @@ export const StatusBar: React.FC<StatuPorps> = ({
   return (
     <Box
       sx={{
-        position: 'absolute',
-        ...(type === 'Course' ? { top: 0 } : { bottom: 0 }),
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        background: 'rgba(0, 0, 0, 0.5)',
+        position: "absolute",
+        ...(type === "Course" ? { top: 0 } : { bottom: 0 }),
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        background: "rgba(0, 0, 0, 0.5)",
       }}
     >
       <Box
         sx={{
-          width: '100%',
-          pl: type === 'Course' ? '6px' : '0',
-          pr: type === 'Course' ? '6px' : '8px',
-          py: '6px',
-          fontSize: '14px',
-          lineHeight: '20px',
-          fontWeight: '500',
-          color: ['Completed', 'In Progress', 'Enrolled, not started'].includes(
-            status ?? ''
+          width: "100%",
+          pl: type === "Course" ? "6px" : "0",
+          pr: type === "Course" ? "6px" : "8px",
+          py: "6px",
+          fontSize: "14px",
+          lineHeight: "20px",
+          fontWeight: "500",
+          color: ["Completed", "In Progress", "Enrolled, not started"].includes(
+            status ?? ""
           )
-            ? '#50EE42'
-            : 'white',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
+            ? "#50EE42"
+            : "white",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
         }}
       >
-        {type === 'Course' ? (
+        {type === "Course" ? (
           _card?.isHideProgress ? (
-            <StatusIcon status={status ?? ''} />
+            <StatusIcon status={status ?? ""} />
           ) : (
             <CircularProgressWithLabel
               value={trackProgress !== undefined ? trackProgress : 100}
               _text={{
                 sx: {
                   color: [
-                    'completed',
-                    'In Progress',
-                    'Enrolled, not started',
-                  ].includes(status ?? '')
+                    "completed",
+                    "In Progress",
+                    "Enrolled, not started",
+                  ].includes(status ?? "")
                     ? theme.palette.success.main
-                    : 'white',
-                  fontSize: '10px',
-                  ...(trackProgress === undefined ? { display: 'none' } : {}),
+                    : "white",
+                  fontSize: "10px",
+                  ...(trackProgress === undefined ? { display: "none" } : {}),
                 },
               }}
               color={
-                ['Completed', 'In Progress', 'Enrolled, not started'].includes(
-                  status ?? ''
+                ["Completed", "In Progress", "Enrolled, not started"].includes(
+                  status ?? ""
                 )
                   ? theme.palette.success.main
-                  : 'white'
+                  : "white"
               }
               size={trackProgress !== undefined ? 35 : 16}
               thickness={trackProgress !== undefined ? 2 : 4}
@@ -348,16 +348,16 @@ export const StatusBar: React.FC<StatuPorps> = ({
         ) : (
           <LinearProgress
             sx={{
-              width: '100%',
+              width: "100%",
             }}
             variant="determinate"
             color="error"
             value={
-              typeof trackProgress === 'number'
+              typeof trackProgress === "number"
                 ? trackProgress
-                : status?.toLowerCase() === 'completed'
+                : status?.toLowerCase() === "completed"
                 ? 100
-                : status?.toLowerCase() === 'in progress'
+                : status?.toLowerCase() === "in progress"
                 ? 50
                 : 0
             }
@@ -367,11 +367,11 @@ export const StatusBar: React.FC<StatuPorps> = ({
           variant="h3"
           component="div"
           sx={{
-            minWidth: '81px',
+            minWidth: "81px",
             // fontSize: '14px',
             // lineHeight: '20px',
-            letterSpacing: '0.1px',
-            verticalAlign: 'middle',
+            letterSpacing: "0.1px",
+            verticalAlign: "middle",
           }}
         >
           <SpeakableText>{status}</SpeakableText>
@@ -387,11 +387,11 @@ interface StatusIconProps {
 
 const StatusIcon: React.FC<StatusIconProps> = ({ status }) => {
   switch (status?.toLowerCase()) {
-    case 'completed':
+    case "completed":
       return <CheckCircleIcon />;
-    case 'in progress':
+    case "in progress":
       return <AdjustIcon />;
-    case 'enrolled, not started':
+    case "enrolled, not started":
       return <TripOriginOutlinedIcon />;
     default:
       return <PanoramaFishEyeIcon />;

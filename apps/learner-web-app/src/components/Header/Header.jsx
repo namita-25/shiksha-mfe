@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Box, Select, MenuItem } from '@mui/material';
-import LanguageIcon from '@mui/icons-material/Language';
-import Image from 'next/image';
-import appLogo from '../../../public/images/appLogo.svg';
-import { useTranslation } from '@shared-lib';
+import React, { useState } from "react";
+import { Box, Select, MenuItem } from "@mui/material";
+import LanguageIcon from "@mui/icons-material/Language";
+import Image from "next/image";
+import appLogo from "../../../public/images/appLogo.svg";
+import { useTranslation } from "@shared-lib";
 
 const Header = () => {
   const { t, setLanguage } = useTranslation();
   const [lang, setLang] = useState(
-    typeof window !== 'undefined' ? localStorage.getItem('lang') || 'en' : 'en'
+    typeof window !== "undefined" ? localStorage.getItem("lang") || "en" : "en"
   ); // state for selected language
 
   const handleLanguageChange = (event) => {
@@ -43,10 +43,10 @@ const Header = () => {
           variant="standard"
           disableUnderline
           sx={{
-            fontFamily: 'Poppins',
+            fontFamily: "Poppins",
             fontWeight: 400,
-            fontSize: '14px',
-            minWidth: '80px',
+            fontSize: "14px",
+            minWidth: "80px",
           }}
         >
           <MenuItem value="en">English</MenuItem>

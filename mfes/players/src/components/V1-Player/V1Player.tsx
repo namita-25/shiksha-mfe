@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from 'react';
-import { getTelemetryEvents } from '../../services/TelemetryService';
+import React, { useRef, useEffect } from "react";
+import { getTelemetryEvents } from "../../services/TelemetryService";
+import { useParams } from "next/navigation";
 
 interface PlayerProps {
   playerConfig: any;
@@ -7,7 +8,9 @@ interface PlayerProps {
   configFunctionality?: boolean;
 }
 
-const basePath = process.env.NEXT_PUBLIC_ASSETS_CONTENT || '/sbplayer';
+const iframeREcml = useParams(); // Note: This console.log will run on every render, maybe move inside useEffect for specific use
+
+const basePath = process.env.NEXT_PUBLIC_ASSETS_CONTENT || "/sbplayer";
 
 const V1Player = ({
   playerConfig,
@@ -15,74 +18,100 @@ const V1Player = ({
   configFunctionality,
 }: PlayerProps) => {
   const previewRef = useRef<HTMLIFrameElement | null>(null);
-
+  console.log("V1Player Component is rendering!"); // <--- ADD THIS LINE
+  console.log("Initial playerConfig received:", playerConfig); // <--- ADD THIS LINE
   useEffect(() => {
     const preview: any = previewRef.current;
+    console.log("V1Player useEffect triggered."); // ADD THIS
+    console.log("V1Player playerConfig on useEffect:", playerConfig); // ADD THIS
 
     if (preview) {
+      // --- BEGIN Original V1Player content ---
       const originalSrc = preview.src;
-      preview.src = '';
+      preview.src = "";
       preview.src = originalSrc;
+      console.log("V1Player iframe src reset and reloaded."); // ADD THIS
 
       const handleLoad = () => {
-        setTimeout(() => {
-          if (
-            preview.contentWindow &&
-            preview.contentWindow.initializePreview
-          ) {
-            preview.contentWindow.initializePreview(playerConfig);
-          }
+        console.log("V1Player iframe loaded event triggered."); // ADD THIS
 
-          preview.addEventListener(
-            'renderer:telemetry:event',
-            async (event: any) => {
-              console.log('V1 player telemetry event ===>', event);
-              if (event.detail.telemetryData.eid === 'START') {
-                console.log('V1 player telemetry START event ===>', event);
-              }
-              if (event.detail.telemetryData.eid === 'END') {
-                console.log('V1 player telemetry END event ===>', event);
-              }
+        // Ensure contentWindow and initializePreview exist before calling
+        if (preview.contentWindow) {
+          console.log("V1Player contentWindow available."); // ADD THIS
+          if (typeof preview.contentWindow.initializePreview === "function") {
+            console.log(
+              "V1Player initializePreview function found. Calling it with:",
+              playerConfig
+            ); // ADD THIS
 
-              await getTelemetryEvents(event.detail.telemetryData, 'v1', {
-                courseId,
-                unitId,
-                userId,
-                configFunctionality,
-              });
+            // Add error handling for ECML content
+            try {
+              preview.contentWindow.initializePreview(playerConfig);
+              console.log("V1Player initializePreview called successfully."); // ADD THIS
+            } catch (error) {
+              console.error("V1Player initializePreview error:", error);
             }
-          );
-        }, 100);
+          } else {
+            console.warn(
+              "V1Player: initializePreview function not found in iframe contentWindow."
+            ); // ADD THIS
+            // This is a critical warning if you see it!
+          }
+        } else {
+          console.warn("V1Player: iframe contentWindow is null or undefined."); // ADD THIS
+        }
+
+        // Add error event listener for iframe
+        preview.addEventListener("error", (event: Event) => {
+          console.error("V1Player iframe error:", event);
+        });
+
+        preview.addEventListener(
+          "renderer:telemetry:event",
+          async (event: any) => {
+            console.log("V1 player telemetry event ===>", event); // Keep this
+            if (event.detail.telemetryData.eid === "START") {
+              console.log("V1 player telemetry START event ===>", event); // Keep this
+            }
+            if (event.detail.telemetryData.eid === "END") {
+              console.log("V1 player telemetry END event ===>", event); // Keep this
+            }
+
+            await getTelemetryEvents(event.detail.telemetryData, "v1", {
+              courseId,
+              unitId,
+              userId,
+              configFunctionality,
+            });
+          }
+        );
       };
 
-      preview.addEventListener('load', handleLoad);
+      preview.addEventListener("load", handleLoad);
 
       return () => {
-        preview.removeEventListener('load', handleLoad);
-
-        // Reset iframe to prevent residual styles or memory leaks
-        // Commenting below code - Content Preview is only work due to below code
-        // if (preview) {
-        //   preview.src = "";
-        // }
+        console.log("V1Player useEffect cleanup."); // ADD THIS
+        preview.removeEventListener("load", handleLoad);
       };
+    } else {
+      console.warn("V1Player: previewRef.current is null."); // ADD THIS
     }
-  }, [playerConfig]);
+  }, [playerConfig, courseId, unitId, userId, configFunctionality]); // Add all dependencies to useEffect
+  // console.log("V1Player playerConfig on render:", playerConfig); // Keep this, useful for initial render check
 
   return (
-    <iframe
-      ref={previewRef}
-      id="contentPlayer"
-      title="Content Player"
-      //offline android app player
-      src={`${basePath}/libs/sunbird-content-player/preview/preview.html?webview=true`}
-      //online cdn player
-      // src="/content/preview/preview.html?webview=true"
-      aria-label="Content Player"
-      style={{ border: 'none' }}
-      width={'100%'}
-      height={'100%'}
-    ></iframe>
+    <>
+      <iframe
+        ref={previewRef}
+        id="contentPlayer"
+        title="Content Player"
+        src={`${basePath}/content/preview/preview.html?webview=true`}
+        aria-label="Content Player"
+        style={{ border: "none" }}
+        width={"100%"}
+        height={"100%"}
+      ></iframe>
+    </>
   );
 };
 

@@ -1,11 +1,11 @@
 import {
   getLocalStoredUserId,
   getLocalStoredUserRole,
-} from './LocalStorageService';
-import { delApi, get, post, patch } from './RestClient';
-import { MIME_TYPE } from '@workspace/utils/app.config';
-import { v4 as uuidv4 } from 'uuid';
-import { PrimaryCategoryValue, Role } from '@workspace/utils/app.constant';
+} from "./LocalStorageService";
+import { delApi, get, post, patch } from "./RestClient";
+import { MIME_TYPE } from "@workspace/utils/app.config";
+import { v4 as uuidv4 } from "uuid";
+import { PrimaryCategoryValue, Role } from "@workspace/utils/app.constant";
 const userId = getLocalStoredUserId();
 console.log('userId ==>', userId);
 
@@ -102,7 +102,7 @@ const getReqBodyWithStatus = (
           ...upForReviewReqBody.request.filters,
           status,
           primaryCategory,
-          createdBy: { '!=': getLocalStoredUserId() },
+          createdBy: { "!=": getLocalStoredUserId() },
           channel: channel,
         },
 
@@ -200,7 +200,7 @@ export const getContentPDF = async ({
     [key: string]: any; // Allow additional dynamic filters if needed
   };
 }) => {
-  const apiURL = '/action/composite/v3/search';
+  const apiURL = "/action/composite/v3/search";
 
   try {
     const reqBody = {
@@ -208,7 +208,7 @@ export const getContentPDF = async ({
         query,
         filters: {
           ...filters,
-          mimeType: 'application/pdf',
+          mimeType: "application/pdf",
         },
         sort_by,
         limit,
@@ -285,7 +285,7 @@ export const createAIQuestionsSet = async (payload: {
         createdBy: userId,
       },
       {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${payload.token}`,
       }
     );
@@ -302,7 +302,7 @@ export const getAIQuestionSetStatus = async (
   const apiURL = `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/tracking/ai-assessment/read/${questionSetId}`;
   try {
     const response = await get(apiURL, {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     });
     return response?.data;
@@ -312,7 +312,7 @@ export const getAIQuestionSetStatus = async (
 };
 
 export const updateQuestionSet = async ({ identifier, ...metadata }: any) => {
-  const apiURL = '/mfe_workspace/action/questionset/v2/hierarchy/update';
+  const apiURL = "/mfe_workspace/action/questionset/v2/hierarchy/update";
   const reqBody = {
     request: {
       data: {
@@ -320,14 +320,14 @@ export const updateQuestionSet = async ({ identifier, ...metadata }: any) => {
         nodesModified: {
           [identifier]: {
             root: true,
-            objectType: 'QuestionSet',
+            objectType: "QuestionSet",
             isNew: false,
             metadata,
           },
         },
         hierarchy: {
           [identifier]: {
-            name: 'Untitled QuestionSet',
+            name: "Untitled QuestionSet",
             children: [],
             root: true,
           },
@@ -336,8 +336,8 @@ export const updateQuestionSet = async ({ identifier, ...metadata }: any) => {
     },
   };
   const response = await patch(apiURL, reqBody, {
-    Accept: 'application/json, text/plain, */*',
-    'Content-Type': 'application/json',
+    Accept: "application/json, text/plain, */*",
+    "Content-Type": "application/json",
     // Add more headers if needed, e.g., authorization, channel, etc.
   });
   return response?.data;
@@ -456,8 +456,9 @@ export const getContentHierarchy = async ({
   contentMode: string;
 }): Promise<any> => {
   let apiUrl: string = `/action/content/v3/hierarchy/${doId}`;
-  if (contentMode == 'edit') {
-    apiUrl = `/action/content/v3/hierarchy/${doId}?mode=edit`;
+  if (contentMode == "edit") {
+    // apiUrl = `/action/content/v3/hierarchy/${doId}?mode=edit`;
+    apiUrl = `/action/content/v3/hierarchy/${doId}`;
   }
 
   try {

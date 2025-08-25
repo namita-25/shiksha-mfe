@@ -1,8 +1,8 @@
-import React from 'react';
-import { Box, Button, Grid, Typography } from '@mui/material';
-import { ContentItem, useTranslation } from '@shared-lib';
-import UnitCard from './Card/UnitCard';
-import ContentCard from './Card/ContentCard';
+import React from "react";
+import { Box, Button, Grid, Typography } from "@mui/material";
+import { ContentItem, useTranslation } from "@shared-lib";
+import UnitCard from "./Card/UnitCard";
+import ContentCard from "./Card/ContentCard";
 
 interface CommonAccordionProps {
   item: ContentItem;
@@ -21,9 +21,25 @@ export const UnitGrid: React.FC<CommonAccordionProps> = ({
   _config,
   handleItemClick,
 }) => {
+  console.log("UnitGrid - Component received item:", {
+    identifier: item?.identifier,
+    name: item?.name,
+    childrenLength: item?.children?.length,
+    children: item?.children,
+    fullItem: item,
+  });
+
   const { default_img, _grid, _parentGrid, _card, _containerGrid } =
     _config || {};
   const { t } = useTranslation();
+
+  // Ensure children is an array
+  const childrenArray = Array.isArray(item?.children) ? item.children : [];
+
+  console.log("UnitGrid - childrenArray:", childrenArray);
+  console.log("UnitGrid - childrenArray.length:", childrenArray.length);
+  console.log("UnitGrid - item.identifier:", item?.identifier);
+  console.log("UnitGrid - item.name:", item?.name);
 
   return (
     <Grid
@@ -32,14 +48,14 @@ export const UnitGrid: React.FC<CommonAccordionProps> = ({
       {..._containerGrid}
       {..._parentGrid}
     >
-      {item?.children?.length <= 0 ? (
+      {childrenArray.length <= 0 ? (
         <Grid item xs={12} textAlign="center">
-          <Typography variant="body1" sx={{ mt: 4, textAlign: 'center' }}>
-            {t('LEARNER_APP.CONTENT_TABS.NO_MORE_DATA')}
+          <Typography variant="body1" sx={{ mt: 4, textAlign: "center" }}>
+            {t("LEARNER_APP.CONTENT_TABS.NO_MORE_DATA")}
           </Typography>
         </Grid>
       ) : (
-        item?.children
+        childrenArray
           ?.filter((subItem: any) => subItem.identifier !== skipContentId)
           ?.map((subItem: any) => (
             <Grid
@@ -53,14 +69,14 @@ export const UnitGrid: React.FC<CommonAccordionProps> = ({
               {..._grid}
             >
               {subItem?.mimeType ===
-              'application/vnd.ekstep.content-collection' ? (
+              "application/vnd.ekstep.content-collection" ? (
                 <UnitCard
                   item={subItem}
                   trackData={trackData ?? []}
                   default_img={default_img}
                   _card={{
                     ..._card,
-                    sx: { ...(_card?.sx ?? {}), height: '100%' },
+                    sx: { ...(_card?.sx ?? {}), height: "100%" },
                   }}
                   handleCardClick={(content: ContentItem) =>
                     handleItemClick?.(content)
@@ -73,7 +89,7 @@ export const UnitGrid: React.FC<CommonAccordionProps> = ({
                   default_img={default_img}
                   _card={{
                     ..._card,
-                    sx: { ...(_card?.sx ?? {}), height: '100%' },
+                    sx: { ...(_card?.sx ?? {}), height: "100%" },
                   }}
                   handleCardClick={(content: ContentItem) =>
                     handleItemClick?.(content)
@@ -83,7 +99,7 @@ export const UnitGrid: React.FC<CommonAccordionProps> = ({
               )}
 
               {actions.length > 0 && (
-                <Box sx={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                <Box sx={{ marginTop: "16px", display: "flex", gap: "8px" }}>
                   {actions.map((action) => (
                     <Button
                       key={action.label}

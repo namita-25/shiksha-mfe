@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig } from "axios";
 interface ContentSearchResponse {
   ownershipType?: string[];
   publish_type?: string;
@@ -49,7 +49,7 @@ interface ContentSearchResponse {
   author?: string;
   consumerId?: string;
   childNodes?: string[];
-  children?: string[];
+  children?: any[]; // Changed from string[] to any[] to match actual API response
   discussionForum?: {
     enabled?: string;
   };
@@ -105,6 +105,7 @@ interface ContentSearchResponse {
   userConsent?: string;
   resourceType?: string;
   node_id?: number;
+  relational_metadata?: string; // Added to support courses with hierarchical structure in metadata
 }
 // Define the payload
 
@@ -116,23 +117,47 @@ export const hierarchyAPI = async (
     // Ensure the environment variable is defined
     const searchApiUrl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
     if (!searchApiUrl) {
-      throw new Error('Search API URL environment variable is not configured');
+      throw new Error("Search API URL environment variable is not configured");
+    }
+    const tenantId = localStorage.getItem("tenantId");
+    console.log("Hierarchy API - doId:", doId);
+    console.log("Hierarchy API - tenantId:", tenantId);
+
+    const headers: Record<string, string> = {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+    };
+
+    if (tenantId) {
+      headers["tenantId"] = tenantId;
     }
     // Axios request configuration
     const config: AxiosRequestConfig = {
-      method: 'get',
+      method: "get",
       maxBodyLength: Infinity,
-      url: `${searchApiUrl}/api/course/v1/hierarchy/${doId}`,
+      url: `${searchApiUrl}/action/content/v3/hierarchy/${doId}`,
       params: params,
+      headers,
     };
-
+    console.log("Hierarchy API - request URL:", config.url);
     // Execute the request
     const response = await axios.request(config);
     const res = response?.data?.result?.content;
 
+    console.log("Hierarchy API - full response:", response?.data);
+    console.log("Hierarchy API - result.content:", res);
+    console.log("Hierarchy API - res.children:", res?.children);
+    console.log("Hierarchy API - res.children type:", typeof res?.children);
+    console.log(
+      "Hierarchy API - res.children isArray:",
+      Array.isArray(res?.children)
+    );
+    console.log("Hierarchy API - res.posterImage:", res?.posterImage);
+    console.log("Hierarchy API - res.appIcon:", res?.appIcon);
+
     return res;
   } catch (error) {
-    console.error('Error in ContentSearch:', error);
+    console.error("Error in ContentSearch:", error);
     throw error;
   }
 };

@@ -16,15 +16,26 @@ export function calculateCourseStatus({
   allCourseIds: string[];
   courseId: string;
 }): trackDataPorps {
-  const completedList = new Set(statusData.completed_list || []);
-  const inProgressList = new Set(statusData.in_progress_list || []);
+  // Convert to Sets for faster lookup
+  const completedList = new Set(
+    statusData.completed_list?.map((id) => id.trim()) || []
+  );
+  const inProgressList = new Set(
+    statusData.in_progress_list?.map((id) => id.trim()) || []
+  );
 
+  // Initialize counters
   let completedCount = 0;
   let inProgressCount = 0;
   const completed_list: string[] = [];
   const in_progress_list: string[] = [];
 
-  for (const id of allCourseIds) {
+  console.log("All Course IDs:", allCourseIds);
+  console.log("Completed List:", Array.from(completedList));
+  console.log("In Progress List:", Array.from(inProgressList));
+
+  // Check each course ID
+  for (const id of allCourseIds.map((id) => id.trim())) {
     if (completedList.has(id)) {
       completedCount++;
       completed_list.push(id);
@@ -35,15 +46,27 @@ export function calculateCourseStatus({
   }
 
   const total = allCourseIds.length;
-  let status = 'not started';
-
-  if (completedCount === total && total > 0) {
-    status = 'completed';
+  let status = "";
+  console.log("Total Course IDs:", total);
+  console.log("Completed Count:", completedCount);
+  // Determine status
+  if (total === 0) {
+    status = "not started";
+  } else if (completedCount === total) {
+    status = "completed";
   } else if (completedCount > 0 || inProgressCount > 0) {
-    status = 'in progress';
+    status = "in progress";
   }
 
+  // Calculate percentage
   const percentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+  console.log("Final Status:", {
+    status,
+    completed: completedCount,
+    in_progress: inProgressCount,
+    percentage,
+  });
 
   return {
     completed_list,
@@ -52,10 +75,9 @@ export function calculateCourseStatus({
     in_progress: inProgressCount,
     courseId,
     status,
-    percentage: percentage,
+    percentage,
   };
 }
-
 export const calculateTrackData = (newTrack: any, children: any) => {
   const newTrackData = children?.map((item: any) => {
     return calculateTrackDataItem(newTrack, item);
@@ -64,7 +86,7 @@ export const calculateTrackData = (newTrack: any, children: any) => {
 };
 
 export const calculateTrackDataItem = (newTrack: any, item: any) => {
-  if (item?.mimeType === 'application/vnd.ekstep.content-collection') {
+  if (item?.mimeType === "application/vnd.ekstep.content-collection") {
     const result = calculateCourseStatus({
       statusData: newTrack,
       allCourseIds: item?.leafNodes ?? [],
@@ -98,22 +120,22 @@ export function findCourseUnitPath({
 }): any[] | null {
   // Build current node's object by processing keyArray
   const currentObj = keyArray.reduce((acc, keyItem) => {
-    if (typeof keyItem === 'string') {
+    if (typeof keyItem === "string") {
       // simple key, just pick the value if exists
       if (node[keyItem] !== undefined) acc[keyItem] = node[keyItem];
-    } else if (typeof keyItem === 'object' && keyItem.key) {
-      let formattedValue = '';
-      if (keyItem.key === 'link') {
+    } else if (typeof keyItem === "object" && keyItem.key) {
+      let formattedValue = "";
+      if (keyItem.key === "link") {
         if (
           path?.length > 0 &&
-          node.mimeType === 'application/vnd.ekstep.content-collection'
+          node.mimeType === "application/vnd.ekstep.content-collection"
         ) {
-          formattedValue = `${contentBaseUrl ?? '/content'}/${
+          formattedValue = `${contentBaseUrl ?? "/content"}/${
             path?.[0]?.identifier
-          }/${node.identifier}${keyItem?.suffix ?? ''}`;
+          }/${node.identifier}${keyItem?.suffix ?? ""}`;
         } else {
-          formattedValue = `${contentBaseUrl ?? '/content'}/${node.identifier}${
-            keyItem?.suffix ?? ''
+          formattedValue = `${contentBaseUrl ?? "/content"}/${node.identifier}${
+            keyItem?.suffix ?? ""
           }`;
         }
       }
@@ -121,7 +143,7 @@ export function findCourseUnitPath({
         // Replace ${id} or any ${key} in format with node[key]
         formattedValue = keyItem.format.replace(
           /\$\{(\w+)\}/g,
-          (_, k) => node[k] ?? ''
+          (_, k) => node[k] ?? ""
         );
       }
       acc[keyItem.key] = formattedValue;
@@ -158,7 +180,7 @@ type NameMapEntry = string | { key: string; replaceCode: string };
 export function sortJsonByArray({
   jsonArray,
   nameArray,
-  key = 'code',
+  key = "code",
   onlyMatched = true,
 }: {
   jsonArray: any[];
@@ -169,7 +191,7 @@ export function sortJsonByArray({
   if (nameArray === undefined || nameArray.length === 0) return jsonArray;
   const orderMap = new Map<string, { index: number; replaceCode?: string }>();
   nameArray.forEach((entry, index) => {
-    if (typeof entry === 'string') {
+    if (typeof entry === "string") {
       orderMap.set(entry, { index });
     } else {
       orderMap.set(entry.key, { index, replaceCode: entry.replaceCode });
@@ -193,7 +215,7 @@ export function sortJsonByArray({
       if (entry?.replaceCode) {
         return {
           ...item,
-          [key]: entry.replaceCode.replace('{code}', val),
+          [key]: entry.replaceCode.replace("{code}", val),
           [`old_${key}`]: val,
         };
       }

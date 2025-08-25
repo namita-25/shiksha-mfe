@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, {
   useCallback,
@@ -6,46 +6,46 @@ import React, {
   useMemo,
   useState,
   useRef,
-} from 'react';
-import FilterAltOutlinedIcon from '@mui/icons-material/FilterAltOutlined';
-import SearchIcon from '@mui/icons-material/Search';
-import { Box, Button } from '@mui/material';
+} from "react";
+import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import { Box, Button } from "@mui/material";
 import {
   calculateTrackDataItem,
   CommonSearch,
   ContentItem,
   getData,
-} from '@shared-lib';
-import { useRouter, useSearchParams } from 'next/navigation';
-import BackToTop from '@content-mfes/components/BackToTop';
-import RenderTabContent from '@content-mfes/components/ContentTabs';
-import HelpDesk from '@content-mfes/components/HelpDesk';
+} from "@shared-lib";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
+import BackToTop from "@content-mfes/components/BackToTop";
+import RenderTabContent from "@content-mfes/components/ContentTabs";
+import HelpDesk from "@content-mfes/components/HelpDesk";
 import {
   ContentSearch,
   ContentSearchResponse as ImportedContentSearchResponse,
-} from '@content-mfes/services/Search';
-import FilterDialog from '@content-mfes/components/FilterDialog';
-import { trackingData } from '@content-mfes/services/TrackingService';
-import LayoutPage from '@content-mfes/components/LayoutPage';
-import { getUserCertificates } from '@content-mfes/services/Certificate';
-import { getUserId } from '@shared-lib-v2/utils/AuthService';
+} from "@content-mfes/services/Search";
+import FilterDialog from "@content-mfes/components/FilterDialog";
+import { trackingData } from "@content-mfes/services/TrackingService";
+import LayoutPage from "@content-mfes/components/LayoutPage";
+import { getUserCertificates } from "@content-mfes/services/Certificate";
+import { getUserId } from "@shared-lib-v2/utils/AuthService";
 
 // Constants
 const SUPPORTED_MIME_TYPES = [
-  'application/vnd.ekstep.ecml-archive',
-  'application/vnd.ekstep.html-archive',
-  'application/vnd.ekstep.h5p-archive',
-  'application/pdf',
-  'video/mp4',
-  'video/webm',
-  'application/epub',
-  'video/x-youtube',
-  'application/vnd.sunbird.questionset',
+  "application/vnd.ekstep.ecml-archive",
+  "application/vnd.ekstep.html-archive",
+  "application/vnd.ekstep.h5p-archive",
+  "application/pdf",
+  "video/mp4",
+  "video/webm",
+  "application/epub",
+  "video/x-youtube",
+  "application/vnd.sunbird.questionset",
 ];
 
 const DEFAULT_TABS = [
-  { label: 'Courses', type: 'Course' },
-  { label: 'Content', type: 'Learning Resource' },
+  { label: "Courses", type: "Course" },
+  { label: "Content", type: "Learning Resource" },
 ];
 
 const LIMIT = 5;
@@ -78,7 +78,8 @@ export interface ContentProps {
 export default function Content(props: Readonly<ContentProps>) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchValue, setSearchValue] = useState('');
+  const params = useParams();
+  const [searchValue, setSearchValue] = useState("");
   const [tabValue, setTabValue] = useState<number>(0);
   const [tabs, setTabs] = useState<typeof DEFAULT_TABS>([]);
   const [contentData, setContentData] = useState<
@@ -100,7 +101,7 @@ export default function Content(props: Readonly<ContentProps>) {
   const [filterShow, setFilterShow] = useState(false);
   const [propData, setPropData] = useState<ContentProps>();
   const abortControllerRef = useRef<AbortController | null>(null);
-
+  console.log("props", props);
   // Session keys
   const sessionKeys = {
     filters: `${props?.pageName}_savedFilters`,
@@ -117,7 +118,7 @@ export default function Content(props: Readonly<ContentProps>) {
   const handleSetFilters = useCallback(
     (updater: any) => {
       const updated =
-        typeof updater === 'function'
+        typeof updater === "function"
           ? updater(localFilters)
           : { ...localFilters, ...updater };
       setLocalFilters({ ...updated, loadOld: false });
@@ -129,15 +130,15 @@ export default function Content(props: Readonly<ContentProps>) {
   useEffect(() => {
     const init = async () => {
       const savedFilters = JSON.parse(
-        sessionStorage.getItem(sessionKeys.filters) || 'null'
+        sessionStorage.getItem(sessionKeys.filters) || "null"
       );
-      const savedSearch = sessionStorage.getItem(sessionKeys.search) || '';
+      const savedSearch = sessionStorage.getItem(sessionKeys.search) || "";
 
       // Get tab value from URL parameter
-      const urlTab = searchParams.get('tab');
+      const urlTab = searchParams.get("tab");
       const savedTab = urlTab ? parseInt(urlTab) : 0;
 
-      const config = props ?? (await getData('mfes_content_pages_content'));
+      const config = props ?? (await getData("mfes_content_pages_content"));
       setPropData(config);
       setSearchValue(savedSearch);
       if (savedFilters) {
@@ -173,11 +174,16 @@ export default function Content(props: Readonly<ContentProps>) {
       setIsPageLoading(false);
     };
     init();
-  }, [ props.contentTabs, sessionKeys.filters, sessionKeys.search, searchParams]);
+  }, [
+    props.contentTabs,
+    sessionKeys.filters,
+    sessionKeys.search,
+    searchParams,
+  ]);
   // Fetch content with loop to load full data up to offset
   const fetchAllContent = useCallback(
     async (filter: any) => {
-      const content: any[] = [];  
+      const content: any[] = [];
       const QuestionSet: any[] = [];
       let count = 0;
 
@@ -200,8 +206,10 @@ export default function Content(props: Readonly<ContentProps>) {
         offset: adjustedOffset,
         limit: adjustedLimit,
         signal: controller.signal,
+        type: props.contentTabs,
       });
-
+      console.log("resultResponse", resultResponse);
+      console.log("props?._config", props?._config);
       if (resultResponse?.result?.count) {
         setTotalCount(resultResponse?.result?.count);
       }
@@ -238,7 +246,7 @@ export default function Content(props: Readonly<ContentProps>) {
         const userId = getUserId(props?._config?.userIdLocalstorageName);
 
         if (!userId || !courseList.length) return [];
-        const userIdArray = userId.split(',').filter(Boolean);
+        const userIdArray = userId.split(",").filter(Boolean);
         const [courseTrackData, certificates] = await Promise.all([
           trackingData(userIdArray, courseList),
           getUserCertificates({
@@ -266,11 +274,11 @@ export default function Content(props: Readonly<ContentProps>) {
           enrolled: Boolean(
             certificates.result.data.find(
               (cert: any) => cert.courseId === item.courseId
-            )?.status === 'enrolled'
+            )?.status === "enrolled"
           ),
         }));
       } catch (error) {
-        console.error('Error fetching track data:', error);
+        console.error("Error fetching track data:", error);
         return [];
       }
     },
@@ -300,6 +308,7 @@ export default function Content(props: Readonly<ContentProps>) {
           ...(response.content ?? []),
           ...(response?.QuestionSet ?? []),
         ];
+        console.log("newContentData", newContentData);
         const userTrackData = await fetchDataTrack(newContentData);
         if (!isMounted) return;
         if (localFilters.offset === 0) {
@@ -317,7 +326,7 @@ export default function Content(props: Readonly<ContentProps>) {
         );
         setIsLoading(false);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
         // Set empty arrays on error to maintain array type
         if (localFilters.offset === 0) {
           setContentData([]);
@@ -345,7 +354,7 @@ export default function Content(props: Readonly<ContentProps>) {
     if (!scrollId || !contentData?.length) return;
     const el = document.getElementById(scrollId);
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+      el.scrollIntoView({ behavior: "smooth" });
       sessionStorage.removeItem(sessionKeys.scrollId);
       sessionStorage.removeItem(sessionKeys.filters);
     } else {
@@ -353,7 +362,7 @@ export default function Content(props: Readonly<ContentProps>) {
       requestAnimationFrame(() => {
         const retryEl = document.getElementById(scrollId);
         if (retryEl) {
-          retryEl.scrollIntoView({ behavior: 'smooth' });
+          retryEl.scrollIntoView({ behavior: "smooth" });
           sessionStorage.removeItem(sessionKeys.scrollId);
           sessionStorage.removeItem(sessionKeys.filters);
         }
@@ -365,9 +374,14 @@ export default function Content(props: Readonly<ContentProps>) {
   const handleLoadMore = useCallback(
     (event: React.MouseEvent) => {
       event.preventDefault();
+      const type =
+        tabs[tabValue]?.label === "Course"
+          ? ["Course"]
+          : ["Learning Resource", "Practice Question Set"];
       handleSetFilters({
         ...localFilters,
         offset: localFilters.offset + localFilters.limit,
+        type,
       });
     },
     [handleSetFilters, localFilters]
@@ -393,9 +407,9 @@ export default function Content(props: Readonly<ContentProps>) {
   const handleTabChange = (event: any, newValue: number) => {
     setTabValue(newValue);
 
-     // Update URL with new tab parameter
+    // Update URL with new tab parameter
     const url = new URL(window.location.href);
-    url.searchParams.set('tab', newValue.toString());
+    url.searchParams.set("tab", newValue.toString());
     router.replace(url.pathname + url.search);
 
     handleSetFilters({
@@ -403,29 +417,57 @@ export default function Content(props: Readonly<ContentProps>) {
       type: tabs[newValue].type,
     });
   };
-  console.log('tabValue', props?.pageName);
+  console.log("tabValue", props?.pageName);
   const handleCardClickLocal = useCallback(
     async (content: ContentItem) => {
+      console.log("handleCardClickLocal", content);
+
       try {
         sessionStorage.setItem(sessionKeys.scrollId, content.identifier);
         persistFilters(localFilters);
         if (propData?.handleCardClick) {
           propData.handleCardClick(content);
         } else if (SUPPORTED_MIME_TYPES.includes(content?.mimeType)) {
-          router.push(
-            `${props?._config?.contentBaseUrl ?? ''}/player/${
-              content?.identifier
-            }?activeLink=${window.location.pathname}`
-          );
+          // Get unitId from URL params if available
+          const unitId = params?.unitId as string;
+          const courseId = params?.courseId as string;
+
+          // Build URL with unitId if available
+          let playerUrl = `${props?._config?.contentBaseUrl ?? ""}/player/${
+            content?.identifier
+          }?activeLink=${window.location.pathname}`;
+
+          if (unitId) {
+            playerUrl += `&unitId=${unitId}`;
+          }
+          if (courseId) {
+            playerUrl += `&courseId=${courseId}`;
+          }
+
+          router.push(playerUrl);
         } else {
-          router.push(
-            `${props?._config?.contentBaseUrl ?? ''}/content-details/${
-              content?.identifier
-            }?activeLink=${window.location.pathname}`
-          );
+          // Get unitId from URL params if available
+          const unitId = params?.unitId as string;
+          const courseId = params?.courseId as string;
+          console.log("content----", content);
+          // Build URL with unitId if available
+          let contentDetailsUrl = `${
+            props?._config?.contentBaseUrl ?? ""
+          }/content-details/${content?.identifier}?activeLink=${
+            window.location.pathname
+          }`;
+
+          if (unitId) {
+            contentDetailsUrl += `&unitId=${unitId}`;
+          }
+          if (courseId) {
+            contentDetailsUrl += `&courseId=${courseId}`;
+          }
+
+          router.push(contentDetailsUrl);
         }
       } catch (error) {
-        console.error('Failed to handle card click:', error);
+        console.error("Failed to handle card click:", error);
       }
     },
     [
@@ -435,6 +477,7 @@ export default function Content(props: Readonly<ContentProps>) {
       router,
       localFilters,
       persistFilters,
+      params,
     ]
   );
 
@@ -456,10 +499,10 @@ export default function Content(props: Readonly<ContentProps>) {
       (propData?.showSearch ?? propData?.showFilter) && (
         <Box
           sx={{
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'space-between',
-            overflow: 'unset !important',
+            width: "100%",
+            display: "flex",
+            justifyContent: "space-between",
+            overflow: "unset !important",
           }}
         >
           {propData?.showSearch && (
@@ -470,14 +513,14 @@ export default function Content(props: Readonly<ContentProps>) {
               inputValue={searchValue}
               onInputChange={handleSearchChange}
               onKeyPress={(ev: any) =>
-                ev.key === 'Enter' && handleSearchClick()
+                ev.key === "Enter" && handleSearchClick()
               }
               sx={{
-                backgroundColor: '#f0f0f0',
-                padding: '4px',
-                borderRadius: '50px',
-                width: '100%',
-                marginLeft: '10px',
+                backgroundColor: "#f0f0f0",
+                padding: "4px",
+                borderRadius: "50px",
+                width: "100%",
+                marginLeft: "10px",
               }}
             />
           )}
@@ -528,7 +571,7 @@ export default function Content(props: Readonly<ContentProps>) {
         contentData={contentData}
         _config={propData?._config ?? {}}
         trackData={trackData as any}
-        type={localFilters?.type ?? ''}
+        type={localFilters?.type ?? ""}
         handleCardClick={handleCardClickLocal}
         hasMoreData={hasMoreData}
         handleLoadMore={handleLoadMore}

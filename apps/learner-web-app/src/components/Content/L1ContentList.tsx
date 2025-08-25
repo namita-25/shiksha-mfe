@@ -1,7 +1,7 @@
-'use client';
-import React from 'react';
-import Layout from '@learner/components/Layout';
-import LearnerCourse from '@learner/components/Content/LearnerCourse';
+"use client";
+import React from "react";
+import Layout from "@learner/components/Layout";
+import LearnerCourse from "@learner/components/Content/LearnerCourse";
 import {
   Box,
   Button,
@@ -9,33 +9,34 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-} from '@mui/material';
-import { gredientStyle } from '@learner/utils/style';
-import LTwoCourse from '@learner/components/Content/LTwoCourse';
-import { useEffect, useState } from 'react';
-import { getTenantInfo } from '@learner/utils/API/ProgramService';
-import ContentComponent from '@learner/components/Content/Content';
-import { useTranslation } from '@shared-lib';
-import { checkAuth } from '@shared-lib-v2/utils/AuthService';
-import { CompleteProfileBanner } from '@learner/components/CompleteProfileBanner/CompleteProfileBanner';
-import { profileComplitionCheck } from '@learner/utils/API/userService';
-import { usePathname } from 'next/navigation';
-import { useSearchParams } from 'next/navigation';
+} from "@mui/material";
+import { gredientStyle } from "@learner/utils/style";
+import LTwoCourse from "@learner/components/Content/LTwoCourse";
+import { useEffect, useState } from "react";
+import { getTenantInfo } from "@learner/utils/API/ProgramService";
+import ContentComponent from "@learner/components/Content/Content";
+import { useTranslation } from "@shared-lib";
+import { checkAuth } from "@shared-lib-v2/utils/AuthService";
+import { CompleteProfileBanner } from "@learner/components/CompleteProfileBanner/CompleteProfileBanner";
+import { profileComplitionCheck } from "@learner/utils/API/userService";
+import { usePathname } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 const MyComponent: React.FC = () => {
   const pathname = usePathname();
-    const searchParams = useSearchParams();
-  const tab = searchParams.get('tab'); // '1', '2', etc. as a string
-  console.log("Current tab:", typeof tab);
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab"); // '1', '2', etc. as a string
+  console.log("Current tab:", tab);
   const [filter, setFilter] = useState<Record<string, any> | null>(null);
   const [isLogin, setIsLogin] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileCard, setIsProfileCard] = useState(false);
-const storedConfig = typeof window !== 'undefined'
-  ? JSON.parse(localStorage.getItem('uiConfig') || '{}')
-  : {};
+  const storedConfig =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("uiConfig") || "{}")
+      : {};
 
   useEffect(() => {
     const fetchTenantInfo = async () => {
@@ -43,52 +44,52 @@ const storedConfig = typeof window !== 'undefined'
         if (checkAuth()) {
           setIsLogin(true);
           const result = await profileComplitionCheck();
-          console.log('Profile completion check result:', result);
+          console.log("Profile completion check result:", result);
           setIsProfileCard(!result);
         } else {
           setIsLogin(false);
         }
         const res = await getTenantInfo();
         const youthnetContentFilter = res?.result.find(
-          (program: any) => program.name === 'YouthNet'
+          (program: any) => program.name === "YouthNet"
         );
 
-        const storedChannelId = localStorage.getItem('channelId');
+        const storedChannelId = localStorage.getItem("channelId");
         if (!storedChannelId) {
           const channelId = youthnetContentFilter?.channelId;
           if (channelId) {
-            localStorage.setItem('channelId', channelId);
+            localStorage.setItem("channelId", channelId);
           }
         }
 
-        const storedTenantId = localStorage.getItem('tenantId');
+        const storedTenantId = localStorage.getItem("tenantId");
         if (!storedTenantId) {
           const tenantId = youthnetContentFilter?.tenantId;
           if (tenantId) {
-            localStorage.setItem('tenantId', tenantId);
+            localStorage.setItem("tenantId", tenantId);
           }
         }
 
         const storedCollectionFramework = localStorage.getItem(
-          'collectionFramework'
+          "collectionFramework"
         );
         if (!storedCollectionFramework) {
           const collectionFramework =
             youthnetContentFilter?.collectionFramework;
           if (collectionFramework) {
-            localStorage.setItem('collectionFramework', collectionFramework);
+            localStorage.setItem("collectionFramework", collectionFramework);
           }
         }
         setTimeout(() => {
           setFilter({ filters: youthnetContentFilter?.contentFilter });
           localStorage.setItem(
-            'filter',
+            "filter",
             JSON.stringify(youthnetContentFilter?.contentFilter)
           );
           setIsLoading(false);
         }, 1000);
       } catch (error) {
-        console.error('Failed to fetch tenant info:', error);
+        console.error("Failed to fetch tenant info:", error);
       }
     };
     fetchTenantInfo();
@@ -96,17 +97,19 @@ const storedConfig = typeof window !== 'undefined'
 
   return (
     <Layout isLoadingChildren={isLoading} sx={gredientStyle}>
-      {isProfileCard && storedConfig.isCompleteProfile && <CompleteProfileBanner />}
+      {isProfileCard && storedConfig.isCompleteProfile && (
+        <CompleteProfileBanner />
+      )}
       {isLogin && (
         <>
           <Box
             sx={{
               height: 24,
-              display: 'flex',
-              alignItems: 'center',
-              py: '36px',
-              px: '34px',
-              bgcolor: '#fff',
+              display: "flex",
+              alignItems: "center",
+              py: "36px",
+              px: "34px",
+              bgcolor: "#fff",
             }}
           >
             <Typography
@@ -115,33 +118,34 @@ const storedConfig = typeof window !== 'undefined'
               gutterBottom
               sx={{
                 fontWeight: 500,
-                color: '#1F1B13',
-                textTransform: 'capitalize',
+                color: "#1F1B13",
+                textTransform: "capitalize",
               }}
             >
               <span role="img" aria-label="wave">
                 👋
               </span>
-              Welcome, {localStorage.getItem('firstName')}!
+              Welcome, {localStorage.getItem("firstName")}!
             </Typography>
           </Box>
-          {tab =="0" && (<InProgressContent />)}
+          {tab == "0" && <InProgressContent />}
 
-          {localStorage.getItem('userProgram') === 'YouthNet' &&(<Grid container>
-            <Grid
-              item
-              xs={12}
-              md={12}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-              }}
-            >
-              <LTwoCourse />
+          {localStorage.getItem("userProgram") === "YouthNet" && (
+            <Grid container>
+              <Grid
+                item
+                xs={12}
+                md={12}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                }}
+              >
+                <LTwoCourse />
+              </Grid>
             </Grid>
-          </Grid>)
-}
+          )}
         </>
       )}
 
@@ -149,31 +153,33 @@ const storedConfig = typeof window !== 'undefined'
         <Grid item xs={12}>
           {filter && (
             <LearnerCourse
-              title={localStorage.getItem('userProgram') === 'Camp to Club'?'LEARNER_APP.COURSE.GET_STARTED_CLUB_COURSES':'LEARNER_APP.COURSE.GET_STARTED'}
+              title={
+                localStorage.getItem("userProgram") === "Camp to Club"
+                  ? "LEARNER_APP.COURSE.GET_STARTED_CLUB_COURSES"
+                  : "LEARNER_APP.COURSE.GET_STARTED"
+              }
               _content={{
-                pageName: 'L1_Content',
-                onlyFields: ['contentLanguage', 'se_subDomains', 'se_subjects'],
+                pageName: "L1_Content",
+                onlyFields: ["contentLanguage", "se_subDomains", "se_subjects"],
                 isOpenColapsed: [
-                  'contentLanguage',
-                  'se_subDomains',
-                  'se_subjects',
+                  "contentLanguage",
+                  "se_subDomains",
+                  "se_subjects",
                 ],
- ...(
-  Array.isArray(storedConfig.showContent)  &&
-  storedConfig.showContent.length === 2  &&
-  storedConfig.showContent.includes('courses') &&
-  storedConfig.showContent.includes('contents')
-    ? { contentTabs: ['courses', 'content'] }
-    : {}
-),
+                ...(Array.isArray(storedConfig.showContent) &&
+                storedConfig.showContent.length === 2 &&
+                storedConfig.showContent.includes("courses") &&
+                storedConfig.showContent.includes("contents")
+                  ? { contentTabs: ["courses", "content"] }
+                  : {}),
 
                 staticFilter: {
                   se_domains:
-                    typeof filter.filters?.domain === 'string'
+                    typeof filter.filters?.domain === "string"
                       ? [filter.filters?.domain]
                       : filter.filters?.domain,
                   program:
-                    typeof filter.filters?.program === 'string'
+                    typeof filter.filters?.program === "string"
                       ? [filter.filters?.program]
                       : filter.filters?.program,
                 },
@@ -193,35 +199,35 @@ const InProgressContent: React.FC = () => {
   const [isShow, setIsShow] = useState(false);
   const theme = useTheme();
   // Detect if the screen size is medium or larger
-  const isMdUp = useMediaQuery(theme.breakpoints.up('md'));
+  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
   return (
     <Grid
       container
       style={gredientStyle}
       sx={{ px: { xs: 0, sm: 0, md: 4 } }}
-      {...(isShow ? {} : { sx: { display: 'none' } })}
+      {...(isShow ? {} : { sx: { display: "none" } })}
     >
       <Grid item xs={12} md={2.7}>
         <Box
           sx={{
-            display: 'flex',
-            flexDirection: { md: 'column' },
+            display: "flex",
+            flexDirection: { md: "column" },
             justifyContent: {
-              xs: 'space-between',
-              sm: 'space-between',
-              md: 'flex-start',
+              xs: "space-between",
+              sm: "space-between",
+              md: "flex-start",
             },
-            px: { xs: '16px' },
-            py: { xs: '24px' },
+            px: { xs: "16px" },
+            py: { xs: "24px" },
             pb: { xs: 0, sm: 0 },
             gap: 3,
           }}
         >
           <Box
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: "flex",
+              flexDirection: "column",
               gap: { xs: 0, sm: 0, md: 1 },
             }}
           >
@@ -229,51 +235,51 @@ const InProgressContent: React.FC = () => {
               variant="h4"
               gutterBottom
               sx={{
-                fontFamily: 'Poppins',
+                fontFamily: "Poppins",
                 fontWeight: 400,
-                fontSize: { md: '22px', sm: '16px', xs: '16px' },
-                lineHeight: { md: '28px', sm: '24px', xs: '24px' },
-                letterSpacing: '0px',
-                verticalAlign: 'middle',
-                color: '#06A816',
+                fontSize: { md: "22px", sm: "16px", xs: "16px" },
+                lineHeight: { md: "28px", sm: "24px", xs: "24px" },
+                letterSpacing: "0px",
+                verticalAlign: "middle",
+                color: "#06A816",
                 mb: 0,
               }}
             >
-              {t('LEARNER_APP.L_ONE_COURSE.IN_PROGRESS_TITLE')}
+              {t("LEARNER_APP.L_ONE_COURSE.IN_PROGRESS_TITLE")}
             </Typography>
             <Typography
               variant="body1"
               gutterBottom
               sx={{
-                color: '#7C766F',
-                fontSize: { xs: '12px', sm: '12px', md: '16px' },
+                color: "#7C766F",
+                fontSize: { xs: "12px", sm: "12px", md: "16px" },
               }}
             >
-              {t('LEARNER_APP.L_ONE_COURSE.ONGOING_COURSES').replace(
-                '{count}',
+              {t("LEARNER_APP.L_ONE_COURSE.ONGOING_COURSES").replace(
+                "{count}",
                 isShow?.toString()
               )}
             </Typography>
           </Box>
           <Box
             sx={{
-              display: { md: 'flex' },
-              justifyContent: { md: 'flex-start' },
+              display: { md: "flex" },
+              justifyContent: { md: "flex-start" },
             }}
           >
             <Button
-              variant={isMdUp ? 'contained' : 'text'}
+              variant={isMdUp ? "contained" : "text"}
               sx={
                 !isMdUp
                   ? {
                       color: theme.palette.secondary.main,
-                      minWidth: '100px',
+                      minWidth: "100px",
                       fontWeight: 500,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      letterSpacing: '0.1px',
-                      textAlign: 'center',
-                      verticalAlign: 'middle',
+                      fontSize: "14px",
+                      lineHeight: "20px",
+                      letterSpacing: "0.1px",
+                      textAlign: "center",
+                      verticalAlign: "middle",
                     }
                   : {}
               }
@@ -281,7 +287,7 @@ const InProgressContent: React.FC = () => {
               color="primary"
               href="/in-progress"
             >
-              {t('LEARNER_APP.L_ONE_COURSE.VIEW_ALL_BUTTON')}
+              {t("LEARNER_APP.L_ONE_COURSE.VIEW_ALL_BUTTON")}
             </Button>
           </Box>
         </Box>

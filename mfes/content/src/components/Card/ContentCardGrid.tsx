@@ -1,8 +1,8 @@
-import React, { memo } from 'react';
-import { Box, Grid, Typography, Button, CircularProgress } from '@mui/material';
-import { ContentItem, useTranslation } from '@shared-lib';
-import ContentCard from './ContentCard';
-import { ContentSearchResponse } from '@content-mfes/services/Search';
+import React, { memo } from "react";
+import { Box, Grid, Typography, Button, CircularProgress } from "@mui/material";
+import { ContentItem, useTranslation } from "@shared-lib";
+import ContentCard from "./ContentCard";
+import { ContentSearchResponse } from "@content-mfes/services/Search";
 
 interface ContentCardGridProps {
   contentData: ContentSearchResponse[];
@@ -13,6 +13,7 @@ interface ContentCardGridProps {
   hasMoreData: boolean;
   handleLoadMore: (e: any) => void;
   isLoadingMoreData: boolean;
+  isHideEmptyDataMessage?: boolean;
 }
 
 const ContentCardGrid = memo((props: ContentCardGridProps) => {
@@ -46,7 +47,7 @@ const ContentCardGrid = memo((props: ContentCardGridProps) => {
           </Grid>
         ))}
       </Grid>
-      <Box sx={{ textAlign: 'center', mt: 4 }}>
+      <Box sx={{ textAlign: "center", mt: 4 }}>
         {props.hasMoreData && (
           <Button
             variant="contained"
@@ -56,28 +57,28 @@ const ContentCardGrid = memo((props: ContentCardGridProps) => {
             {props.isLoadingMoreData ? (
               <CircularProgress size={20} />
             ) : (
-              t('LEARNER_APP.CONTENT_TABS.LOAD_MORE')
+              t("LEARNER_APP.CONTENT_TABS.LOAD_MORE")
             )}
           </Button>
         )}
       </Box>
-      {!props.contentData?.length && (
+      {!props.contentData?.length && !props.isHideEmptyDataMessage && (
         <Typography
           variant="body1"
           sx={{
-            minHeight: '100px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
+            minHeight: "100px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          {t('LEARNER_APP.CONTENT_TABS.NO_MORE_DATA')}
+          {t("LEARNER_APP.CONTENT_TABS.NO_MORE_DATA")}
         </Typography>
       )}
     </Box>
   );
 });
 
-ContentCardGrid.displayName = 'ContentCardGrid';
+ContentCardGrid.displayName = "ContentCardGrid";
 
 export default ContentCardGrid;

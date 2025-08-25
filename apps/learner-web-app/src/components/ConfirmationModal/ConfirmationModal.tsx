@@ -1,10 +1,10 @@
-import * as React from 'react';
+import * as React from "react";
 
-import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
-import { Divider } from '@mui/material';
-import Modal from '@mui/material/Modal';
-import { useTheme } from '@mui/material/styles';
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import { Divider } from "@mui/material";
+import Modal from "@mui/material/Modal";
+import { useTheme } from "@mui/material/styles";
 
 interface ConfirmationModalProps {
   message: string;
@@ -29,16 +29,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const theme = useTheme<any>();
 
   const style = {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '75%',
-    bgcolor: '#fff',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: "75%",
+    bgcolor: "#fff",
     boxShadow: 24,
-    borderRadius: '16px',
-    '@media (min-width: 600px)': {
-      width: '350px',
+    borderRadius: "16px",
+    "@media (min-width: 600px)": {
+      width: "350px",
     },
   };
 
@@ -46,7 +46,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     <Modal
       open={modalOpen}
       onClose={(event, reason) => {
-        if (reason !== 'backdropClick') {
+        if (reason !== "backdropClick") {
           handleCloseModal();
         }
       }}
@@ -56,7 +56,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       <Box sx={style}>
         <Box
           sx={{ p: 3 }}
-          color={theme.palette.warning['300']}
+          color={theme.palette.warning["300"]}
           id="confirmation-modal-title"
         >
           {message}
@@ -64,35 +64,35 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         <Divider />
         <Box
           sx={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '18px',
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "18px",
             p: 2,
           }}
         >
           <Button
             sx={{
-              border: 'none',
+              border: "none",
               color: theme.palette.secondary.main,
-              fontSize: '14px',
-              fontWeight: '500',
-              '&:hover': {
-                border: 'none',
-                backgroundColor: 'transparent',
+              fontSize: "14px",
+              fontWeight: "500",
+              "&:hover": {
+                border: "none",
+                backgroundColor: "transparent",
               },
             }}
             className="one-line-text"
             variant="outlined"
             onClick={handleCloseModal}
           >
-            {buttonNames.secondary}
+            {/* {buttonNames.primary} */}
           </Button>
           <Button
             sx={{
-              width: 'auto',
-              height: '40px',
-              fontSize: '14px',
-              fontWeight: '500',
+              width: "auto",
+              height: "40px",
+              fontSize: "14px",
+              fontWeight: "500",
             }}
             className="one-line-text"
             variant="contained"
@@ -106,7 +106,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               }
             }}
           >
-            {buttonNames.primary}
+            Okay
+            {/* {buttonNames.primary} */}
           </Button>
         </Box>
       </Box>

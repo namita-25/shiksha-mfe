@@ -430,10 +430,10 @@ options.push(t('LEARNER_APP.USER_PROFILE_CARD.EDIT_PROFILE'));
           </Grid>
         </Box>
 
-        <Typography sx={sectionTitleStyle}>
+        {/* <Typography sx={sectionTitleStyle}>
           {t('LEARNER_APP.USER_PROFILE_CARD.ASPIRATION_EXPERIENCE')}
-        </Typography>
-        <Box sx={sectionCardStyle}>
+        </Typography> */}
+        {/* <Box sx={sectionCardStyle}>
           {priorTraining !== '-' && (
             <Box sx={{ mb: 1.5 }}>
               <Typography sx={labelStyle}>
@@ -462,7 +462,7 @@ options.push(t('LEARNER_APP.USER_PROFILE_CARD.EDIT_PROFILE'));
               </Typography>
             </Box>
           )}
-        </Box>
+        </Box> */}
       </Box>
 
       <Menu

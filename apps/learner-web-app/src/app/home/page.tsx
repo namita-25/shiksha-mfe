@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { Box, Button, Container, Grid, Typography } from '@mui/material';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useRef, Suspense } from 'react';
-import { Layout, useTranslation } from '@shared-lib';
-import OurProgramCarousel from '@learner/components/OurProgramCarousel';
-import { checkAuth } from '@shared-lib-v2/utils/AuthService';
+import { Box, Button, Container, Grid, Typography } from "@mui/material";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useRef, Suspense } from "react";
+import { Layout, useTranslation } from "@shared-lib";
+import OurProgramCarousel from "@learner/components/OurProgramCarousel";
+import { checkAuth } from "@shared-lib-v2/utils/AuthService";
 
 export default function Index() {
   const router = useRouter();
@@ -15,33 +15,33 @@ export default function Index() {
 
   const handleScrollToPrograms = () => {
     if (programCarouselRef.current) {
-      programCarouselRef.current.scrollIntoView({ behavior: 'smooth' });
+      programCarouselRef.current.scrollIntoView({ behavior: "smooth" });
     }
   };
 
   return (
     <Layout
-      onlyHideElements={['footer']}
+      onlyHideElements={["footer"]}
       _topAppBar={{
         _brand: {
           name:
-            typeof window !== 'undefined'
-              ? localStorage.getItem('userProgram') ?? ''
-              : '',
-          logo: checkAuth() ? '/logo.png' : '/images/appLogo.svg',
+            typeof window !== "undefined"
+              ? localStorage.getItem("userProgram") ?? ""
+              : "",
+          logo: checkAuth() ? "/logo.png" : "/images/appLogo.svg",
           _box: {
-            onClick: () => router.push('/content'),
+            onClick: () => router.push("/content"),
             sx: {
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
               gap: 1,
             },
             _text: {
               fontWeight: 400,
-              fontSize: '22px',
-              lineHeight: '28px',
-              textAlign: 'center',
+              fontSize: "22px",
+              lineHeight: "28px",
+              textAlign: "center",
             },
           },
         },
@@ -51,36 +51,36 @@ export default function Index() {
         <Box
           display="flex"
           flexDirection="column"
-          sx={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}
+          sx={{ overflowWrap: "break-word", wordBreak: "break-word" }}
         >
           {/* <Header /> */}
 
           <Box
             sx={{
-              background: 'linear-gradient(180deg, #FFFDF7 0%, #F8EFDA 100%)',
-              boxShadow: '0px 4px 8px 3px #00000026, 0px 1px 3px 0px #0000004D',
-              pt: '20px',
+              background: "linear-gradient(180deg, #FFFDF7 0%, #F8EFDA 100%)",
+              boxShadow: "0px 4px 8px 3px #00000026, 0px 1px 3px 0px #0000004D",
+              pt: "20px",
             }}
           >
             <Container>
               <Box
                 sx={{
-                  textAlign: 'center',
+                  textAlign: "center",
                   my: { xs: 2, sm: 4 },
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
                   gap: { xs: 1, sm: 2 },
-                  width: '100%',
+                  width: "100%",
                   px: { xs: 2, sm: 0 },
-                  maxWidth: '100%',
+                  maxWidth: "100%",
                 }}
               >
                 <Box
                   sx={{
                     width: { xs: 40, sm: 60 },
                     height: { xs: 40, sm: 60 },
-                    position: 'relative',
+                    position: "relative",
                   }}
                 >
                   <Image
@@ -94,21 +94,21 @@ export default function Index() {
                   variant="body9"
                   component="h1"
                   sx={{
-                    fontWeight: '400',
-                    color: '#1F1B13',
-                    textAlign: 'center',
+                    fontWeight: "400",
+                    color: "#1F1B13",
+                    textAlign: "center",
                   }}
                 >
-                  {t('LEARNER_APP.HOME.WELCOME_TITLE')}
+                  {t("LEARNER_APP.HOME.WELCOME_TITLE")}
                 </Typography>
                 <Typography
                   variant="h1"
                   sx={{
-                    fontWeight: '400',
-                    textAlign: 'center',
+                    fontWeight: "400",
+                    textAlign: "center",
                   }}
                 >
-                  {t('LEARNER_APP.HOME.WELCOME_SUBTITLE')}
+                  {t("LEARNER_APP.HOME.WELCOME_SUBTITLE")}
                 </Typography>
 
                 <Button
@@ -118,41 +118,41 @@ export default function Index() {
                     mt: 2,
                     px: 4,
                     py: 1,
-                    borderRadius: '100px',
-                    backgroundColor: '#FDBE16',
-                    color: '#1E1B16',
-                    fontWeight: '500',
-                    fontSize: '16px',
-                    '&:hover': {
-                      backgroundColor: '#FDBE16',
+                    borderRadius: "100px",
+                    backgroundColor: "#FDBE16",
+                    color: "#1E1B16",
+                    fontWeight: "500",
+                    fontSize: "16px",
+                    "&:hover": {
+                      backgroundColor: "#FDBE16",
                     },
                   }}
-                  onClick={handleScrollToPrograms}
+                  onClick={() => router.push("/login")}
                 >
-                  {t('LEARNER_APP.HOME.SIGN_UP_BUTTON')}
+                  {t("LEARNER_APP.HOME.LOGIN_LINK")}
                 </Button>
 
-                <Box sx={{ display: 'flex', gap: '5px' }}>
-                  <Typography variant="body2" color="#1F1B13" display="inline">
-                    {t('LEARNER_APP.HOME.ALREADY_SIGNED_UP')}
-                  </Typography>
-                  <Typography
+                <Box sx={{ display: "flex", gap: "5px" }}>
+                  {/* <Typography variant="body2" color="#1F1B13" display="inline">
+                    {t("LEARNER_APP.HOME.ALREADY_SIGNED_UP")}
+                  </Typography> */}
+                  {/* <Typography
                     variant="body2"
                     color="#0D599E"
                     sx={{
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      fontWeight: '500',
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      fontWeight: "500",
                     }}
                     display="inline"
-                    onClick={() => router.push('/login')}
+                    onClick={() => router.push("/login")}
                   >
-                    {t('LEARNER_APP.HOME.LOGIN_LINK')}
-                  </Typography>
+                    {t("LEARNER_APP.HOME.LOGIN_LINK")}
+                  </Typography> */}
                 </Box>
               </Box>
             </Container>
-            <Box sx={{ background: '#fff', py: '4px', borderRadius: '24px' }}>
+            {/* <Box sx={{ background: '#fff', py: '4px', borderRadius: '24px' }}>
               <Container maxWidth="md">
                 <Grid
                   container
@@ -263,11 +263,11 @@ export default function Index() {
                   </Grid>
                 </Grid>
               </Container>
-            </Box>
+            </Box> */}
           </Box>
 
-          <Container maxWidth="xl">
-            <Box sx={{ my: 6, px: '20px' }}>
+          {/* <Container maxWidth="xl">
+            <Box sx={{ my: 6, px: "20px" }}>
               <Grid container spacing={4}>
                 <Grid item xs={12} md={7}>
                   <Typography
@@ -277,10 +277,10 @@ export default function Index() {
                     sx={{
                       mb: 3,
                       fontWeight: 600,
-                      color: '#1F1B13',
+                      color: "#1F1B13",
                     }}
                   >
-                    {t('LEARNER_APP.HOME.ABOUT_PRATHAM_TITLE')}
+                    {t("LEARNER_APP.HOME.ABOUT_PRATHAM_TITLE")}
                   </Typography>
                   <Typography
                     variant="body1"
@@ -289,20 +289,20 @@ export default function Index() {
                     sx={{
                       mb: 3,
                       fontWeight: 400,
-                      color: '#1F1B13',
+                      color: "#1F1B13",
                     }}
                   >
-                    {t('LEARNER_APP.HOME.ABOUT_PRATHAM_DESC')}
+                    {t("LEARNER_APP.HOME.ABOUT_PRATHAM_DESC")}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={5}>
                   <Box
                     sx={{
-                      position: 'relative',
-                      width: '100%',
+                      position: "relative",
+                      width: "100%",
                       height: 278,
-                      borderRadius: '24px',
-                      overflow: 'hidden',
+                      borderRadius: "24px",
+                      overflow: "hidden",
                     }}
                   >
                     <iframe
@@ -314,23 +314,23 @@ export default function Index() {
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       referrerPolicy="strict-origin-when-cross-origin"
                       allowFullScreen
-                      style={{ borderRadius: '24px' }}
+                      style={{ borderRadius: "24px" }}
                     ></iframe>
                   </Box>
                 </Grid>
               </Grid>
             </Box>
-          </Container>
+          </Container> */}
 
-          <Box
+          {/* <Box
             ref={programCarouselRef}
             sx={{
-              background: 'linear-gradient(180deg, #FFFDF7 0%, #F8EFDA 100%)',
-              padding: '20px',
+              background: "linear-gradient(180deg, #FFFDF7 0%, #F8EFDA 100%)",
+              padding: "20px",
             }}
           >
             <OurProgramCarousel />
-          </Box>
+          </Box> */}
         </Box>
       </Suspense>
     </Layout>

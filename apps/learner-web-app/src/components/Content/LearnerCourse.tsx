@@ -1,24 +1,24 @@
-import dynamic from 'next/dynamic';
-import React, { useState, useCallback, memo, useEffect } from 'react';
-import { Box, Button, Chip, Drawer, Stack, Typography } from '@mui/material';
-import { useTranslation } from '@shared-lib';
+import dynamic from "next/dynamic";
+import React, { useState, useCallback, memo, useEffect } from "react";
+import { Box, Button, Chip, Drawer, Stack, Typography } from "@mui/material";
+import { useTranslation } from "@shared-lib";
 import {
   Close as CloseIcon,
   FilterAltOutlined,
   FilterList,
   Search,
-} from '@mui/icons-material';
-import SearchComponent from './SearchComponent';
-import FilterComponent from './FilterComponent';
-import { gredientStyle } from '@learner/utils/style';
-import { logEvent } from '@learner/utils/googleAnalytics';
+} from "@mui/icons-material";
+import SearchComponent from "./SearchComponent";
+import FilterComponent from "./FilterComponent";
+import { gredientStyle } from "@learner/utils/style";
+import { logEvent } from "@learner/utils/googleAnalytics";
 
 interface LearnerCourseProps {
   title?: string;
   _content?: any;
 }
 
-const Content = dynamic(() => import('@Content'), {
+const Content = dynamic(() => import("@Content"), {
   ssr: false,
 });
 
@@ -30,7 +30,7 @@ export default memo(function LearnerCourse({
   const [isOpen, setIsOpen] = useState(false);
   const { t } = useTranslation();
   const { staticFilter, filterFramework } = _content ?? {};
-
+  console.log("LearnerCourse _content:", _content);
   useEffect(() => {
     setFilterState(_content?.filters ?? {});
   }, [_content?.filters, _content?.searchParams]);
@@ -38,25 +38,34 @@ export default memo(function LearnerCourse({
   const handleTabChange = useCallback((tab: any) => {
     setFilterState((prevState: any) => ({
       ...prevState,
-      query: '',
+      query: "",
+      type: tab,
     }));
   }, []);
-  const handleSearchClick = useCallback((searchValue: string) => {
-if (typeof window !== 'undefined') {
-     const windowUrl = window.location.pathname;
-    const cleanedUrl = windowUrl
-    logEvent({
-        action: 'search content by '+searchValue,
-        category: cleanedUrl ,
-        label: 'Search content'
-      });
-    }
-    setFilterState((prevState: any) => ({
-      ...prevState,
-      query: searchValue,
-      offset: 0,
-    }));
-  }, []);
+  const handleSearchClick = useCallback(
+    (searchValue: string) => {
+      if (typeof window !== "undefined") {
+        const windowUrl = window.location.pathname;
+        const cleanedUrl = windowUrl;
+        logEvent({
+          action: "search content by " + searchValue,
+          category: cleanedUrl,
+          label: "Search content",
+        });
+      }
+      const type =
+        _content?.tab === "Course"
+          ? ["Course"]
+          : ["Learning Resource", "Practice Question Set"];
+      setFilterState((prevState: any) => ({
+        ...prevState,
+        query: searchValue,
+        offset: 0,
+        type,
+      }));
+    },
+    [_content]
+  );
 
   const handleFilterChange = (newFilterState: typeof filterState) => {
     setFilterState((prevState: any) => ({
@@ -70,9 +79,9 @@ if (typeof window !== 'undefined') {
       {title && (
         <Box
           sx={{
-            position: 'sticky',
+            position: "sticky",
             top: 0,
-            bgcolor: '',
+            bgcolor: "",
             px: { xs: 1, md: 4 },
             py: { xs: 1, md: 2 },
             zIndex: 1,
@@ -81,7 +90,7 @@ if (typeof window !== 'undefined') {
         >
           <Box
             display="flex"
-            flexDirection={{ xs: 'column', md: 'row' }}
+            flexDirection={{ xs: "column", md: "row" }}
             justifyContent="space-between"
             alignItems="center"
             sx={{
@@ -93,56 +102,56 @@ if (typeof window !== 'undefined') {
               variant="h6"
               sx={{
                 fontWeight: 400,
-                fontSize: '22px',
-                lineHeight: '28px',
+                fontSize: "22px",
+                lineHeight: "28px",
               }}
             >
-              {t(title ?? 'LEARNER_APP.COURSE.GET_STARTED')}
+              {t(title ?? "LEARNER_APP.COURSE.GET_STARTED")}
             </Typography>
             <Box
               sx={{
-                display: 'flex',
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
                 gap: 1,
               }}
             >
-              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+              <Box sx={{ display: { xs: "block", md: "none" } }}>
                 <Button
                   variant="outlined"
                   onClick={() => setIsOpen(true)}
                   size="large"
                   sx={{
-                    borderRadius: '8px',
-                    borderWidth: '1px',
-                    borderColor: '#DADADA !important',
-                    padding: '8px 10px',
+                    borderRadius: "8px",
+                    borderWidth: "1px",
+                    borderColor: "#DADADA !important",
+                    padding: "8px 10px",
                   }}
                 >
                   <FilterList sx={{ width: 20, height: 20, mr: 0.5 }} />
                   <Typography
                     sx={{
                       fontWeight: 500,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      letterSpacing: '0.1px',
+                      fontSize: "14px",
+                      lineHeight: "20px",
+                      letterSpacing: "0.1px",
                       mr: 0.5,
                     }}
                   >
-                    {t('LEARNER_APP.CONTENT.FILTERS')}
+                    {t("LEARNER_APP.CONTENT.FILTERS")}
                   </Typography>
                   <Typography
                     sx={{
                       fontWeight: 500,
-                      fontSize: '14px',
-                      lineHeight: '20px',
-                      letterSpacing: '0.1px',
+                      fontSize: "14px",
+                      lineHeight: "20px",
+                      letterSpacing: "0.1px",
                     }}
                   >
                     {Object.keys(filterState?.filters || {}).filter(
                       (e) =>
-                        !['limit', ...Object.keys(staticFilter ?? {})].includes(
+                        !["limit", ...Object.keys(staticFilter ?? {})].includes(
                           e
                         )
                     ).length
@@ -150,7 +159,7 @@ if (typeof window !== 'undefined') {
                           Object.keys(filterState.filters).filter(
                             (e) =>
                               ![
-                                'limit',
+                                "limit",
                                 ...Object.keys(staticFilter ?? {}),
                               ].includes(e)
                           ).length
@@ -166,9 +175,9 @@ if (typeof window !== 'undefined') {
             </Box>
             <Box
               sx={{
-                display: { xs: 'flex', sm: 'flex', md: 'none' },
-                overflowY: 'auto',
-                width: '100%',
+                display: { xs: "flex", sm: "flex", md: "none" },
+                overflowY: "auto",
+                width: "100%",
               }}
             >
               <FilterChip
@@ -190,7 +199,7 @@ if (typeof window !== 'undefined') {
           onClose={() => setIsOpen(false)}
           PaperProps={{
             sx: {
-              width: '80%',
+              width: "80%",
             },
           }}
         >
@@ -208,19 +217,19 @@ if (typeof window !== 'undefined') {
                 sx: {
                   py: 2,
                   px: 2,
-                  height: 'calc(100vh - 130px)',
-                  overflowY: 'auto',
+                  height: "calc(100vh - 130px)",
+                  overflowY: "auto",
                 },
               },
             }}
           />
           <Box
             sx={{
-              bgcolor: '#f1f1f1',
+              bgcolor: "#f1f1f1",
               p: 2,
-              position: 'absolute',
+              position: "absolute",
               bottom: 0,
-              width: '100%',
+              width: "100%",
             }}
           >
             <Button
@@ -228,7 +237,7 @@ if (typeof window !== 'undefined') {
               fullWidth
               onClick={() => setIsOpen(false)}
             >
-              {t('LEARNER_APP.COURSE.DONE')}
+              {t("LEARNER_APP.COURSE.DONE")}
             </Button>
           </Box>
         </Drawer>
@@ -236,10 +245,10 @@ if (typeof window !== 'undefined') {
         <Box
           flex={35}
           sx={{
-            display: { xs: 'none', md: 'flex' },
-            position: 'sticky',
+            display: { xs: "none", md: "flex" },
+            position: "sticky",
             top: !title ? 0 : 100,
-            alignSelf: 'flex-start',
+            alignSelf: "flex-start",
           }}
         >
           <FilterComponent
@@ -257,14 +266,14 @@ if (typeof window !== 'undefined') {
               display="flex"
               justifyContent="space-between"
               flexDirection={{
-                xs: 'column-reverse',
-                sm: 'column-reverse',
-                md: 'row',
+                xs: "column-reverse",
+                sm: "column-reverse",
+                md: "row",
               }}
               gap={2}
               sx={{ mb: 2 }}
             >
-              <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
+              <Box sx={{ display: "flex", flexWrap: "wrap" }}>
                 <FilterChip
                   filters={filterState.filters}
                   staticFilter={staticFilter}
@@ -273,48 +282,48 @@ if (typeof window !== 'undefined') {
               </Box>
               <Box
                 sx={{
-                  display: 'flex',
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
                   gap: 2,
                 }}
               >
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Box sx={{ display: { xs: "block", md: "none" } }}>
                   <Button
                     variant="outlined"
                     onClick={() => setIsOpen(true)}
                     size="large"
                     sx={{
-                      borderRadius: '8px',
-                      borderWidth: '1px',
-                      borderColor: '#DADADA !important',
-                      padding: '8px 10px',
+                      borderRadius: "8px",
+                      borderWidth: "1px",
+                      borderColor: "#DADADA !important",
+                      padding: "8px 10px",
                     }}
                   >
                     <FilterList sx={{ width: 20, height: 20, mr: 0.5 }} />
                     <Typography
                       sx={{
                         fontWeight: 500,
-                        fontSize: '14px',
-                        lineHeight: '20px',
-                        letterSpacing: '0.1px',
+                        fontSize: "14px",
+                        lineHeight: "20px",
+                        letterSpacing: "0.1px",
                         mr: 0.5,
                       }}
                     >
-                      {t('LEARNER_APP.CONTENT.FILTERS')}
+                      {t("LEARNER_APP.CONTENT.FILTERS")}
                     </Typography>
                     <Typography
                       sx={{
                         fontWeight: 500,
-                        fontSize: '14px',
-                        lineHeight: '20px',
-                        letterSpacing: '0.1px',
+                        fontSize: "14px",
+                        lineHeight: "20px",
+                        letterSpacing: "0.1px",
                       }}
                     >
                       {Object.keys(filterState?.filters || {}).filter(
                         (e) =>
                           ![
-                            'limit',
+                            "limit",
                             ...Object.keys(staticFilter ?? {}),
                           ].includes(e)
                       ).length
@@ -322,7 +331,7 @@ if (typeof window !== 'undefined') {
                             Object.keys(filterState.filters).filter(
                               (e) =>
                                 ![
-                                  'limit',
+                                  "limit",
                                   ...Object.keys(staticFilter ?? {}),
                                 ].includes(e)
                             ).length
@@ -331,7 +340,7 @@ if (typeof window !== 'undefined') {
                     </Typography>
                   </Button>
                 </Box>
-                <ButtonToggale icon={<Search />} _button={{ color: 'primary' }}>
+                <ButtonToggale icon={<Search />} _button={{ color: "primary" }}>
                   <SearchComponent
                     onSearch={handleSearchClick}
                     value={filterState?.query}
@@ -342,14 +351,18 @@ if (typeof window !== 'undefined') {
           )}
           <Content
             isShowLayout={false}
-            contentTabs={['Course']}
+            contentTabs={
+              _content?.tab === "Course"
+                ? ["Course"]
+                : ["Learning Resource", "Practice Question Set"]
+            }
             showFilter={false}
             showSearch={false}
             showHelpDesk={false}
             {..._content}
             _config={{
               tabChange: handleTabChange,
-              default_img: '/images/image_ver.png',
+              default_img: "/images/image_ver.png",
               _card: { isHideProgress: true },
               _subBox: { sx: { px: 0.5 } },
               ..._content?._config,
@@ -385,10 +398,10 @@ const FilterChip: React.FC<FilterChipProps> = ({
         ? Object.entries(filters)
             .filter(
               ([key, _]) =>
-                !['limit', ...Object.keys(staticFilter ?? {})].includes(key)
+                !["limit", ...Object.keys(staticFilter ?? {})].includes(key)
             )
             .map(([key, value], index) => {
-              if (typeof value === 'object') {
+              if (typeof value === "object") {
                 return (value as string[]).map((option, index) => (
                   <Chip
                     key={`${key}-${index}`}
@@ -409,7 +422,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                         });
                       }
                     }}
-                    sx={{ mr: 1, mb: 1, borderRadius: '8px' }}
+                    sx={{ mr: 1, mb: 1, borderRadius: "8px" }}
                   />
                 ));
               } else {
@@ -421,7 +434,7 @@ const FilterChip: React.FC<FilterChipProps> = ({
                       const { [key]: _, ...rest } = filters ?? {};
                       handleFilterChange(rest);
                     }}
-                    sx={{ mr: 1, mb: 1, borderRadius: '8px' }}
+                    sx={{ mr: 1, mb: 1, borderRadius: "8px" }}
                   />
                 );
               }
@@ -437,13 +450,13 @@ const ButtonToggale = ({ children, icon }: any) => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', flexDirection: 'row' }}>
+      <Box sx={{ display: "flex", flexDirection: "row" }}>
         {isOpen && children}
         <Button
           onClick={toggle}
           variant="contained"
           color="primary"
-          sx={{ ml: 1, borderRadius: '8px' }}
+          sx={{ ml: 1, borderRadius: "8px" }}
         >
           {isOpen ? <CloseIcon /> : icon}
         </Button>

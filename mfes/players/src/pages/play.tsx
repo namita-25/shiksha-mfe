@@ -131,8 +131,8 @@ const Players: React.FC<SunbirdPlayerProps> = ({
           </Typography> */}
           <SunbirdPlayers
             player-config={playerConfig}
-            courseId={identifier}
-            unitId={identifier}
+            courseId={identifier?.toString()}
+            unitId={identifier?.toString()}
             userId={userId}
             configFunctionality={{
               trackable: true,

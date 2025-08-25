@@ -1,5 +1,4 @@
 export const baseurl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
-
 export const API_ENDPOINTS = {
   accountCreate: `${baseurl}/account/create`,
   accountLogin: `${baseurl}/account/login`,
@@ -26,6 +25,11 @@ export const API_ENDPOINTS = {
   academicYearsList: `${baseurl}/academicyears/list`,
   cohortSearch: `${baseurl}/cohort/search`,
   myCohortsRead: (userId: string) => `${baseurl}/user/read/${userId}`,
+};
+
+// Interface API endpoints
+export const INTERFACE_API_ENDPOINTS = {
+  sendOtp: `${baseurl}/user/send-otp`,
 };
 
 export const COURSE_L2_ENDPOINTS = `${process.env.NEXT_PUBLIC_BASE_URL}/prathamservice/v1/save-user-salesforce`;

@@ -47,3 +47,4 @@ out
 
 #extra
 .env.dev
+.env

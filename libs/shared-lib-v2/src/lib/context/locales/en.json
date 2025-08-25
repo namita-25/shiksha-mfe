@@ -193,9 +193,9 @@
       "GET_THE_APP": "Get the App",
       "POINT_CAMERA": "Point your phone camera here",
       "OR": "OR",
-      "SEARCH_PLAYSTORE": "Search \"Pratham myLearning\" on Playstore",
-      "ABOUT_PRATHAM_TITLE": "About Pratham",
-      "ABOUT_PRATHAM_DESC": "Pratham addresses gaps in education systems with innovative, low-cost, replicable interventions that span the age spectrum. Working both directly and through government systems, these programs collectively reach millions of children and thousands of school dropouts each year. In “direct” work, a Pratham instructor works with children either in the school or in the community, whereas the “partnership” model involves Pratham teams working closely with government teams at the state, district or city level to design and implement programs. Pratham’s approach to improving learning outcomes continues to serve as a model, both within India and beyond.",
+      "SEARCH_PLAYSTORE": "Search \"Shiksha myLearning\" on Playstore",
+      "ABOUT_Shiksha_TITLE": "About Shiksha",
+      "ABOUT_Shiksha_DESC": "Shiksha addresses gaps in education systems with innovative, low-cost, replicable interventions that span the age spectrum. Working both directly and through government systems, these programs collectively reach millions of children and thousands of school dropouts each year. In “direct” work, a Shiksha instructor works with children either in the school or in the community, whereas the “partnership” model involves Shiksha teams working closely with government teams at the state, district or city level to design and implement programs. Shiksha’s approach to improving learning outcomes continues to serve as a model, both within India and beyond.",
       "OUR_PROGRAMS": "Our Programs",
       "SIGN_UP": "Sign Up",
       "SIGN_IN": "Sign In"
@@ -209,7 +209,7 @@
       "qr_image_alt": "QR Code",
       "or": "OR",
       "playstore_image_alt": "Get it on Google Play",
-      "playstore_instruction": "Search “Pratham myLearning” on Playstore",
+      "playstore_instruction": "Search “Shiksha myLearning” on Playstore",
       "login_title": "Login",
       "username_label": "Username",
       "password_label": "Password",
@@ -222,8 +222,10 @@
       "POINT_YOUR_PHONE": "Point your phone",
       "POINT_CAMERA": "camera here",
       "OR": "OR",
-      "SEARCH_PLAYSTORE": "Search “Pratham myLearning” on Playstore",
-      "ON_PLAYSTORE": "on Playstore"
+      "SEARCH_PLAYSTORE": "Search “Shiksha myLearning” on Playstore",
+      "ON_PLAYSTORE": "on Playstore",
+      "otp_label": "Enter OTP",
+      "verify_otp_button": "Verify OTP"
     },
     "L_ONE_COURSE": {
       "IN_PROGRESS_TITLE": "In Progress",
@@ -347,7 +349,7 @@
       "CAMERA_HERE": "camera here",
       "OR": "OR",
       "SEARCH_TEXT": "Search",
-      "APP_NAME": "Pratham myLearning",
+      "APP_NAME": "Shiksha myLearning",
       "ON_PLAYSTORE": "on Playstore"
     }
   },
@@ -465,7 +467,7 @@
     "ENTER_CONTACT_NUMBER": "Enter Contact Number",
     "HOW_WAS_LEARNER_MOBILISED": "How Was the Learner Mobilised?",
     "SECOND_CHANCE_ALUMNI": "Second Chance Alumni",
-    "PRATHAM_TEAM_MEMBER": "Pratham Team Member",
+    "PRATHAM_TEAM_MEMBER": "Shiksha Team Member",
     "OTHER": "Other",
     "AGE": "Age",
     "GENDER": "Gender",

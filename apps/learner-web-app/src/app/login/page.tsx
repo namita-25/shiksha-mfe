@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { Box, Grid, Typography } from "@mui/material";
 import dynamic from "next/dynamic";
 import WelcomeScreen from "@learner/components/WelcomeComponent/WelcomeScreen";
@@ -159,6 +159,8 @@ const LoginPage = () => {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [prefilledUsername, setPrefilledUsername] = useState<string>("");
+
   const handleAddAccount = () => {
     router.push("/");
   };
@@ -169,6 +171,15 @@ const LoginPage = () => {
       try {
         // localStorage.clear();()
         preserveLocalStorage();
+
+        // Get prefilled username from URL parameters
+        if (typeof window !== "undefined") {
+          const searchParams = new URLSearchParams(window.location.search);
+          const prefilledUser = searchParams.get("prefilledUsername");
+          if (prefilledUser) {
+            setPrefilledUsername(prefilledUser);
+          }
+        }
 
         const access_token = localStorage.getItem("token");
         const refresh_token = localStorage.getItem("refreshToken");
@@ -244,6 +255,65 @@ const LoginPage = () => {
       telemetryFactory.interact(telemetryInteract);
     }
   };
+
+  const handleVerifyOtp = async (data: {
+    username: string;
+    otp: string;
+    remember: boolean;
+  }) => {
+    const username = data?.username;
+    const otp = data?.otp;
+
+    try {
+      // TODO: Replace with actual OTP verification API call
+      // For now, we'll simulate OTP verification
+      console.log("Verifying OTP for username:", username, "OTP:", otp);
+
+      // Simulate API call - replace this with actual OTP verification
+      const response = await new Promise<{
+        result: { access_token: string; user: { username: string } };
+      }>((resolve, reject) => {
+        setTimeout(() => {
+          // Simulate successful OTP verification
+          if (otp && otp.length === 6) {
+            resolve({
+              result: {
+                access_token: "simulated_otp_token",
+                user: {
+                  username: username,
+                  // Add other user details as needed
+                },
+              },
+            });
+          } else {
+            reject(new Error("Invalid OTP"));
+          }
+        }, 1000);
+      });
+
+      if (response?.result?.access_token) {
+        handleSuccessfulLogin(response?.result, data, router);
+      } else {
+        showToastMessage(
+          t("LOGIN_PAGE.OTP_NOT_CORRECT") || "Invalid OTP. Please try again.",
+          "error"
+        );
+      }
+    } catch (error: any) {
+      const errorMessage =
+        t("LOGIN_PAGE.OTP_NOT_CORRECT") || "Invalid OTP. Please try again.";
+      showToastMessage(errorMessage, "error");
+      const telemetryInteract = {
+        context: { env: "sign-in", cdata: [] },
+        edata: {
+          id: "otp-verification-failed",
+          type: "CLICK",
+          pageid: "sign-in",
+        },
+      };
+      telemetryFactory.interact(telemetryInteract);
+    }
+  };
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <Box
@@ -308,8 +378,16 @@ const LoginPage = () => {
 
             <Login
               onLogin={handleLogin}
+              onVerifyOtp={handleVerifyOtp}
               handleForgotPassword={handleForgotPassword}
               handleAddAccount={handleAddAccount}
+              prefilledUsername={prefilledUsername}
+              onRedirectToLogin={() => {
+                // Redirect to a different login page or show a message
+                showToastMessage("User not found with required access. Please use username/password login.", "error");
+                // You can also redirect to a different URL here
+                // router.push('/alternative-login');
+              }}
             />
 
             {/* App Download Section - Only visible on mobile */}

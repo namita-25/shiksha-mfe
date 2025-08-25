@@ -33,10 +33,14 @@ const DashboardPage = () => {
   const [isProfileCard, setIsProfileCard] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null); // For menu positioning
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-  const storedConfig =
-    typeof window !== "undefined"
-      ? JSON.parse(localStorage.getItem("uiConfig") || "{}")
-      : {};
+  const [storedConfig, setStoredConfig] = useState({});
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const config = JSON.parse(localStorage.getItem("uiConfig") || "{}");
+      setStoredConfig(config);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchTenantInfo = async () => {
@@ -54,38 +58,42 @@ const DashboardPage = () => {
           (program: any) => program.name === "YouthNet"
         );
 
-        const storedChannelId = localStorage.getItem("channelId");
-        if (!storedChannelId) {
-          const channelId = youthnetContentFilter?.channelId;
-          if (channelId) {
-            localStorage.setItem("channelId", channelId);
+        if (typeof window !== "undefined") {
+          const storedChannelId = localStorage.getItem("channelId");
+          if (!storedChannelId) {
+            const channelId = youthnetContentFilter?.channelId;
+            if (channelId) {
+              localStorage.setItem("channelId", channelId);
+            }
           }
-        }
 
-        const storedTenantId = localStorage.getItem("tenantId");
-        if (!storedTenantId) {
-          const tenantId = youthnetContentFilter?.tenantId;
-          if (tenantId) {
-            localStorage.setItem("tenantId", tenantId);
+          const storedTenantId = localStorage.getItem("tenantId");
+          if (!storedTenantId) {
+            const tenantId = youthnetContentFilter?.tenantId;
+            if (tenantId) {
+              localStorage.setItem("tenantId", tenantId);
+            }
           }
-        }
 
-        const storedCollectionFramework = localStorage.getItem(
-          "collectionFramework"
-        );
-        if (!storedCollectionFramework) {
-          const collectionFramework =
-            youthnetContentFilter?.collectionFramework;
-          if (collectionFramework) {
-            localStorage.setItem("collectionFramework", collectionFramework);
+          const storedCollectionFramework = localStorage.getItem(
+            "collectionFramework"
+          );
+          if (!storedCollectionFramework) {
+            const collectionFramework =
+              youthnetContentFilter?.collectionFramework;
+            if (collectionFramework) {
+              localStorage.setItem("collectionFramework", collectionFramework);
+            }
           }
         }
         setTimeout(() => {
           setFilter({ filters: youthnetContentFilter?.contentFilter });
-          localStorage.setItem(
-            "filter",
-            JSON.stringify(youthnetContentFilter?.contentFilter)
-          );
+          if (typeof window !== "undefined") {
+            localStorage.setItem(
+              "filter",
+              JSON.stringify(youthnetContentFilter?.contentFilter)
+            );
+          }
           setIsLoading(false);
         }, 1000);
       } catch (error) {
@@ -110,9 +118,11 @@ const DashboardPage = () => {
 
   const performLogout = () => {
     // Clear user session
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("firstName");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("firstName");
+    }
 
     // Redirect to login page
     router.push("/login");
@@ -160,7 +170,7 @@ const DashboardPage = () => {
           <span role="img" aria-label="wave">
             👋
           </span>
-          Welcome, {localStorage.getItem("firstName")}!
+          Welcome, {typeof window !== "undefined" ? localStorage.getItem("firstName") : ""}!
         </Typography>
       </Box>
       <Box>
@@ -177,7 +187,7 @@ const DashboardPage = () => {
             {filter && (
               <LearnerCourse
                 title={
-                  localStorage.getItem("userProgram") === "Camp to Club"
+                  (typeof window !== "undefined" && localStorage.getItem("userProgram") === "Camp to Club")
                     ? "LEARNER_APP.COURSE.GET_STARTED_CLUB_COURSES"
                     : "LEARNER_APP.COURSE.GET_STARTED"
                 }

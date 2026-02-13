@@ -1,5 +1,6 @@
-import axios, { AxiosRequestConfig } from "axios";
-interface ContentSearchResponse {
+import axios, { AxiosRequestConfig } from 'axios';
+export interface ContentSearchResponse {
+  relational_metadata: any;
   ownershipType?: string[];
   publish_type?: string;
   copyright?: string;
@@ -49,7 +50,24 @@ interface ContentSearchResponse {
   author?: string;
   consumerId?: string;
   childNodes?: string[];
-  children?: any[]; // Changed from string[] to any[] to match actual API response
+  children?: Array<{
+    identifier: string;
+    name: string;
+    mimeType: string;
+    contentType: string;
+    description: string;
+    appIcon?: string;
+    posterImage?: string;
+    children?: Array<{
+      identifier: string;
+      name: string;
+      mimeType: string;
+      contentType: string;
+      description: string;
+      appIcon?: string;
+      posterImage?: string;
+    }>;
+  }>;
   discussionForum?: {
     enabled?: string;
   };
@@ -105,7 +123,6 @@ interface ContentSearchResponse {
   userConsent?: string;
   resourceType?: string;
   node_id?: number;
-  relational_metadata?: string; // Added to support courses with hierarchical structure in metadata
 }
 // Define the payload
 
@@ -117,47 +134,23 @@ export const hierarchyAPI = async (
     // Ensure the environment variable is defined
     const searchApiUrl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
     if (!searchApiUrl) {
-      throw new Error("Search API URL environment variable is not configured");
-    }
-    const tenantId = localStorage.getItem("tenantId");
-    console.log("Hierarchy API - doId:", doId);
-    console.log("Hierarchy API - tenantId:", tenantId);
-
-    const headers: Record<string, string> = {
-      Accept: "*/*",
-      "Content-Type": "application/json",
-    };
-
-    if (tenantId) {
-      headers["tenantId"] = tenantId;
+      throw new Error('Search API URL environment variable is not configured');
     }
     // Axios request configuration
     const config: AxiosRequestConfig = {
-      method: "get",
+      method: 'get',
       maxBodyLength: Infinity,
-      url: `${searchApiUrl}/action/content/v3/hierarchy/${doId}`,
+      url: `${searchApiUrl}/api/course/v1/hierarchy/${doId}`,
       params: params,
-      headers,
     };
-    console.log("Hierarchy API - request URL:", config.url);
+
     // Execute the request
     const response = await axios.request(config);
     const res = response?.data?.result?.content;
 
-    console.log("Hierarchy API - full response:", response?.data);
-    console.log("Hierarchy API - result.content:", res);
-    console.log("Hierarchy API - res.children:", res?.children);
-    console.log("Hierarchy API - res.children type:", typeof res?.children);
-    console.log(
-      "Hierarchy API - res.children isArray:",
-      Array.isArray(res?.children)
-    );
-    console.log("Hierarchy API - res.posterImage:", res?.posterImage);
-    console.log("Hierarchy API - res.appIcon:", res?.appIcon);
-
     return res;
   } catch (error) {
-    console.error("Error in ContentSearch:", error);
+    console.error('Error in ContentSearch:', error);
     throw error;
   }
 };

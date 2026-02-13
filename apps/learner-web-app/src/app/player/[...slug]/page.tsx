@@ -1,3 +1,5 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable @nx/enforce-module-boundaries */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -16,35 +18,28 @@ const PlayerWithMobileCheck: React.FC = () => {
   useEffect(() => {
     const checkPlayerAccess = async () => {
       try {
-        // Check if the URL contains a mobile number pattern
+        // Check if the URL contains a mobile number and magic link pattern
         const pathname = window.location.pathname;
-        const playerMobilePattern = /^\/player\/(do_[^\/]+)\/(\d{10,})$/;
-        const match = pathname.match(playerMobilePattern);
+        const fullUrl = window.location.href;
+        
+        // Pattern to match: /player/do_id/mobileNumber/activeLink/dashboard/magic-link/code
+        const magicLinkPattern = /^\/player\/(do_[^\/]+)\/(\d{10,})\/activeLink\/dashboard\/magic-link\/([^\/]+)$/;
+        const match = pathname.match(magicLinkPattern);
 
-        console.log("Full URL pathname:", pathname);
-        console.log("Slug params:", slug);
+      
 
         if (match) {
-          const [, identifier, mobileNumber] = match;
-          console.log("Mobile number detected in URL:", mobileNumber);
-          console.log("Extracted identifier:", identifier);
+          const [, identifier, mobileNumber, magicCode] = match;
+          
 
           // Check if user is authenticated
           const isAuthenticated = checkAuth();
-          console.log("Authentication check result:", isAuthenticated);
-
-          // Log localStorage items for debugging
-          console.log("localStorage items:", {
-            userId: localStorage.getItem("userId"),
-            tenantId: localStorage.getItem("tenantId"),
-            token: localStorage.getItem("token") ? "present" : "missing",
-            username: localStorage.getItem("userIdName"),
-          });
+          
 
           if (!isAuthenticated) {
-            console.log("User not authenticated, redirecting to login");
-            // User not logged in, redirect to login with prefilled mobile number
-            const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}`;
+            console.log("User not authenticated, redirecting to login with magic link");
+            // User not logged in, redirect to login with prefilled mobile number and magic code
+            const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}&magicCode=${magicCode}`;
             console.log("Redirecting to:", loginUrl);
             window.location.href = loginUrl;
             return;
@@ -107,8 +102,8 @@ const PlayerWithMobileCheck: React.FC = () => {
                 console.error("Error clearing sessions:", clearError);
               }
 
-              // Redirect to login with prefilled mobile number
-              const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}`;
+              // Redirect to login with prefilled mobile number and magic code
+              const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}&magicCode=${magicCode}`;
               console.log("Redirecting to:", loginUrl);
 
               // Force redirect using window.location for more reliable redirect
@@ -118,13 +113,38 @@ const PlayerWithMobileCheck: React.FC = () => {
           } catch (apiError) {
             console.error("Error fetching user details:", apiError);
             // On API error, redirect to login
-            const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}`;
+            const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}&magicCode=${magicCode}`;
             console.log("API error, redirecting to:", loginUrl);
             window.location.href = loginUrl;
           }
         } else {
-          // Regular player URL without mobile number, redirect to proper route
-          console.log("Regular player URL, redirecting to proper route");
+          // Check for old pattern (without magic link) for backward compatibility
+          const playerMobilePattern = /^\/player\/(do_[^\/]+)\/(\d{10,})$/;
+          const oldMatch = pathname.match(playerMobilePattern);
+          
+          if (oldMatch) {
+            const [, identifier, mobileNumber] = oldMatch;
+            console.log("Old pattern detected, redirecting to login");
+            const loginUrl = `/login?redirectUrl=/player/${identifier}&prefilledUsername=${mobileNumber}`;
+            window.location.href = loginUrl;
+            return;
+          }
+          
+          // Regular player URL without mobile number - check authentication first
+          console.log("Regular player URL, checking authentication");
+          const isAuthenticated = checkAuth();
+          
+          if (!isAuthenticated) {
+            console.log("User not authenticated, redirecting to login");
+            const identifier = Array.isArray(slug) ? slug[0] : slug;
+            const currentPath = `/player/${identifier}${window.location.search}`;
+            sessionStorage.setItem("redirectAfterLogin", currentPath);
+            window.location.replace("/login");
+            return;
+          }
+          
+          // User is authenticated, redirect to proper route
+          console.log("User authenticated, redirecting to proper route");
           const identifier = Array.isArray(slug) ? slug[0] : slug;
           window.location.href = `/player/${identifier}`;
         }

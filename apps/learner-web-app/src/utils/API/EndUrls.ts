@@ -1,4 +1,5 @@
 export const baseurl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
+export const telemetryUrl = process.env.NEXT_PUBLIC_TELEMETRY_URL;
 export const API_ENDPOINTS = {
   accountCreate: `${baseurl}/account/create`,
   accountLogin: `${baseurl}/account/login`,
@@ -18,13 +19,26 @@ export const API_ENDPOINTS = {
   userCheck: `${baseurl}/user/check`,
   sendOTP: `${baseurl}/user/send-otp`,
   verifyOTP: `${baseurl}/user/verify-otp`,
+  verifyMagicLink: `https://acinaceous-derek-nondiplomatically.ngrok-free.dev/user/v1/auth/validate-magic-link`,
   program: `${baseurl}/tenant/read`,
   fetchCourseId: `${baseurl}/tracking/content/course/inprogress`,
   userUpdate: (userId: string) => `${baseurl}/user/update/${userId}`,
   courseWiseLernerList: `${baseurl}/tracking/user_certificate/status/search`,
   academicYearsList: `${baseurl}/academicyears/list`,
   cohortSearch: `${baseurl}/cohort/search`,
+  contentCreate: `${baseurl}/tracking/content/create`,
   myCohortsRead: (userId: string) => `${baseurl}/user/read/${userId}`,
+  attendanceList: `${baseurl}/account/attendance/list`,
+  attendanceCreate: `${baseurl}/attendance/create`,
+  bulkAttendance: `${baseurl}/account/attendance/bulkAttendance`,
+  cohortMemberList: `${baseurl}/cohortmember/list`,
+  cohortMemberUpdate: (membershipId: string | number) =>
+    `${baseurl}/cohortmember/update/${membershipId}`,
+  cohortMemberBulkCreate: `${baseurl}/cohortmember/bulkCreate`,
+  cohortHierarchy: (cohortId: string) =>
+    `${baseurl}/cohort/cohortHierarchy/${cohortId}`,
+  myCohorts: (userId: string) => `${baseurl}/cohort/mycohorts/${userId}`,
+  telemetry: `${telemetryUrl}/telemetry`,
 };
 
 // Interface API endpoints

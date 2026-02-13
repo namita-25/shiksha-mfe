@@ -1,9 +1,12 @@
+/* eslint-disable no-empty */
+/* eslint-disable @nx/enforce-module-boundaries */
 "use client";
 
 import React, { useEffect } from "react";
 import { FontSizeProvider } from "../context/FontSizeContext";
 import { UnderlineLinksProvider } from "../context/UnderlineLinksContext";
-import { telemetryFactory } from "@shared-lib-v2/DynamicForm/utils/telemetry";
+import { telemetryFactory } from "../utils/telemtery";
+import AuthGuard from "../components/AuthGuard/AuthGuard";
 
 export default function ClientLayout({
   children,
@@ -12,6 +15,23 @@ export default function ClientLayout({
 }) {
   useEffect(() => {
     telemetryFactory.init();
+console.log("Telemetry initialized");
+    // Set userId in cookies for cross-port access
+    const currentUserId = localStorage.getItem("userId");
+   
+    
+    if (currentUserId) {
+      const domain = window.location.hostname;
+      const cookieValue = `userId=${currentUserId}; path=/; domain=${domain}; SameSite=Lax; Secure=false`;
+      document.cookie = cookieValue;
+     
+      
+      // Also try setting without domain restriction
+      const cookieValueNoDomain = `userId=${currentUserId}; path=/; SameSite=Lax; Secure=false`;
+      document.cookie = cookieValueNoDomain;
+     
+    } else {
+    }
 
     // Listen for force logout events from other tabs
     const handleForceLogout = (event: CustomEvent) => {
@@ -56,8 +76,10 @@ export default function ClientLayout({
   }, []);
 
   return (
-    <FontSizeProvider>
-      <UnderlineLinksProvider>{children}</UnderlineLinksProvider>
-    </FontSizeProvider>
+    <AuthGuard>
+      <FontSizeProvider>
+        <UnderlineLinksProvider>{children}</UnderlineLinksProvider>
+      </FontSizeProvider>
+    </AuthGuard>
   );
 }

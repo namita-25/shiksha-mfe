@@ -1,3 +1,4 @@
+/* eslint-disable @nx/enforce-module-boundaries */
 // pages/content-details/[identifier].tsx
 
 "use client";
@@ -9,6 +10,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Divider,
+  Alert,
 } from "@mui/material";
 import { useRouter, useParams } from "next/navigation";
 import LayoutPage from "@content-mfes/components/LayoutPage";
@@ -19,14 +21,14 @@ import {
 } from "@content-mfes/services/Certificate";
 import InfoCard from "@content-mfes/components/Card/InfoCard";
 import { hierarchyAPI } from "@content-mfes/services/Hierarchy";
-import { ContentSearchResponse } from "@content-mfes/services/Search";
+import { ContentSearchResponse } from "@content-mfes/services/Hierarchy";
 import { checkAuth, getUserId } from "@shared-lib-v2/utils/AuthService";
 import SpeakableText from "@shared-lib-v2/lib/textToSpeech/SpeakableText";
 import { useTranslation } from "@shared-lib-v2/lib/context/LanguageContext";
 import { Loader } from "@shared-lib-v2/lib/Loader/Loader";
 import UnitGrid from "@content-mfes/components/UnitGrid";
 import { ContentItem } from "@shared-lib";
-
+import {telemetryFactory} from "../../utils/telemetry";
 interface ContentDetailsProps {
   isShowLayout: boolean;
   id?: string;
@@ -43,6 +45,7 @@ const ContentDetails = (props: ContentDetailsProps) => {
   const [contentDetails, setContentDetails] =
     useState<ContentSearchResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   let activeLink = null;
   if (typeof window !== "undefined") {
     const searchParams = new URLSearchParams(window.location.search);
@@ -53,35 +56,32 @@ const ContentDetails = (props: ContentDetailsProps) => {
   }
   const { t } = useTranslation();
   useEffect(() => {
+    const telemetryInteract = {
+            context: { env: "prod", cdata: [] },
+            edata: {
+              id: "course-click",
+              type: "CLICK",
+              pageid: `course-${identifier}`,
+              uid: localStorage.getItem("userId") || "Anonymous",
+            },
+          };
+          telemetryFactory.interact(telemetryInteract);
     const fetchContentDetails = async () => {
       try {
+        if (!identifier) {
+          console.error("ContentEnroll - No identifier provided");
+          setIsLoading(false);
+          return;
+        }
+
         console.log(
-          "ContentEnroll - Fetching hierarchy for identifier:",
+          "ContentEnroll - Fetching content details for identifier:",
           identifier
         );
         const result = await hierarchyAPI(identifier as string);
-        console.log("ContentEnroll - hierarchyAPI result:", result);
-        console.log("ContentEnroll - result.children:", result?.children);
-        console.log(
-          "ContentEnroll - result.children length:",
-          result?.children?.length
-        );
-        console.log(
-          "ContentEnroll - result.children isArray:",
-          Array.isArray(result?.children)
-        );
 
         // Fallback: If no children but we have leafNodes, create a basic structure
         if (!result?.children || result.children.length === 0) {
-          console.log(
-            "ContentEnroll - No children found, checking leafNodes:",
-            result?.leafNodes
-          );
-          console.log(
-            "ContentEnroll - Checking relational_metadata:",
-            result?.relational_metadata
-          );
-
           // Check if we have relational_metadata with hierarchical structure
           if (result?.relational_metadata) {
             try {
@@ -274,7 +274,35 @@ const ContentDetails = (props: ContentDetailsProps) => {
 
         setContentDetails(result as unknown as ContentSearchResponse);
       } catch (error) {
-        console.error("Failed to fetch content:", error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Unknown error while fetching content details.";
+        console.error("ContentEnroll - Failed to fetch content:", {
+          error: error,
+          identifier: identifier,
+          errorMessage: message,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+        setErrorMessage(
+          `Unable to fetch course details for ${identifier}. ${
+            (error as any)?.response?.status
+              ? `Server responded with ${(error as any).response.status}.`
+              : message
+          }`
+        );
+
+        // Set a fallback content structure to prevent complete failure
+        setContentDetails({
+          identifier: identifier as string,
+          name: "Content Not Available",
+          description:
+            "Unable to load content details. Please try again later.",
+          children: [],
+          appIcon: "/images/image_ver.png",
+          posterImage: "/images/image_ver.png",
+        } as unknown as ContentSearchResponse);
+        setIsProgressCompleted(true);
       } finally {
         setIsLoading(false);
       }
@@ -331,9 +359,18 @@ const ContentDetails = (props: ContentDetailsProps) => {
           item={contentDetails}
           topic={contentDetails?.se_subjects?.join(",")}
           onBackClick={onBackClick}
-          _config={{ onButtonClick: handleClick, ...props?._config }}
+          _config={{ 
+            onButtonClick: handleClick, 
+            userIdLocalstorageName: props?._config?.userIdLocalstorageName || 'userId',
+            ...props?._config 
+          }}
           checkLocalAuth={checkLocalAuth}
         />
+        {errorMessage && (
+          <Box sx={{ mt: 2 }}>
+            <Alert severity="error">{errorMessage}</Alert>
+          </Box>
+        )}
         <Box sx={{ display: "flex" }}>
           <Box
             sx={{
@@ -434,10 +471,23 @@ const ContentDetails = (props: ContentDetailsProps) => {
                                 return (
                                   <UnitGrid
                                     item={item}
-                                    _config={props?._config || {}}
+                                    _config={{
+                                      ...props?._config,
+                                      userIdLocalstorageName: props?._config?.userIdLocalstorageName || 'userId'
+                                    }}
                                     handleItemClick={(content: ContentItem) => {
                                       // Handle navigation to content details or player
                                       const unitId = item?.identifier;
+                                     const telemetryInteract = {
+                                             context: { env: "prod", cdata: [] },
+                                             edata: {
+                                               id: "unit-click",
+                                               type: "CLICK",
+                                               pageid: `unit-${unitId}`,
+                                               uid: localStorage.getItem("userId") || "Anonymous",
+                                             },
+                                           };
+                                           telemetryFactory.interact(telemetryInteract);
                                       const courseId = Array.isArray(identifier)
                                         ? identifier[0]
                                         : identifier;

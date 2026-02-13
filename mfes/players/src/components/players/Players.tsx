@@ -15,10 +15,17 @@ const SunbirdEpubPlayer = dynamic(() => import("./SunbirdEpubPlayer"), {
 const SunbirdQuMLPlayer = dynamic(() => import("./SunbirdQuMLPlayer"), {
   ssr: false,
 });
+const TekdiQuMLPlayer = dynamic(() => import("./TekdiQuMLPlayer"), {
+  ssr: false,
+});
 
 const SunbirdV1Player = dynamic(() => import("../V1-Player/V1Player"), {
   ssr: false,
 });
+
+// const YouTubePlayer = dynamic(() => import("./YouTubePlayer"), {
+//   ssr: false,
+// });
 const SunbirdEcmlPlayer = dynamic(() => import("./SunbirdEcmlPlayer"), {
   ssr: false,
 });
@@ -38,9 +45,20 @@ const SunbirdPlayers = ({
   configFunctionality,
 }: PlayerProps) => {
   const router = useRouter();
-  console.log("workspace playerconfig", playerConfig);
 
-  // Handle ECML content configuration
+  console.log("🎯 SunbirdPlayers: Received parameters:", {
+    courseId,
+    unitId,
+    userId,
+    configFunctionality: !!configFunctionality,
+    playerConfig: !!playerConfig,
+  });
+
+  // Handle ECML content configuration - ONLY for actual ECML content
+  console.log(
+    "Checking ECML condition:",
+    playerConfig?.metadata?.mimeType === "application/vnd.ekstep.ecml-archive"
+  );
   if (
     playerConfig?.metadata?.mimeType === "application/vnd.ekstep.ecml-archive"
   ) {
@@ -192,10 +210,55 @@ const SunbirdPlayers = ({
   console.log("Player routing decision:");
   console.log("- Final mimeType:", mimeType);
   console.log("- Content ID:", playerConfig?.context?.contentId);
+  console.log("- About to switch on mimeType:", mimeType);
+  console.log("- Switch statement mimeType type:", typeof mimeType);
+  console.log("- Switch statement mimeType length:", mimeType?.length);
+  console.log(
+    "- MimeType charCodes:",
+    mimeType
+      ? Array.from(mimeType).map((c: any) => (c as string).charCodeAt(0))
+      : "null"
+  );
+  console.log(
+    "- Exact comparison video/x-youtube:",
+    mimeType === "video/x-youtube"
+  );
+  console.log(
+    "- Exact comparison video/youtube:",
+    mimeType === "video/youtube"
+  );
+  console.log("- Trimmed comparison:", mimeType?.trim() === "video/x-youtube");
+  console.log(
+    "- Full playerConfig metadata:",
+    JSON.stringify(playerConfig?.metadata, null, 2)
+  );
+
+  // Check for YouTube content with multiple possible mimeType formats
+  // const isYouTubeContent =
+  //   mimeType === "video/x-youtube" ||
+  //   mimeType === "video/youtube" ||
+  //   (typeof mimeType === "string" && mimeType.includes("youtube"));
+
+  // if (isYouTubeContent) {
+  //   console.log("🎯 YouTube Player: Routing to YouTube Player with data:", {
+  //     courseId,
+  //     unitId,
+  //     userId,
+  //     configFunctionality: !!configFunctionality,
+  //   });
+
+  //   return (
+  //     <YouTubePlayer
+  //       playerConfig={playerConfig}
+  //       relatedData={{ courseId, unitId, userId }}
+  //       configFunctionality={configFunctionality}
+  //     />
+  //   );
+  // }
 
   switch (mimeType) {
     case "application/pdf":
-      console.log("Routing to PDF Player");
+     
       return (
         <SunbirdPdfPlayer
           playerConfig={playerConfig}
@@ -216,7 +279,6 @@ const SunbirdPlayers = ({
         />
       );
     case "application/vnd.sunbird.questionset":
-      console.log("Routing to QuML Player");
       return (
         <SunbirdQuMLPlayer
           playerConfig={playerConfig}
@@ -239,6 +301,7 @@ const SunbirdPlayers = ({
     case "video/x-youtube":
       // case "application/vnd.ekstep.ecml-archive":
       console.log("Routing to V1 Player");
+      console.log("V1 Player case matched! mimeType:", mimeType);
       return (
         <SunbirdV1Player
           playerConfig={playerConfig}
@@ -257,6 +320,7 @@ const SunbirdPlayers = ({
       );
     default:
       console.log("No matching player found, showing unsupported message");
+      console.log("Default case matched! mimeType:", mimeType);
       return <div>Unsupported media type: {mimeType}</div>;
   }
 };

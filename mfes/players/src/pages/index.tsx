@@ -42,7 +42,11 @@ const Players: React.FC<SunbirdPlayerProps> = ({
   // Get all query params once router is ready
   useEffect(() => {
     if (router.isReady) {
+     
       const queryUserId = router.query.userId as string;
+      const queryTenantId = router.query.tenantId as string;
+     
+      
       if (queryUserId) {
         setUserId(queryUserId);
       } else {
@@ -50,9 +54,19 @@ const Players: React.FC<SunbirdPlayerProps> = ({
         const storedUserId = localStorage.getItem("userId") || "";
         setUserId(storedUserId);
       }
+
+      // Handle tenantId from URL parameters
+      if (queryTenantId) {
+        localStorage.setItem("tenantId", queryTenantId);
+      } else {
+        // Check if tenantId already exists in localStorage
+        const storedTenantId = localStorage.getItem("tenantId");
+        if (!storedTenantId) {
+          console.warn("❌ No tenantId found in URL parameters or localStorage!");
+        }
+      }
     }
-  }, [router.isReady, router.query.userId]);
-  console.log("userId====", userId);
+  }, [router.isReady, router.query.userId, router.query.tenantId]);
   useEffect(() => {
     if (playerConfig || !identifier) return;
 

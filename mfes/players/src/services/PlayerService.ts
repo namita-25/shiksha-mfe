@@ -1,7 +1,9 @@
+import { log } from "console";
 import { ContentCreate } from "../utils/Interface";
 import { URL_CONFIG } from "../utils/url.config";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
+
 export const fetchContent = async (identifier: any) => {
   try {
     const API_URL = `${URL_CONFIG.API.CONTENT_READ}${identifier}`;
@@ -43,7 +45,7 @@ export const fetchBulkContents = async (identifiers: string[]) => {
       },
     };
     const response = await axios.post(URL_CONFIG.API.COMPOSITE_SEARCH, options);
-    console.log("Bulk contents fetched:", response);
+
     const result = response?.data?.result;
     if (response?.data?.result?.QuestionSet?.length) {
       const contents = result?.content
@@ -51,7 +53,7 @@ export const fetchBulkContents = async (identifiers: string[]) => {
         : [...result.QuestionSet];
       result.content = contents;
     }
-
+    console.log("Bulk contents fetched:", result.content);
     return result.content;
   } catch (error) {
     console.error("Error fetching content:", error);
@@ -85,13 +87,41 @@ export const getQumlData = async (identifier: any) => {
 };
 
 export const createContentTracking = async (reqBody: ContentCreate) => {
+  console.log("reqBody player service", reqBody);
   const apiUrl = `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/tracking/content/create`;
+  
   try {
-    const response = await axios.post(apiUrl, reqBody);
-    console.log("Content tracking created:", response.data);
+    // Validate required fields
+    const requiredFields = [
+      "userId",
+      "contentId",
+      "courseId",
+      "unitId",
+      "contentType",
+      "contentMime",
+      "lastAccessOn",
+      "detailsObject",
+    ];
+    const missingFields = requiredFields.filter(
+      (field) => !reqBody[field as keyof ContentCreate]
+    );
+
+    if (missingFields.length > 0) {
+      throw new Error(`Missing required fields: ${missingFields.join(", ")}`);
+    }
+
+    const response = await axios.post(apiUrl, reqBody, {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        tenantId: localStorage.getItem("tenantId")
+      },
+      timeout: 10000, // 10 second timeout
+    });
+
     return response?.data;
-  } catch (error) {
-    console.log(error);
+  } catch (error: any) {
+    console.error("🔍 Full Error:", error);
     throw error;
   }
 };
@@ -169,13 +199,13 @@ export const updateCOurseAndIssueCertificate = async ({
     courseId: [course?.identifier],
     userId: [userId],
   };
-
+  console.log("data 198", data);
   try {
     const response = await axios.post(apiUrl, data);
     console.log("Course status updated:", response.data);
     const courseStatus = calculateCourseStatus({
       statusData: response?.data?.data?.[0]?.course?.[0],
-      allCourseIds: course.leafNodes ?? [],
+      allCourseIds: course?.leafNodes ?? [],
       courseId: course?.identifier,
     });
 
@@ -273,6 +303,18 @@ export const updateUserCourseStatus = async ({
   status: string;
 }) => {
   const apiUrl = `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/tracking/user_certificate/status/update`;
+
+  // Get tenantId safely
+  const tenantId = localStorage.getItem("tenantId");
+
+  if (!tenantId) {
+    console.error("tenantId is missing from localStorage");
+    throw new Error("Tenant ID is required");
+  }
+
+  console.log("apiUrl", apiUrl);
+  console.log("Request payload:", { userId, courseId, status, tenantId });
+
   try {
     const response = await axios.post(
       apiUrl,
@@ -283,13 +325,21 @@ export const updateUserCourseStatus = async ({
       },
       {
         headers: {
-          tenantId: localStorage.getItem("tenantId"),
+          tenantId: tenantId,
         },
       }
     );
     return response?.data?.result;
   } catch (error) {
-    console.error("error in updating user course status", error);
+    console.error("Error in updating user course status:", error);
+
+    // Enhanced error logging
+    if (axios.isAxiosError(error)) {
+      console.error("Response data:", error.response?.data);
+      console.error("Response status:", error.response?.status);
+      console.error("Response headers:", error.response?.headers);
+    }
+
     throw error;
   }
 };

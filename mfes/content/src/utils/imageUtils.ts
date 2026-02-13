@@ -37,6 +37,76 @@ export const processImageUrl = (
 };
 
 /**
+ * Transforms image URLs from Azure Blob Storage to AWS S3 URLs
+ * @param imageUrl - The image URL to transform
+ * @returns Transformed image URL or fallback to logo.png
+ */
+export const transformImageUrl = (imageUrl: string): string => {
+  if (!imageUrl) {
+    console.log(
+    );
+    return "/logo.png";
+  }
+
+  if (imageUrl.includes("https://sunbirdsaaspublic.blob.core.windows.net")) {
+
+    // Handle double domain pattern
+    if (
+      imageUrl.includes(
+        "https://sunbirdsaaspublic.blob.core.windows.net/https://sunbirdsaaspublic.blob.core.windows.net"
+      )
+    ) {
+     
+      // Extract everything after the second domain
+      const urlParts = imageUrl.split(
+        "https://sunbirdsaaspublic.blob.core.windows.net/https://sunbirdsaaspublic.blob.core.windows.net/"
+      );
+      if (urlParts.length > 1) {
+        const pathAfterSecondDomain = urlParts[1];
+        // Remove any existing content/content prefix to avoid duplication
+        let cleanPath = pathAfterSecondDomain.replace(
+          /^content\/content\//,
+          ""
+        );
+        // Remove sunbird-content-prod/schemas/content/ if present
+        cleanPath = cleanPath.replace(
+          /^sunbird-content-prod\/schemas\/content\//,
+          ""
+        );
+        // Transform to AWS S3 URL with the new pattern
+        const transformedUrl = `https://s3.ap-south-1.amazonaws.com/saas-prod/content/${cleanPath}`;
+       
+        return transformedUrl;
+      }
+    } else {
+      console.log(
+      );
+      // Handle single domain pattern
+      const urlParts = imageUrl.split(
+        "https://sunbirdsaaspublic.blob.core.windows.net/"
+      );
+      if (urlParts.length > 1) {
+        const pathAfterDomain = urlParts[1];
+        // Remove any existing content/content prefix to avoid duplication
+        let cleanPath = pathAfterDomain.replace(/^content\/content\//, "");
+        // Remove sunbird-content-prod/schemas/content/ if present
+        cleanPath = cleanPath.replace(
+          /^sunbird-content-prod\/schemas\/content\//,
+          ""
+        );
+        // Transform to AWS S3 URL with the new pattern
+        const transformedUrl = `https://s3.ap-south-1.amazonaws.com/saas-prod/content/${cleanPath}`;
+      
+        return transformedUrl;
+      }
+    }
+  }
+
+
+  return imageUrl;
+};
+
+/**
  * Gets the best available image URL from content item
  * @param item - The content item object
  * @param baseUrl - The base URL for the API (optional)
@@ -49,7 +119,8 @@ export const getBestImageUrl = (item?: any, baseUrl?: string): string => {
 
   // Try posterImage first
   if (item.posterImage) {
-    const processedUrl = processImageUrl(item.posterImage, baseUrl);
+    const transformedUrl = transformImageUrl(item.posterImage);
+    const processedUrl = processImageUrl(transformedUrl, baseUrl);
     if (processedUrl) {
       return processedUrl;
     }
@@ -57,17 +128,19 @@ export const getBestImageUrl = (item?: any, baseUrl?: string): string => {
 
   // Try appIcon as fallback
   if (item.appIcon) {
-    const processedUrl = processImageUrl(item.appIcon, baseUrl);
+    const transformedUrl = transformImageUrl(item.appIcon);
+    const processedUrl = processImageUrl(transformedUrl, baseUrl);
     if (processedUrl) {
       return processedUrl;
     }
   }
   if (item.appicon) {
-    const processedUrl = processImageUrl(item.appicon, baseUrl);
+    const transformedUrl = transformImageUrl(item.appicon);
+    const processedUrl = processImageUrl(transformedUrl, baseUrl);
     if (processedUrl) {
       return processedUrl;
     }
   }
-  // Return empty string if no image found
-  return "";
+  // Return fallback image if no image found
+  return "/logo.png";
 };

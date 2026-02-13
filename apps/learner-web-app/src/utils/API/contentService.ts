@@ -1,6 +1,6 @@
 import { post, get } from "@shared-lib";
 import { API_ENDPOINTS, COURSE_L2_ENDPOINTS } from "./EndUrls";
-import axios, { AxiosHeaderValue } from "axios";
+import axios, { AxiosHeaderValue, AxiosRequestConfig } from "axios";
 export interface courseWiseLernerListParam {
   limit?: number;
   offset?: number;
@@ -8,6 +8,16 @@ export interface courseWiseLernerListParam {
     status?: string[];
     userId?: string[];
   };
+}
+export interface ContentCreate {
+  userId: string;
+  contentId: string;
+  courseId: string;
+  unitId: string;
+  contentType: string;
+  contentMime: string;
+  lastAccessOn: string;
+  detailsObject: any[];
 }
 
 export const hierarchyAPI = async (doId: string, params?: object) => {
@@ -51,7 +61,28 @@ export const fetchContent = async (identifier: any) => {
     return response?.data?.result?.content;
   } catch (error) {
     console.error("Error fetching content:", error);
-    return error;
+
+    // Return a more structured error object
+    if (error && typeof error === "object" && "response" in error) {
+      const axiosError = error as any;
+      return {
+        name: "AxiosError",
+        message: axiosError.message || "Request failed",
+        code: axiosError.code || "ERR_BAD_RESPONSE",
+        status: axiosError.response?.status || 500,
+        config: axiosError.config,
+        isAxiosError: true,
+      };
+    }
+
+    return {
+      name: "Error",
+      message:
+        error instanceof Error ? error.message : "Unknown error occurred",
+      code: "UNKNOWN_ERROR",
+      status: 500,
+      isAxiosError: false,
+    };
   }
 };
 
@@ -85,16 +116,16 @@ export const ContentSearch = async ({
           //   ],
           //   channel: localStorage.getItem('channelId'),
         },
-        fields: [
-          "name",
-          "appIcon",
-          "description",
-          "posterImage",
-          "mimeType",
-          "identifier",
-          "leafNodes",
-          "se_subjects",
-        ],
+        // fields: [
+        //   "name",
+        //   "appIcon",
+        //   "description",
+        //   "posterImage",
+        //   "mimeType",
+        //   "identifier",
+        //   "leafNodes",
+        //   "se_subjects",
+        // ],
         query,
         limit,
         offset,
@@ -107,7 +138,6 @@ export const ContentSearch = async ({
       data
     );
     const res = response?.data;
-
     return res;
   } catch (error) {
     console.error("Error in ContentSearch:", error);
@@ -248,3 +278,29 @@ export const courseWiseLernerList = async ({
     throw error;
   }
 };
+export const createContentTracking = async (reqBody: ContentCreate) => {
+  const apiUrl: string = API_ENDPOINTS.contentCreate;
+  try {
+  
+    
+    // Get tenantId from localStorage
+    const tenantId = localStorage.getItem("tenantId");
+    
+    // Prepare headers with tenantId
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(tenantId && { "tenantId": tenantId }),
+    };
+    
+   
+    
+    const response = await post(apiUrl, reqBody, headers);
+    return response?.data;
+  } catch (error) {
+    console.error("🔍 Learner Web App - createContentTracking error:", error);
+    throw error;
+  }
+};
+
+

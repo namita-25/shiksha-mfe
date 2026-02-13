@@ -25,6 +25,7 @@ const ContentCardCarousel = ({
   hasMoreData,
   handleLoadMore,
   isLoadingMoreData,
+  pageName,
   isHideEmptyDataMessage,
 }: {
   contentData: ContentSearchResponse[];
@@ -35,6 +36,7 @@ const ContentCardCarousel = ({
   hasMoreData: boolean;
   handleLoadMore: (e: any) => void;
   isLoadingMoreData: boolean;
+  pageName?: string;
   isHideEmptyDataMessage?: boolean;
 }) => {
   const { t } = useTranslation();
@@ -99,6 +101,7 @@ const ContentCardCarousel = ({
           <SwiperSlide
             key={item?.identifier}
             style={{ height: "auto", paddingBottom: "8px" }}
+            id={`${pageName}-${item?.identifier}`}
           >
             <ContentCard
               item={item}
@@ -131,7 +134,7 @@ const ContentCardCarousel = ({
         )}
       </Box>
 
-      {!contentData?.length && !isHideEmptyDataMessage && (
+      {!contentData?.length && (
         <Typography
           variant="body1"
           sx={{
@@ -139,9 +142,10 @@ const ContentCardCarousel = ({
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            ...(_config?._noData?.sx ?? {}),
           }}
         >
-          {t("LEARNER_APP.CONTENT_TABS.NO_MORE_DATA")}
+          {_config?.noDataText || t("LEARNER_APP.CONTENT_TABS.NO_MORE_DATA")}
         </Typography>
       )}
     </Box>

@@ -104,7 +104,7 @@ const CollectionEditor: React.FC = () => {
       uid: getLocalStoredUserId(),
       additionalCategories: [],
       pdata: {
-        id: "pratham.admin.portal",
+        id: "shiksha.learner.portal",
         ver: "1.0.0",
         pid: "pratham-portal",
       },
@@ -160,7 +160,6 @@ const CollectionEditor: React.FC = () => {
       loadJQuery();
       if (!document.getElementById("collection-editor-js")) {
         const script = document.createElement("script");
-        console.log("Hello");
 
         script.id = "collection-editor-js";
         script.src =

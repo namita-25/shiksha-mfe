@@ -90,6 +90,9 @@ export function middleware(request: NextRequest) {
 // Configure which routes to run middleware on
 export const config = {
   matcher: [
+    "/sbplayer/:path*",
+    "/sunbird-plugins/:path*",
+    "/forget-password/:path*",
     /*
      * Match all request paths except for the ones starting with:
      * - api (API routes)

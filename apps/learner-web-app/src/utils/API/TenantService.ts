@@ -21,16 +21,16 @@ export interface HomePageContent {
   title?: string | Record<string, string>;
   description?: string | Record<string, string>;
   tagline?: string | Record<string, string>;
-  
+
   // Button texts
   chooseLanguageText?: string | Record<string, string>;
   continueButtonText?: string | Record<string, string>;
   getStartedButtonText?: string | Record<string, string>;
-  
+
   // Our Solutions section
   ourSolutionsTitle?: string | Record<string, string>;
   ourSolutionsDescription?: string | Record<string, string>;
-  
+
   // Highlights (for Swadhaar tenant)
   highlights?: Array<{
     title: string | Record<string, string>;
@@ -106,7 +106,7 @@ export const fetchTenants = async (): Promise<Tenant[]> => {
 
     // Handle different response structures
     const tenants = response.data?.result || response.data?.data || [];
-    
+
     if (!Array.isArray(tenants)) {
       console.error("Tenant API returned invalid data structure:", response.data);
       return [];
@@ -128,9 +128,9 @@ export const findTenantByDomain = (
   tenants: Tenant[],
   currentDomain?: string
 ): Tenant | null => {
-let domain = currentDomain;
-//  let domain = 'oblf-learner.sunbirdsaas.com'; // For testing only
-  console.log('[TenantService] Looking up tenant for domain:', domain);
+  let domain = currentDomain;
+  // let domain = 'oblf-learner.sunbirdsaas.com'; // For testing only
+  // console.log('[TenantService] Looking up tenant for domain:', domain);
   if (!domain) {
     if (typeof window !== "undefined") {
       domain = window.location.hostname;
@@ -151,7 +151,7 @@ let domain = currentDomain;
   if (tenantKey === "www" && domainParts.length > 1) {
     tenantKey = domainParts[1];
   }
-  
+
   // Handle hyphenated domains like "swadhaar-learner" -> extract "swadhaar"
   // This is for multi-environment tenants (e.g., swadhaar-learner, swadhaar-admin)
   const originalTenantKey = tenantKey;
@@ -160,7 +160,7 @@ let domain = currentDomain;
     tenantKey = hyphenParts[0]; // Get the first part before the hyphen
     console.log(`[TenantService] Extracted tenant key from hyphenated domain: "${originalTenantKey}" -> "${tenantKey}"`);
   }
-  
+
   if (!tenantKey) {
     return null;
   }
@@ -198,7 +198,7 @@ export const getTenantConfig = async (
   try {
     const tenants = await fetchTenants();
     const tenant = findTenantByDomain(tenants, domain);
-    
+
     if (tenant) {
       // Store tenant config in localStorage for later use
       if (typeof window !== "undefined") {
@@ -210,7 +210,7 @@ export const getTenantConfig = async (
         }
       }
     }
-    
+
     return tenant;
   } catch (error) {
     console.error("Error getting tenant config:", error);
@@ -263,37 +263,37 @@ export const getLocalizedText = (
   fallback = ""
 ): string => {
   if (!text) return fallback;
-  
+
   // If it's already a string, return it
   if (typeof text === "string") {
     return text;
   }
-  
+
   // If it's an object, try to get the current language
   if (typeof text === "object") {
     // Try exact match first
     if (text[currentLanguage]) {
       return text[currentLanguage];
     }
-    
+
     // Try lowercase match
     const lowerLang = currentLanguage.toLowerCase();
     if (text[lowerLang]) {
       return text[lowerLang];
     }
-    
+
     // Fallback to English
     if (text["en"] || text["EN"]) {
       return text["en"] || text["EN"];
     }
-    
+
     // Fallback to first available language
     const firstKey = Object.keys(text)[0];
     if (firstKey) {
       return text[firstKey];
     }
   }
-  
+
   return fallback;
 };
 

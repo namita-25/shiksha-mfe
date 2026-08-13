@@ -86,6 +86,23 @@ export const getQumlData = async (identifier: any) => {
   }
 };
 
+export const getQuestions = async (identifiers: string[]) => {
+  try {
+    const options = {
+      request: {
+        search: {
+          identifier: identifiers,
+        },
+      },
+    };
+    const response = await axios.post(URL_CONFIG.API.QUESTION_LIST, options);
+    return response?.data?.result?.questions || [];
+  } catch (error) {
+    console.error("Error fetching questions:", error);
+    return [];
+  }
+};
+
 export const createContentTracking = async (reqBody: ContentCreate) => {
   console.log("reqBody player service", reqBody);
   const apiUrl = `${process.env.NEXT_PUBLIC_MIDDLEWARE_URL}/tracking/content/create`;

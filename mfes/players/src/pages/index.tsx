@@ -16,7 +16,7 @@ import {
   V2PlayerConfig,
 } from "../utils/url.config";
 import Loader from "../components/Loader";
-import { offlineService } from "@shared-lib-v2/utils/OfflineService";
+// import { offlineService } from "@shared-lib-v2/utils/OfflineService";
 
 const SunbirdPlayers = dynamic(() => import("../components/players/Players"), {
   ssr: false,
@@ -47,11 +47,11 @@ const Players: React.FC<SunbirdPlayerProps> = ({
   // Get all query params once router is ready
   useEffect(() => {
     if (router.isReady) {
-     
+
       const queryUserId = router.query.userId as string;
       const queryTenantId = router.query.tenantId as string;
-     
-      
+
+
       if (queryUserId) {
         setUserId(queryUserId);
       } else {
@@ -72,11 +72,11 @@ const Players: React.FC<SunbirdPlayerProps> = ({
       }
 
       // Check if already downloaded
-      if (identifier) {
-        offlineService.getStoredMetadata(identifier.toString()).then(stored => {
-          if (stored) setIsDownloaded(true);
-        });
-      }
+      // if (identifier) {
+      //   offlineService.getStoredMetadata(identifier.toString()).then(stored => {
+      //     if (stored) setIsDownloaded(true);
+      //   });
+      // }
     }
   }, [router.isReady, router.query.userId, router.query.tenantId, identifier]);
 
@@ -85,13 +85,13 @@ const Players: React.FC<SunbirdPlayerProps> = ({
     setIsDownloading(true);
     try {
       console.log("[Player] Starting download...");
-      
+
       // 1. Save metadata and hierarchy
-      await offlineService.downloadContentMetadata(
-        identifier.toString(), 
-        playerConfig.metadata, 
-        playerConfig.metadata // In this player, hierarchy is often merged into metadata
-      );
+      // await offlineService.downloadContentMetadata(
+      //   identifier.toString(), 
+      //   playerConfig.metadata, 
+      //   playerConfig.metadata // In this player, hierarchy is often merged into metadata
+      // );
 
       // 2. Identify and download assets
       const assetsToDownload: string[] = [];
@@ -104,9 +104,9 @@ const Players: React.FC<SunbirdPlayerProps> = ({
       if (metadata.posterImage) assetsToDownload.push(metadata.posterImage);
 
       console.log(`[Player] Downloading ${assetsToDownload.length} assets...`);
-      for (const url of assetsToDownload) {
-        await offlineService.downloadAsset(url);
-      }
+      // for (const url of assetsToDownload) {
+      //   await offlineService.downloadAsset(url);
+      // }
 
       setIsDownloaded(true);
       console.log("[Player] Download complete!");
@@ -182,7 +182,7 @@ const Players: React.FC<SunbirdPlayerProps> = ({
         </Box>
       ) : (
         <Box sx={{ height: "calc(100vh - 16px)", display: "flex", flexDirection: "column" }}>
-          <Box display="flex" justifyContent="flex-end" p={1} sx={{ backgroundColor: 'white' }}>
+          {/* <Box display="flex" justifyContent="flex-end" p={1} sx={{ backgroundColor: 'white' }}>
             <Button
               variant="outlined"
               size="small"
@@ -194,7 +194,7 @@ const Players: React.FC<SunbirdPlayerProps> = ({
             >
               {isDownloaded ? "Downloaded" : (isDownloading ? "Downloading..." : "Download Offline")}
             </Button>
-          </Box>
+          </Box> */}
           <Box flex={1}>
             <SunbirdPlayers
               player-config={playerConfig}

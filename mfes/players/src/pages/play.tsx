@@ -20,8 +20,8 @@ import Loader from "../components/Loader";
 const extractQuestionIds = (items: any[]): string[] => {
   let ids: string[] = [];
   items?.forEach((item) => {
-    if (item.mimeType === "application/vnd.sunbird.question" || 
-        item.mimeType === "application/vnd.ekstep.question") {
+    if (item.mimeType === "application/vnd.sunbird.question" ||
+      item.mimeType === "application/vnd.ekstep.question") {
       ids.push(item.identifier);
     }
     if (item.children) {
@@ -41,7 +41,7 @@ interface SunbirdPlayerProps {
   fromShortVideo?: boolean;
 }
 
-import { offlineService } from "@shared-lib-v2/utils/OfflineService";
+// import { offlineService } from "@shared-lib-v2/utils/OfflineService";
 import { Button, CircularProgress } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -65,11 +65,11 @@ const Players: React.FC<SunbirdPlayerProps> = ({
 
   useEffect(() => {
     // Check if already downloaded
-    if (identifier) {
-      offlineService.getStoredMetadata(identifier.toString()).then(stored => {
-        if (stored) setIsDownloaded(true);
-      });
-    }
+    // if (identifier) {
+    //   offlineService.getStoredMetadata(identifier.toString()).then(stored => {
+    //     if (stored) setIsDownloaded(true);
+    //   });
+    // }
 
     // Fetch userId from API
     const fetchUserId = async () => {
@@ -91,13 +91,13 @@ const Players: React.FC<SunbirdPlayerProps> = ({
     setIsDownloading(true);
     try {
       console.log("[Player] Starting download...");
-      
+
       // 1. Save metadata and hierarchy
-      await offlineService.downloadContentMetadata(
-        identifier.toString(), 
-        playerConfig.metadata, 
-        playerConfig.metadata // In this player, hierarchy is often merged into metadata
-      );
+      // await offlineService.downloadContentMetadata(
+      //   identifier.toString(),
+      //   playerConfig.metadata,
+      //   playerConfig.metadata // In this player, hierarchy is often merged into metadata
+      // );
 
       // 2. Identify and download assets
       const assetsToDownload: string[] = [];
@@ -111,11 +111,11 @@ const Players: React.FC<SunbirdPlayerProps> = ({
 
       // For interactive content, there might be many assets. 
       // This is a simplified version. A full implementation would parse the ECML/QuestionSet.
-      
+
       console.log(`[Player] Downloading ${assetsToDownload.length} assets...`);
-      for (const url of assetsToDownload) {
-        await offlineService.downloadAsset(url);
-      }
+      // for (const url of assetsToDownload) {
+      //   await offlineService.downloadAsset(url);
+      // }
 
       setIsDownloaded(true);
       console.log("[Player] Download complete!");
@@ -142,7 +142,7 @@ const Players: React.FC<SunbirdPlayerProps> = ({
       try {
         const data = await fetchContent(identifier);
         let config: PlayerConfig;
-        
+
         // ... (rest of the loadContent logic is same, so I'll just use a targetContent that includes it)
 
         if (
@@ -152,14 +152,14 @@ const Players: React.FC<SunbirdPlayerProps> = ({
           config = { ...V2PlayerConfig };
           const Q1 = await getHierarchy(identifier);
           const Q2 = await getQumlData(identifier);
-          
+
           // Q1 is likely { questionset: {...} } or { content: {...} } or the object itself
           // Q2 (getQumlData) already unwraps questionset/content
           const h1 = Q1?.questionset || Q1?.content || Q1 || {};
           const r1 = Q2 || {};
-          
+
           let children = (h1.children && h1.children.length > 0) ? h1.children : (r1.children || []);
-          
+
           // FETCH FULL QUESTION BODIES
           const questionIds = extractQuestionIds(children);
           if (questionIds.length > 0) {
@@ -170,33 +170,33 @@ const Players: React.FC<SunbirdPlayerProps> = ({
               // TekdiQuMLPlayer flattens anyway. We can just pass the full questions list in config.
               // But strictly speaking, we should try to update the children tree if possible, 
               // OR just rely on TekdiQuMLPlayer using the `questions` prop we pass below.
-              
+
               // Let's create a map for easy lookup
               const questionMap = new Map(fullQuestions.map((q: any) => [q.identifier, q]));
-              
+
               // Recursive merge helper
               const mergeQuestions = (items: any[]): any[] => {
                 return items.map(item => {
-                   const fullQuestion = questionMap.get(item.identifier);
-                   if (fullQuestion) {
-                     // Merge, prioritizing the full body data but keeping structural info from hierarchy
-                     return { ...item, ...fullQuestion };
-                   }
-                   if (item.children) {
-                     return { ...item, children: mergeQuestions(item.children) };
-                   }
-                   return item;
+                  const fullQuestion = questionMap.get(item.identifier);
+                  if (fullQuestion) {
+                    // Merge, prioritizing the full body data but keeping structural info from hierarchy
+                    return { ...item, ...fullQuestion };
+                  }
+                  if (item.children) {
+                    return { ...item, children: mergeQuestions(item.children) };
+                  }
+                  return item;
                 });
               };
-              
+
               children = mergeQuestions(children);
-              
+
               children.forEach((c: any) => {
-                  if (c.children) {
-                      c.children.forEach((q:any) => {
-                          console.log(`Question ${q.identifier} body present:`, !!q.body);
-                      });
-                  }
+                if (c.children) {
+                  c.children.forEach((q: any) => {
+                    console.log(`Question ${q.identifier} body present:`, !!q.body);
+                  });
+                }
               });
 
             } catch (e) {
@@ -204,13 +204,13 @@ const Players: React.FC<SunbirdPlayerProps> = ({
             }
           }
 
-          const metadata = { 
-            ...(typeof h1 === 'object' ? h1 : {}), 
-            ...(typeof r1 === 'object' ? r1 : {}), 
+          const metadata = {
+            ...(typeof h1 === 'object' ? h1 : {}),
+            ...(typeof r1 === 'object' ? r1 : {}),
             children: children
           };
           config.metadata = metadata;
-          
+
           // Pass the questions data if available
           config.data = {
             questions: metadata.children || []

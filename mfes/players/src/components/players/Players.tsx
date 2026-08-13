@@ -12,12 +12,12 @@ const SunbirdEpubPlayer = dynamic(() => import("./SunbirdEpubPlayer"), {
   ssr: false,
 });
 
-// const SunbirdQuMLPlayer = dynamic(() => import("./SunbirdQuMLPlayer"), {
-//   ssr: false,
-// });
-const SunbirdQuMLPlayer = dynamic(() => import("./TekdiQuMLPlayer"), {
+const SunbirdQuMLPlayer = dynamic(() => import("./SunbirdQuMLPlayer"), {
   ssr: false,
 });
+// const SunbirdQuMLPlayer = dynamic(() => import("./TekdiQuMLPlayer"), {
+//   ssr: false,
+// });
 
 const SunbirdV1Player = dynamic(() => import("../V1-Player/V1Player"), {
   ssr: false,
@@ -59,7 +59,7 @@ const SunbirdPlayers = ({
       const config = JSON.parse(JSON.stringify(playerConfig)); // Deep clone
       const metadata = config.metadata || {};
 
-     
+
       setProcessedConfig(config);
     };
 

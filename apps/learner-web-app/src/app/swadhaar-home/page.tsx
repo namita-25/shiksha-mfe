@@ -2,13 +2,15 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  Box, Typography, CircularProgress, Badge, Collapse, Button, useMediaQuery, useTheme, Modal
+  Box, Typography, CircularProgress, Badge, Collapse, Button, useMediaQuery, useTheme, Modal, LinearProgress
 } from '@mui/material';
-import CircleNotificationsRoundedIcon from '@mui/icons-material/CircleNotificationsRounded';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import { SwadhaarDesktopHome } from '@learner/components/Swadhaar/Desktop';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import { useRouter } from 'next/navigation';
 import { checkAuth } from '@shared-lib-v2/utils/AuthService';
 import { useTenant } from '@learner/context/TenantContext';
@@ -99,15 +101,18 @@ export default function SwadhaarHomePage() {
       setUnreadCount(unreadAlerts.length);
 
       // Restore saved language preference
-      const rawSavedLang = localStorage.getItem('swadhaarLanguage') || localStorage.getItem('contentLanguage');
-      if (rawSavedLang) {
-        let normLang: SupportedLanguage = 'English';
-        const norm = rawSavedLang.toLowerCase();
-        if (['marathi', 'mr'].includes(norm)) normLang = 'Marathi';
-        else if (['hindi', 'hi'].includes(norm)) normLang = 'Hindi';
-        else if (['english', 'en'].includes(norm)) normLang = 'English';
-        setSelectedLanguage(normLang);
+      let rawSavedLang = localStorage.getItem('swadhaarLanguage') || localStorage.getItem('contentLanguage');
+      if (!rawSavedLang) {
+        rawSavedLang = 'English';
+        localStorage.setItem('swadhaarLanguage', rawSavedLang);
+        localStorage.setItem('contentLanguage', rawSavedLang);
       }
+      let normLang: SupportedLanguage = 'English';
+      const norm = rawSavedLang.toLowerCase();
+      if (['marathi', 'mr'].includes(norm)) normLang = 'Marathi';
+      else if (['hindi', 'hi'].includes(norm)) normLang = 'Hindi';
+      else if (['english', 'en'].includes(norm)) normLang = 'English';
+      setSelectedLanguage(normLang);
     }
   }, []);
   const [userName, setUserName] = useState('');
@@ -237,8 +242,8 @@ export default function SwadhaarHomePage() {
       }
 
       const savedLang = typeof window !== 'undefined'
-        ? (localStorage.getItem('swadhaarLanguage') || localStorage.getItem('contentLanguage') || undefined)
-        : undefined;
+        ? (localStorage.getItem('swadhaarLanguage') || localStorage.getItem('contentLanguage') || 'English')
+        : 'English';
       const levelCourses = await fetchSwadhaarLevelCourses(savedLang);
       if (!levelCourses || levelCourses.length === 0) {
         setError(t('LEARNER_APP.HOME.LOAD_ERROR'));
@@ -557,6 +562,84 @@ export default function SwadhaarHomePage() {
     );
   }
 
+  const renderMobileLevelCard = (level: any) => {
+    const isCompleted = level.completionPercentage >= 70;
+    const isLocked = !level.isUnlocked;
+    const perc = Math.round(level.completionPercentage);
+    return (
+      <Box
+        key={level.id}
+        sx={{
+          bgcolor: 'rgba(255, 255, 255, 0.06)',
+          border: isLocked ? 'none' : (isCompleted ? 'none' : `1px solid ${PRIMARY}`),
+          borderRadius: '10px',
+          px: 2,
+          py: 1.5,
+          mb: 1,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+        }}
+      >
+        <Box sx={{ flexShrink: 0 }}>
+          <Box
+            sx={{
+              width: 34, height: 34, borderRadius: '50%',
+              bgcolor: isLocked ? 'transparent' : (isCompleted ? SUCCESS : PRIMARY),
+              border: isLocked ? '1.5px solid #6B7280' : 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'relative',
+              boxShadow: isCompleted ? '0 0 8px rgba(76,175,80,0.3)' : (isLocked ? 'none' : '0 0 8px rgba(230,135,60,0.3)'),
+              overflow: 'hidden'
+            }}
+          >
+            {isLocked ? (
+              <LockRoundedIcon sx={{ fontSize: 18, color: '#6B7280', position: 'relative', zIndex: 1 }} />
+            ) : (
+              <>
+                <Box sx={{ position: 'absolute', width: 10, height: 10, bgcolor: '#FFFFFF', borderRadius: '50%', top: '42%', left: '50%', transform: 'translate(-50%, -50%)' }} />
+                <img
+                  src={'/assets/images/badge-incomplete.png'}
+                  alt="badge"
+                  style={{ width: 22, height: 22, objectFit: 'contain', flexShrink: 0, position: 'relative', zIndex: 1 }}
+                />
+              </>
+            )}
+          </Box>
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 13, color: '#FFFFFF', fontFamily: 'Inter', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {level.name}
+          </Typography>
+          {!isLocked && (
+            <Box sx={{ width: '100%', mt: 0.8 }}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(perc, 100)}
+                sx={{
+                  height: 4.5,
+                  borderRadius: 3,
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  '& .MuiLinearProgress-bar': {
+                    bgcolor: isCompleted ? SUCCESS : PRIMARY,
+                    borderRadius: 3,
+                  },
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+        <Box sx={{ flexShrink: 0, minWidth: 32, textAlign: 'right' }}>
+          {!isLocked && (
+            <Typography sx={{ fontWeight: 700, fontSize: 11, color: isCompleted ? SUCCESS : '#FFFFFF', fontFamily: 'Inter' }}>
+              {perc}%
+            </Typography>
+          )}
+        </Box>
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: '#F9FAFB', pb: 10, display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
       {/* Header */}
@@ -564,32 +647,28 @@ export default function SwadhaarHomePage() {
         <Typography sx={{ fontWeight: 800, fontSize: 18, color: 'text.primary', fontFamily: 'Inter, sans-serif' }}>{t('LEARNER_APP.HOME.TITLE')}</Typography>
         <Box onClick={() => router.push('/alerts')} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
           <Badge
-            badgeContent={unreadCount > 0 ? unreadCount : null}
+            variant="dot"
+            invisible={unreadCount === 0}
             sx={{
               '& .MuiBadge-badge': {
-                fontSize: 9,
-                height: 16,
-                minWidth: 16,
-                backgroundColor: '#FFFFFF',
-                color: '#E6873C',
-                border: '1px solid #E6873C',
-                top: 2,
-                right: 2
+                backgroundColor: '#EF4444',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                top: 6,
+                right: 4,
+                boxShadow: '0 0 0 1px #FFFFFF'
               }
             }}
           >
             <Box
               sx={{
-                width: 20,
-                height: 20,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(230,135,60,0.15)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <CircleNotificationsRoundedIcon sx={{ fontSize: 24, color: '#E6873C' }} />
+              <NotificationsNoneOutlinedIcon sx={{ fontSize: 26, color: '#E6873C' }} />
             </Box>
           </Badge>
           <Typography sx={{ fontSize: 10, fontWeight: 700, color: PRIMARY, mt: 0.5, fontFamily: 'Open Sans' }}>{t('LEARNER_APP.ALERTS.TITLE')}</Typography>
@@ -602,7 +681,7 @@ export default function SwadhaarHomePage() {
           <Box sx={{ bgcolor: 'info.primary', borderRadius: '16px', p: 2, pb: viewMore ? 2 : 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
               <Box>
-                <Typography sx={{ fontFamily: "Open sans", color: '#FFFFFF', fontWeight: 700, fontSize: '15px' }}>
+                <Typography sx={{ fontFamily: "Open sans", color: '#FFFFFF', fontWeight: 700, fontSize: '24px' }}>
                   {t('LEARNER_APP.HOME.GREETING', { name: userName })}
                 </Typography>
                 <Typography sx={{ fontFamily: "Inter", color: '#FFFFFF', fontSize: 11, fontWeight: 400, mt: 0.5 }}>
@@ -628,77 +707,14 @@ export default function SwadhaarHomePage() {
             </Box>
 
             {/* Active Level */}
-            {activeLevel && (
-              <Box
-                sx={{
-                  bgcolor: 'background.paper',
-                  border: `1px solid ${PRIMARY}`,
-                  borderRadius: '12px',
-                  p: 1.75,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  mb: 1,
-                }}
-              >
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontWeight: 700, color: '#1A1A1A', fontFamily: "Inter", fontSize: '10px' }}>
-                    {activeLevel.name}
-                  </Typography>
-                  <Typography sx={{ color: '#999999', mt: 0.5, fontSize: '8px', fontFamily: "Inter", fontWeight: 400 }}>
-                    {t('LEARNER_APP.HOME.PROGRESS_TEXT', { percent: activeLevel.completionPercentage })}
-                  </Typography>
-                </Box>
-                <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <img
-                    src={activeLevel.completionPercentage >= 70 ? '/assets/images/badge-complete.png' : '/assets/images/badge-incomplete.png'}
-                    alt="badge"
-                    style={{ width: 40, height: 40, objectFit: 'contain' }}
-                  />
-                </Box>
-              </Box>
-            )}
+            {activeLevel && renderMobileLevelCard(activeLevel)}
 
             {/* Expanded Levels INSIDE same navy box */}
             <Collapse in={viewMore}>
               <Box sx={{ mt: 1 }}>
                 {levels
                   .filter((l) => String(l.id) !== String(activeLevel?.id))
-                  .map((l) => (
-                    <Box
-                      key={l.id}
-                      sx={{
-                        bgcolor: 'background.paper',
-                        border: `1px solid ${PRIMARY}`,
-                        borderRadius: '10px',
-                        px: 2,
-                        py: 1.5,
-                        mb: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        // opacity: l.isUnlocked ? 1 : 0.6
-                      }}
-                    >
-                      <Box sx={{ flex: 1 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: 10, color: '#1A1A1A', fontFamily: 'Inter' }}>
-                          {l.name}
-                        </Typography>
-                        <Typography sx={{ color: '#999999', fontSize: 8, mt: 0.3, fontWeight: 400, fontFamily: 'Inter' }}>
-                          {t('LEARNER_APP.HOME.PROGRESS_TEXT', { percent: l.completionPercentage })}
-                        </Typography>
-                      </Box>
-                      {l.isUnlocked ? (
-                        <img
-                          src={l.completionPercentage >= 70 ? '/assets/images/badge-complete.png' : '/assets/images/badge-incomplete.png'}
-                          alt="badge"
-                          style={{ width: 40, height: 40, objectFit: 'contain' }}
-                        />
-                      ) : (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#9CA3AF"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" /></svg>
-                      )}
-                    </Box>
-                  ))}
+                  .map((l) => renderMobileLevelCard(l))}
               </Box>
             </Collapse>
           </Box>
@@ -742,14 +758,14 @@ export default function SwadhaarHomePage() {
 
         {unreadCount > 0 && (
           <>
-            <Typography sx={{ fontWeight: 700, fontFamily: 'Open sans', fontSize: '14px', mb: 2, color: '#1A1A1' }}>{t('LEARNER_APP.HOME.ALERTS_TITLE')}</Typography>
+            <Typography sx={{ fontWeight: 700, fontFamily: 'Open sans', fontSize: '21px', mb: 2, color: '#1A1A1A' }}>{t('LEARNER_APP.HOME.ALERTS_TITLE')}</Typography>
             <Box sx={{ mb: 4 }}>
               <AlertsCarousel alerts={alerts} onAlertClick={handleAlertClick} />
             </Box>
           </>
         )}
 
-        <Typography sx={{ fontWeight: 700, fontFamily: 'Open sans', fontSize: '14px', mb: 1.5, color: '#1A1A1A' }}>{t('LEARNER_APP.HOME.START_LEARNING')}</Typography>
+        <Typography sx={{ fontWeight: 700, fontFamily: 'Open sans', fontSize: '21px', mb: 1.5, color: '#1A1A1A' }}>{t('LEARNER_APP.HOME.START_LEARNING')}</Typography>
 
         {/* ── SCREEN 5.3: Level Complete Celebration ── */}
         {/* {(() => {

@@ -320,6 +320,23 @@ const QuestionScreen: React.FC<{
     processed = processed.replace(/src="\/assets\//g, `src="${fallbackBaseUrl}/assets/`);
     processed = processed.replace(/src="\/content\/assets\//g, `src="${fallbackBaseUrl}/content/assets/`);
 
+    // Convert plain text URLs to clickable links, ignoring URLs already inside HTML tags (like href/src)
+    processed = processed.replace(/(<[^>]+>)|((?:https?|ftp):\/\/[^\s<]+)/gi, (match, tag, url) => {
+      if (tag) return tag; // Ignore existing HTML tags
+      if (url) {
+        let cleanUrl = url;
+        let trailing = '';
+        // Often, users wrap URLs in parentheses or end with a period. We should exclude these from the URL itself.
+        const lastChar = cleanUrl.slice(-1);
+        if ([')', '.', ',', '!', '?', '"', "'"].includes(lastChar)) {
+          trailing = lastChar;
+          cleanUrl = cleanUrl.slice(0, -1);
+        }
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #2563EB; text-decoration: underline; word-break: break-all;">${cleanUrl}</a>${trailing}`;
+      }
+      return match;
+    });
+
     return processed;
   };
 
@@ -331,14 +348,14 @@ const QuestionScreen: React.FC<{
     <Box sx={{ bgcolor: '#fff', borderRadius: '16px', border: '1px solid #E5E7EB', overflow: 'hidden' }}>
       <Box sx={{ p: 2 }}>
         {/* Progress bar */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        {/* <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <LinearProgress
             variant="determinate"
             value={((qIndex + 1) / total) * 100}
             sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: '#F3F4F6', '& .MuiLinearProgress-bar': { bgcolor: reviewMode ? DARK_NAV : PRIMARY }, mr: 2 }}
           />
           <Typography sx={{ color: '#9CA3AF', fontSize: 11, fontWeight: 700 }}>{qIndex + 1}/{total}</Typography>
-        </Box>
+        </Box> */}
 
         {!subjective && (
           <Typography sx={{ fontSize: 11, color: PRIMARY, fontWeight: 700, mb: 0.5 }}>Quiz</Typography>

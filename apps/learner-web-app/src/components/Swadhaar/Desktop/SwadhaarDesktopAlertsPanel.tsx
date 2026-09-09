@@ -8,6 +8,7 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import {
   WatchLater as WatchLaterIcon,
   Description as DescriptionIcon,
@@ -37,13 +38,13 @@ const DARK_NAV = '#1C2B4A';
 function getTypeIcon(type: AlertCard['type'], isLocked?: boolean) {
   const color = type === 'feedback' ? '#E6873C' : '#FFFFFF';
   switch (type) {
-    case 'quiz':     return <WatchLaterIcon sx={{ fontSize: 24, color }} />;
-    case 'content':  return <DescriptionIcon sx={{ fontSize: 24, color }} />;
-    case 'lesson':   return <MenuBookIcon sx={{ fontSize: 24, color }} />;
+    case 'quiz': return <WatchLaterIcon sx={{ fontSize: 24, color }} />;
+    case 'content': return <DescriptionIcon sx={{ fontSize: 24, color }} />;
+    case 'lesson': return <MenuBookIcon sx={{ fontSize: 24, color }} />;
     case 'feedback': return <GroupIcon sx={{ width: '40.33px', height: '29.33px', color }} />;
     case 'badge':
     case 'completion': return <EmojiEventsIcon sx={{ fontSize: 24, color }} />;
-    default:         return <InfoIcon sx={{ fontSize: 24, color }} />;
+    default: return <InfoIcon sx={{ fontSize: 24, color }} />;
   }
 }
 
@@ -127,7 +128,7 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
     // Notify parent so the bell badge count updates immediately
     const newUnread = updatedAlerts.filter((a) => !a.isRead).length;
     onUnreadCountChange?.(newUnread);
-    if (userId) markNotificationsRead(userId, [alert.id]).catch(() => {});
+    if (userId) markNotificationsRead(userId, [alert.id]).catch(() => { });
     // Toggle expanded view in-place
     setExpandedId((prev) => (prev === alert.id ? null : alert.id));
   };
@@ -169,18 +170,22 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
       <Box
         sx={{
           // bgcolor: DARK_NAV,
+          bgcolor: DARK_NAV,
           px: 2,
           py: 1.5,
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
+          gap: 4,
           flexShrink: 0,
+          borderTopRightRadius: '20px',
+          borderTopLeftRadius: '20px',
+          marginTop: 3
           // borderBottom: '2px solid rgba(230,135,60,0.4)',
         }}
       >
-        {/* <NotificationsActiveIcon sx={{ fontSize: 18, color: PRIMARY }} /> */}
+        <NotificationsNoneOutlinedIcon sx={{ fontSize: 18, color: "#FFFFFF" }} />
         <Typography
-          sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 10, color: '#background: #9E9E9E', flex: 1, textTransform: 'uppercase', letterSpacing: 0.8 }}
+          sx={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 17, color: '#FFFFFF', flex: 1, textTransform: 'none' }}
         >
           {t('LEARNER_APP.HOME.ALERTS_TITLE')}
           {unreadCount > 0 && (
@@ -214,7 +219,7 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
         >
           <DoneAllIcon sx={{ fontSize: 18 }} />
         </IconButton> */}
-        <IconButton
+        {/* <IconButton
           size="small"
           onClick={loadAlerts}
           disabled={loading}
@@ -230,7 +235,7 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
           title="Close"
         >
           <CloseRoundedIcon sx={{ fontSize: 18 }} />
-        </IconButton>
+        </IconButton> */}
       </Box>
 
       {/* ── Alert list ── */}
@@ -275,7 +280,7 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
                 const bodyText = alert.metadata?.messageBody || alert.message;
 
                 return (
-                  <Box 
+                  <Box
                     key={alert.id}
                     id={`swadhaar-desktop-alert-${alert.id}`}
                     sx={{
@@ -338,7 +343,7 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
                             : alert.title}
                         </Typography>
                         <Typography sx={{
-                          fontSize: (alert.type === 'feedback' && alert.metadata?.senderName) ? '10px' : '11px', 
+                          fontSize: (alert.type === 'feedback' && alert.metadata?.senderName) ? '10px' : '11px',
                           color: '#6B7280', fontFamily: 'Inter, sans-serif',
                           overflow: 'hidden', display: '-webkit-box',
                           WebkitLineClamp: 1,
@@ -348,8 +353,8 @@ const SwadhaarDesktopAlertsPanel: React.FC<SwadhaarDesktopAlertsPanelProps> = ({
                           {isLocked
                             ? (alert.lockedMessage || t('LEARNER_APP.ALERTS.LOCKED_MESSAGE'))
                             : (alert.type === 'feedback' && alert.metadata?.senderName
-                               ? `${alert.metadata.senderDesignation || t('CFL_DASHBOARD.CFL_INCHARGE')} - ${alert.metadata.senderLocation || 'CFL Jharkhand'}`
-                               : alert.message)}
+                              ? `${alert.metadata.senderDesignation || t('CFL_DASHBOARD.CFL_INCHARGE')} - ${alert.metadata.senderLocation || 'CFL Jharkhand'}`
+                              : alert.message)}
                         </Typography>
                       </Box>
 

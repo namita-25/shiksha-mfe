@@ -3,8 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Box, Typography, Badge, Select, MenuItem, FormControl, SelectChangeEvent } from '@mui/material';
 import Image from 'next/image';
-import CircleNotificationsRoundedIcon from '@mui/icons-material/CircleNotificationsRounded';
-import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
 import ProfileAvatar from '@learner/components/Profile/ProfileAvatar';
 import { useTranslation } from '@shared-lib';
 import { LANGUAGE_OPTIONS } from '@learner/utils/constants/language';
@@ -74,25 +74,25 @@ const SwadhaarDesktopHeader: React.FC<SwadhaarDesktopHeaderProps> = ({
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Box
           sx={{
-            width: 120,
-            height: 40,
+            width: 180,
+            height: 90,
             borderRadius: '8px',
             overflow: 'hidden',
             flexShrink: 0,
           }}
         >
           <Image
-            src="/images/swadhar_logo.png"
+            src="/images/Sw_Logo.png"
             alt={t('LEARNER_APP.HOME.LOGO_ALT')}
-            width={120}
-            height={40}
+            width={180}
+            height={90}
             style={{ objectFit: 'contain', width: '100%', height: '100%' }}
           />
         </Box>
       </Box>
 
       {/* Right actions */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 
         {/* ── Language ── */}
         <FormControl size="small" sx={{ minWidth: 100 }}>
@@ -159,7 +159,7 @@ const SwadhaarDesktopHeader: React.FC<SwadhaarDesktopHeaderProps> = ({
               },
             }}
           >
-            <CircleNotificationsRoundedIcon
+            <NotificationsNoneOutlinedIcon
               sx={{ fontSize: 22, color: alertsPanelOpen || unreadCount > 0 ? PRIMARY : '#6B7280' }}
             />
           </Badge>
@@ -193,7 +193,10 @@ const SwadhaarDesktopHeader: React.FC<SwadhaarDesktopHeaderProps> = ({
               bgcolor: profileMenuOpen ? 'rgba(28,43,74,0.07)' : 'transparent',
             }}
           >
-            <img src="/assets/images/material-symbols_account-circle%20(2).png" width={24} height={24} alt="Profile" />
+            <PersonOutlineRoundedIcon
+              sx={{ fontSize: 22, color: profileMenuOpen ? PRIMARY : '#6B7280' }}
+            />
+            {/* <img src="/assets/images/material-symbols_account-circle%20(2).png" width={24} height={24} alt="Profile" /> */}
             <Typography
               sx={{
                 fontFamily: 'Inter, sans-serif',

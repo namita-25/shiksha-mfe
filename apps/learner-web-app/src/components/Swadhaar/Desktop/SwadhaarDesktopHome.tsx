@@ -126,7 +126,7 @@ const SwadhaarDesktopHome: React.FC<SwadhaarDesktopHomeProps> = ({
   const handleStartContinue = () => {
     if (!activeLevel) return;
     if (currentLesson) {
-      trackCourseClick(activeLevel.id, currentLesson.moduleId).catch(() => {});
+      trackCourseClick(activeLevel.id, currentLesson.moduleId).catch(() => { });
       router.push(
         `/learn/${activeLevel.id}/${currentLesson.moduleId}/${currentLesson.subtopicId}/${currentLesson.lessonId}`
       );
@@ -136,8 +136,8 @@ const SwadhaarDesktopHome: React.FC<SwadhaarDesktopHomeProps> = ({
   };
 
   const handleModuleClick = (levelId: string, moduleId: string) => {
-    trackCourseClick(moduleId).catch(() => {});
-    
+    trackCourseClick(moduleId).catch(() => { });
+
     // Find the level first
     const targetLevel = levels.find((l) => l.id === levelId);
     // Find the module within that level
@@ -269,6 +269,8 @@ const SwadhaarDesktopHome: React.FC<SwadhaarDesktopHomeProps> = ({
                 name: l.name,
                 completionPercentage: l.completionPercentage,
                 isUnlocked: l.isUnlocked,
+                completedModules: l.completedModules,
+                totalModules: l.totalModules,
               }))}
               onProfileClick={() => setEditProfileOpen(true)}
             />
@@ -313,7 +315,7 @@ const SwadhaarDesktopHome: React.FC<SwadhaarDesktopHomeProps> = ({
                   sx={{
                     fontFamily: 'Open sans',
                     fontWeight: 700,
-                    fontSize: 20,
+                    fontSize: 21,
                     color: '#1A1A1A',
                     mb: 2,
                   }}
@@ -333,15 +335,15 @@ const SwadhaarDesktopHome: React.FC<SwadhaarDesktopHomeProps> = ({
                     <Box sx={{ position: 'absolute', bottom: -15, left: 80, width: 80, height: 80, borderRadius: '50%', bgcolor: 'rgba(76,175,80,0.18)', filter: 'blur(20px)' }} />
 
                     {/* <Box sx={{ p: 3, position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 2.5 }}> */}
-                      {/* Trophy */}
-                      {/* <Box sx={{
+                    {/* Trophy */}
+                    {/* <Box sx={{
                         width: 72, height: 72, borderRadius: '18px', flexShrink: 0,
                         background: 'linear-gradient(135deg, #F2BC33, #E6873C)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         boxShadow: '0 6px 20px rgba(242,188,51,0.45)', fontSize: 36,
                       }}>🏆</Box> */}
 
-                      {/* <Box sx={{ flex: 1 }}>
+                    {/* <Box sx={{ flex: 1 }}>
                         <Typography sx={{ fontSize: 12, color: '#F2BC33', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1.2, mb: 0.5 }}>
                           Congratulations!
                         </Typography>
@@ -359,8 +361,8 @@ const SwadhaarDesktopHome: React.FC<SwadhaarDesktopHomeProps> = ({
                         </Typography>
                       </Box> */}
 
-                      {/* PASSED pill */}
-                      {/* <Box sx={{
+                    {/* PASSED pill */}
+                    {/* <Box sx={{
                         bgcolor: 'rgba(76,175,80,0.2)', border: '1.5px solid rgba(76,175,80,0.5)',
                         borderRadius: '14px', px: 2, py: 1, textAlign: 'center', flexShrink: 0,
                       }}>

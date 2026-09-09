@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Box, Typography, CircularProgress, Button, Collapse, Divider } from '@mui/material';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { Box, Typography, CircularProgress, Button, Collapse, Divider, IconButton } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
@@ -10,6 +10,8 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import UnfoldMoreRoundedIcon from '@mui/icons-material/UnfoldMoreRounded';
 import UnfoldLessRoundedIcon from '@mui/icons-material/UnfoldLessRounded';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import { getCourseHierarchy, getContentCourseStatus } from '@learner/utils/API/SwadhaarService';
 import { useContentTracking } from '@learner/hooks/useContentTracking';
 import { SwadhaarContentPlayer } from '@learner/components/Swadhaar/Player/SwadhaarContentPlayer';
@@ -124,6 +126,9 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   const [quizFailOpen, setQuizFailOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [allowFullscreen, setAllowFullscreen] = useState(false);
+  const playerRef = useRef<HTMLDivElement>(null);
 
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') || '' : '';
 
@@ -148,6 +153,23 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
     fetchUserProfile();
   }, [fetchUserProfile]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      playerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
 
   // Session-wide progress guard (Sync with mobile PWA logic)
   const SESSION_KEY = 'swadhaar_progress_guard';
@@ -784,7 +806,8 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                   const displayDescription = rawDisplayDescription === '-' ? 'No description available' : rawDisplayDescription;
 
                   const subtopicName = currentSubtopic?.name || 'Description';
-                  const showPlayerHeader = subtopicName !== currentLesson.name;
+                  // Always show the player header so the fullscreen button is visible
+                  const showPlayerHeader = true;
 
                   return (
                     <>
@@ -805,13 +828,20 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                           )}
                         </Box>
                       </Box>
-                      <Box sx={{ borderRadius: '12px', overflow: 'hidden', mb: 1.5, border: '1px solid #E5E7EB', background: '#fff' }}>
+                      <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
                         {showPlayerHeader && (
-                          <Typography sx={{ px: 2, py: 1, fontSize: 13, fontWeight: 700, color: '#fff', bgcolor: '#1C2B4A', fontFamily: 'Open Sans' }}>
-                            {currentLesson.name}
-                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.5 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans' }}>
+                              {currentLesson.name}
+                            </Typography>
+                            {allowFullscreen && (
+                              <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
+                                {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                              </IconButton>
+                            )}
+                          </Box>
                         )}
-                        <Box sx={{ bgcolor: 'transparent' }}>
+                        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                           <SwadhaarContentPlayer
                             key={currentLesson.identifier}
                             identifier={currentLesson.identifier}
@@ -829,10 +859,11 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                             onProgress={handleProgress}
                             onComplete={handleComplete}
                             onQuizFail={() => setQuizFailOpen(true)}
+                            onAllowFullscreen={setAllowFullscreen}
                           />
                         </Box>
                       </Box>
-                      <Typography sx={{ fontSize: 11, color: '#9CA3AF', mb: 3, px: 0.5 }}>{currentLesson.name} — {currentLesson.topic || currentLesson.contentType || 'topic'}</Typography>
+                      <Typography sx={{ fontSize: 11, color: '#9CA3AF', mb: 3, px: 0.5, display: isFullscreen ? 'none' : 'block' }}>{currentLesson.name} — {currentLesson.topic || currentLesson.contentType || 'topic'}</Typography>
                     </>
                   );
                 })()}

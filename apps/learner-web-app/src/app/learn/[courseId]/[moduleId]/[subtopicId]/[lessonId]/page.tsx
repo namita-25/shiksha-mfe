@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Box, Typography, CircularProgress, IconButton, Button, LinearProgress, Badge, useMediaQuery } from '@mui/material';
 import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -11,6 +11,8 @@ import { SwadhaarContentPlayer } from '@learner/components/Swadhaar/Player/Swadh
 import SwadhaarQuizFailModal from '@learner/components/Swadhaar/Player/SwadhaarQuizFailModal';
 
 import CheckIcon from '@mui/icons-material/Check';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 
 import {
   getCourseHierarchy,
@@ -64,6 +66,9 @@ export default function LessonViewerPage() {
   // Once true for the current lesson, NEVER resets to false — prevents flicker from polling
   const [lessonCompleted, setLessonCompleted] = useState(false);
   const [quizFailOpen, setQuizFailOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [allowFullscreen, setAllowFullscreen] = useState(false);
+  const playerRef = useRef<HTMLDivElement>(null);
 
   // Session-wide progress guard backed by sessionStorage so it persists across navigation.
   // Prevents the backend's completed_list from overriding a locally-tracked in-progress value.
@@ -93,6 +98,24 @@ export default function LessonViewerPage() {
     const guard = getSessionGuard();
     delete guard[contentId];
     setSessionGuard(guard);
+  };
+
+  React.useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      playerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
   };
 
   React.useLayoutEffect(() => {
@@ -396,27 +419,35 @@ export default function LessonViewerPage() {
             {currentLesson && (
               isSwadhaarTenant ? (
                 (() => {
-                  // Now we can just use the pre-computed currentTopicTitle
-                  const subtopicName = currentTopicTitle || 'Description';
-                  const showPlayerHeader = subtopicName !== currentLesson.name;
+                  const showPlayerHeader = true;
 
                   return (
-                    <Box sx={{ borderRadius: '12px', overflow: 'hidden', mb: 1.5, border: '1px solid #E5E7EB', background: '#fff' }}>
+                    <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
                       {showPlayerHeader && (
-                        <Typography sx={{ px: 2, py: 1, fontSize: 13, fontWeight: 700, color: '#fff', bgcolor: '#1C2B4A', fontFamily: 'Open Sans' }}>
-                          {currentLesson.name}
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.5 }}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans' }}>
+                            {currentLesson.name}
+                          </Typography>
+                          {allowFullscreen && (
+                            <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
+                              {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                            </IconButton>
+                          )}
+                        </Box>
                       )}
-                      <SwadhaarContentPlayer
-                        key={currentLesson.identifier} identifier={currentLesson.identifier} courseId={courseId} unitId={subtopicId} mimeType={currentLesson.mimeType} contentType={currentLesson.contentType}
-                        contentUrl={currentLesson.artifactUrl || currentLesson.downloadUrl} posterImage={currentLesson.posterImage || currentLesson.appIcon} name={currentLesson.name} description={currentLesson.description}
-                        attempts={statusData.find(s => s.contentId === currentLesson.identifier)?.attempts || 0}
-                        topicTitle={currentTopicTitle}
-                        initialProgress={displayCompletion}
-                        isCompleted={lessonCompleted || currentCompletion >= 100}
-                        onProgress={handleProgress} onComplete={handleComplete}
-                        onQuizFail={() => setQuizFailOpen(true)}
-                      />
+                      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                        <SwadhaarContentPlayer
+                          key={currentLesson.identifier} identifier={currentLesson.identifier} courseId={courseId} unitId={subtopicId} mimeType={currentLesson.mimeType} contentType={currentLesson.contentType}
+                          contentUrl={currentLesson.artifactUrl || currentLesson.downloadUrl} posterImage={currentLesson.posterImage || currentLesson.appIcon} name={currentLesson.name} description={currentLesson.description}
+                          attempts={statusData.find(s => s.contentId === currentLesson.identifier)?.attempts || 0}
+                          topicTitle={currentTopicTitle}
+                          initialProgress={displayCompletion}
+                          isCompleted={lessonCompleted || currentCompletion >= 100}
+                          onProgress={handleProgress} onComplete={handleComplete}
+                          onQuizFail={() => setQuizFailOpen(true)}
+                          onAllowFullscreen={setAllowFullscreen}
+                        />
+                      </Box>
                     </Box>
                   );
                 })()

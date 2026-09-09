@@ -57,6 +57,7 @@ export interface SwadhaarContentPlayerProps {
   onProgress?: (percentage: number) => void;
   onComplete: (score?: number) => void;
   onQuizFail?: () => void;
+  onAllowFullscreen?: (allow: boolean) => void;
 }
 
 type BlobType = "video" | "image" | "questionset" | "text" | "sunbird";
@@ -85,7 +86,7 @@ async function fetchContentDetails(identifier: string): Promise<Record<string, a
 
 export const SwadhaarContentPlayer: React.FC<SwadhaarContentPlayerProps> = ({
   identifier, courseId, unitId, mimeType, contentType, contentUrl: propContentUrl, posterImage: propPosterImage,
-  name, description, body: propBody, subheading, topicTitle, children, attempts, initialProgress, isCompleted, onProgress, onComplete, onQuizFail,
+  name, description, body: propBody, subheading, topicTitle, children, attempts, initialProgress, isCompleted, onProgress, onComplete, onQuizFail, onAllowFullscreen
 }) => {
   const blobType = resolveBlobType(mimeType, contentType);
   const needsUrl = blobType === "video" || blobType === "image";
@@ -108,8 +109,9 @@ export const SwadhaarContentPlayer: React.FC<SwadhaarContentPlayerProps> = ({
     if (!identifier) return;
     
     const loadFullDetails = async () => {
-      setLoading(true);
-      const data = await fetchContentDetails(identifier);
+      try {
+        setLoading(true);
+        const data = await fetchContentDetails(identifier);
       
       if (data.maxAttempts) setMaxAttempts(data.maxAttempts);
       // Extract instructions field from questionset (used in "Before you begin" section)
@@ -176,24 +178,50 @@ export const SwadhaarContentPlayer: React.FC<SwadhaarContentPlayerProps> = ({
           leafQuestionIds.push(...data.childNodes);
         }
 
+        let finalQuestions = fullQuestions;
         if (leafQuestionIds.length > 0) {
           const detailed = await getQuestions(leafQuestionIds);
-          setQuestionItems([...fullQuestions, ...detailed]);
-        } else {
-          setQuestionItems(fullQuestions);
+          finalQuestions = [...fullQuestions, ...detailed];
+        }
+        setQuestionItems(finalQuestions);
+
+        if (onAllowFullscreen) {
+          const isSubj = finalQuestions.length > 0 && finalQuestions.every((q: any) => !q.options || q.options.length === 0);
+          let hasImage = false;
+          if (isSubj) {
+            hasImage = finalQuestions.some((q: any) => {
+              const mediaImg = q.media && q.media.some((m: any) => m.type === 'image' || m.src?.match(/\.(jpeg|jpg|gif|png|svg)$/i));
+              const bodyImg = (q.body || '').includes('<img') || (q.editorState?.question || '').includes('<img');
+              const ansImg = (q.answer || '').includes('<img') || (q.editorState?.solutions?.[0] || '').includes('<img');
+              return mediaImg || bodyImg || ansImg;
+            });
+          }
+          onAllowFullscreen(isSubj && hasImage);
         }
       }
-      setLoading(false);
+    } catch (err) {
+        console.error("Failed to load questionset", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     if (identifier && (blobType === "questionset" || (needsUrl && !propContentUrl) || (blobType === "text" && !propBody && !description))) {
       loadFullDetails();
     }
-  }, [identifier, blobType, needsUrl, propContentUrl, propBody, description, children]);
+  }, [identifier, blobType, needsUrl, propContentUrl, propBody, description, children, onAllowFullscreen]);
+
+  useEffect(() => {
+    if (blobType === "image") {
+      onAllowFullscreen?.(true);
+    } else if (blobType !== "questionset") {
+      onAllowFullscreen?.(false);
+    }
+  }, [blobType, onAllowFullscreen]);
 
   // ── Iframe Message Listener for Sunbird Content (PDF/EPUB/ECML) ──
   useEffect(() => {
-    if (blobType !== "sunbird") return;
+    if (blobType !== 'sunbird') return;
 
     const handlePlayerMessage = (event: MessageEvent) => {
       try {

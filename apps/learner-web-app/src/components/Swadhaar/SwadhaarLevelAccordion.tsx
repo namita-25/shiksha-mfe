@@ -11,6 +11,7 @@ import UnfoldMoreRoundedIcon from '@mui/icons-material/UnfoldMoreRounded';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import MenuBookRoundedIcon from '@mui/icons-material/MenuBookRounded';
+import NoteOutlinedIcon from '@mui/icons-material/NoteOutlined';
 const PRIMARY = '#E6873C';
 const SUCCESS = '#4CAF50';
 
@@ -98,7 +99,7 @@ const LessonNode: React.FC<{
         cursor: isLocked ? 'not-allowed' : 'pointer',
         borderLeft: '2px solid #F3F4F6',
         '&:hover': { bgcolor: isLocked ? 'transparent' : '#F9FAFB' },
-        opacity: isLocked ? 0.6 : 1
+        opacity: isLocked ? 0.8 : 1
       }}
     >
       <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28 }}>
@@ -194,16 +195,20 @@ const ModuleNode: React.FC<{
         <Box
           onClick={handleModuleClick}
           sx={{
-            flex: 1, display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.5, borderRadius: '16px', bgcolor: '#fff',
+            flex: 1, display: 'flex', alignItems: 'center', gap: 1.5, p: 2.25, borderRadius: '14px', bgcolor: isLocked ? '#fff' : isCompleted ? '#fff' : 'rgba(230,135,60,0.1)',
             border: `1.5px solid ${borderColor}`, cursor: isLocked ? 'not-allowed' : 'pointer',
-            '&:hover': { bgcolor: isLocked ? 'transparent' : '#F9FAFB' },
-            opacity: isLocked ? 0.7 : 1
+            '&:hover': { bgcolor: isLocked ? 'transparent' : (isCompleted ? '#F9FAFB' : 'rgba(230,135,60,0.15)') },
+            opacity: isLocked ? 0.8 : 1
           }}
         >
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <MenuBookRoundedIcon sx={{ fontSize: 16, color: isLocked ? '#9CA3AF' : '#1A1A1A' }} />
-              <Typography sx={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 14, color: isLocked ? '#9CA3AF' : '#1A1A1A' }}>
+              {/* <NoteOutlinedIcon sx={{ fontSize: 20, color: isLocked ? '#9CA3AF' : '#1A1A1A' }} /> */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy, #9E9E9E)" strokeWidth="1.8">
+                <path d="M6 3h9l4 4v14H6z" />
+                <path d="M15 3v4h4" />
+              </svg>
+              <Typography sx={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: isLocked ? '#9CA3AF' : '#1A1A1A' }}>
                 {node.name.toLowerCase().includes('module') ? node.name : `Module: ${node.name}`}
               </Typography>
             </Box>
@@ -263,7 +268,7 @@ const SwadhaarLevelAccordion: React.FC<SwadhaarLevelAccordionProps> = ({
       sx={{
         mb: 2, borderRadius: '16px', overflow: 'hidden',
         border: (theme) => `1px solid ${isLocked ? '#E5E7EB' : isCompletedLevel ? SUCCESS : isExpanded ? PRIMARY : '#E5E7EB'}`,
-        bgcolor: 'background.paper', opacity: isLocked ? 0.7 : 1,
+        bgcolor: 'background.paper', opacity: isLocked ? 0.8 : 1,
         boxShadow: isExpanded ? '0 4px 12px rgba(230,135,60,0.12)' : 'none',
         transition: 'all 0.2s ease-in-out'
       }}
@@ -279,7 +284,7 @@ const SwadhaarLevelAccordion: React.FC<SwadhaarLevelAccordionProps> = ({
         )}
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pr: 0.5 }}>
-            <Typography sx={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 12, color: isLocked ? '#9CA3AF' : '#1A1A1A' }}>{levelName}</Typography>
+            <Typography sx={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 17, color: isLocked ? '#9CA3AF' : '#1A1A1A' }}>{levelName}</Typography>
             {selectedLanguage && (
               <Box
                 onClick={(e) => {
@@ -309,9 +314,25 @@ const SwadhaarLevelAccordion: React.FC<SwadhaarLevelAccordionProps> = ({
               </Box>
             )}
           </Box>
-          <Typography sx={{ fontWeight: 400, fontSize: 10, fontFamily: 'Inter', color: '#999999', mt: 0.5 }}>
-            {t('LEARNER_APP.LEARN.COMPLETED_MODULES', { completed: completedModules, total: totalModules })}
-          </Typography>
+          {isLocked ? (
+            <Box sx={{
+              display: 'inline-block',
+              bgcolor: '#F3F4F6',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              px: 1.25,
+              py: 0.35,
+              mt: 0.5,
+            }}>
+              <Typography sx={{ fontFamily: 'Inter, sans-serif', fontSize: 10, color: '#6B7280', fontWeight: 700 }}>
+                {t('LEARNER_APP.HOME.LOCKED')}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography sx={{ fontWeight: 400, fontSize: 10, fontFamily: 'Inter', color: '#999999', mt: 0.5 }}>
+              {t('LEARNER_APP.LEARN.COMPLETED_MODULES', { completed: completedModules, total: totalModules })}
+            </Typography>
+          )}
           {showDescriptions && levelDescription && isExpanded && (
             <Typography sx={{ fontFamily: 'Inter', fontSize: 10, color: '#999999', mt: 0.5, fontWeight: 400 }}>
               {levelDescription}

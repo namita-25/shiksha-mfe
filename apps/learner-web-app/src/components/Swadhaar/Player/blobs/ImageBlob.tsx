@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Dialog, IconButton } from '@mui/material';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ZoomInRoundedIcon from '@mui/icons-material/ZoomInRounded';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 interface ImageBlobProps {
   name: string;
@@ -71,13 +72,23 @@ export const ImageBlob: React.FC<ImageBlobProps> = ({ name, contentUrl, descript
               <CloseRoundedIcon />
             </IconButton>
           </Box>
-          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', p: 2 }}>
-            <Box
-              component="img"
-              src={contentUrl}
-              alt={name}
-              sx={{ maxWidth: 'none', width: '100%', height: 'auto', objectFit: 'contain', transition: 'transform 0.3s ease' }}
-            />
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+            <TransformWrapper
+              initialScale={1}
+              minScale={0.5}
+              maxScale={8}
+              centerOnInit={true}
+              wheel={{ step: 0.1 }}
+            >
+              <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }} contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Box
+                  component="img"
+                  src={contentUrl}
+                  alt={name}
+                  sx={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }}
+                />
+              </TransformComponent>
+            </TransformWrapper>
           </Box>
           {description && (
             <Box sx={{ p: 3, bgcolor: 'rgba(0,0,0,0.7)', position: 'absolute', bottom: 0, width: '100%' }}>

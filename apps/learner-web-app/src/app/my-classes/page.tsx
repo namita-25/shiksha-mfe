@@ -70,6 +70,7 @@ const MyClassesPage = () => {
   const tenantIcon = contentFilter?.icon || "/logo.png";
   const tenantName = contentFilter?.title || tenant?.name || "Tenant";
   const tenantAlt = `${tenantName} logo`;
+  const isOblfTenant = typeof tenantName === 'string' && tenantName.toLowerCase().includes('oblf');
   
   const [cohortsData, setCohortsData] = useState<Array<any>>([]);
   const [centersData, setCentersData] = useState<Array<any>>([]);
@@ -489,9 +490,9 @@ const MyClassesPage = () => {
               overflowX: { xs: "auto", sm: "visible" },
             }}
           >
-            <Tab label={t("LEARNER_APP.COMMON.CONTENT")} value="content" />
-            <Tab label={t("LEARNER_APP.COMMON.COURSES")} value="Course" />
-            <Tab label={t("LEARNER_APP.COMMON.GROUPS")} value="groups" />
+            {!isOblfTenant && <Tab label={t("LEARNER_APP.COMMON.CONTENT")} value="content" />}
+            {!isOblfTenant && <Tab label={t("LEARNER_APP.COMMON.COURSES")} value="Course" />}
+            {!isOblfTenant && <Tab label={t("LEARNER_APP.COMMON.GROUPS")} value="groups" />}
             <Tab label={t("LEARNER_APP.COMMON.ATTENDANCE")} value="attendance" />
             <Tab label={t("LEARNER_APP.COMMON.MY_CLASSES") || "My Classes"} value="myClasses" />
           </Tabs>

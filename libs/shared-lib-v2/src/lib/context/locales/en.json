@@ -142,7 +142,6 @@
     "RETURN_TO_LOGIN": "Return to Login",
     "YOU_DONT_HAVE_PERMISSION_TO_ACCESS_THIS_PAGE": "You don't have access to this page",
     "ACCESS_DENIED": "Access Denied",
-
     "STATUS": {
       "completed": "Completed",
       "in_progress": "In Progress",
@@ -313,11 +312,11 @@
       "RESEND_OTP": "Resend OTP",
       "CHOOSE_MODE": "Choose how you want to continue",
       "LEARNER_OR_WORKSPACE": "Login as a learner or go to the workspace portal.",
-      "CONTINUE_LEARNER": "Login as Learner",
+      "CONTINUE_LEARNER": "Login",
       "GO_TO_WORKSPACE": "Go to Workspace",
       "LOGIN": "Login",
       "USER_ARCHIVED": "Your account is not active. Please contact your administrator."
-        },
+    },
     "L_ONE_COURSE": {
       "IN_PROGRESS_TITLE": "In Progress",
       "ONGOING_COURSES": "You have {count} Ongoing Courses",

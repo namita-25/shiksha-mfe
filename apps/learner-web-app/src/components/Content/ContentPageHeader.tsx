@@ -88,7 +88,7 @@ const ContentPageHeader: React.FC = () => {
                 color: secondaryColor,
               }}
             >
-              {tenantName}
+              {typeof tenantName === 'string' ? tenantName : "Tenant"}
             </Typography>
           </Box>
 

@@ -93,6 +93,7 @@ const DashboardContent = () => {
   const tenantIcon = contentFilter?.icon || "/logo.png";
   const tenantName = getLocalizedText(contentFilter?.title || tenant?.name || "Tenant", language);
   const tenantAlt = `${tenantName} logo`;
+  const isOblfTenant = typeof tenantName === 'string' && tenantName.toLowerCase().includes('oblf');
   
   const [activeTab, setActiveTab] = React.useState("content");
   const [filter, setFilter] = useState<Record<string, any>>({});
@@ -153,7 +154,7 @@ const DashboardContent = () => {
       setUserRole(role);
       
       // If user is Staff or Supervisor, redirect directly to attendance page
-      if (role === "Staff" || role === "Supervisor") {
+      if (role === "Staff" || role === "Supervisor" || isOblfTenant) {
         router.push("/attandence");
       }
     }
@@ -163,7 +164,7 @@ const DashboardContent = () => {
   useEffect(() => {
     const updateTabFromURL = () => {
       // If user is Staff or Supervisor, redirect directly to attendance page
-      if (userRole === "Staff" || userRole === "Supervisor") {
+      if (userRole === "Staff" || userRole === "Supervisor" || isOblfTenant) {
         router.push("/attandence");
         return;
       }
@@ -398,7 +399,7 @@ const DashboardContent = () => {
               };
               telemetryFactory.interact(telemetryInteract);
             console.log("telemetryInteract",telemetryInteract);
-    if (userRole === "Staff" || userRole === "Supervisor") {
+    if (userRole === "Staff" || userRole === "Supervisor" || isOblfTenant) {
       router.push("/attandence");
       return;
     }
@@ -594,7 +595,7 @@ const DashboardContent = () => {
         <Tabs
           value={(() => {
             // For Staff/Supervisor, always show attendance tab
-            if (userRole === "Staff" || userRole === "Supervisor") {
+            if (userRole === "Staff" || userRole === "Supervisor" || isOblfTenant) {
               return showAttendance ? "attendance" : false;
             }
             return activeTab;
@@ -639,18 +640,18 @@ const DashboardContent = () => {
           <Tab
             label={t("LEARNER_APP.COMMON.CONTENT")}
             value="content"
-            sx={{ display: userRole === "Staff" || userRole === "Supervisor" ? "none" : "inline-flex" }}
+            sx={{ display: userRole === "Staff" || userRole === "Supervisor" || isOblfTenant ? "none" : "inline-flex" }}
           />
           {/* <Tab
             label={t("LEARNER_APP.COMMON.COURSES")}
             value="Course"
-              sx={{ display: userRole === "Staff" || userRole === "Supervisor" ? "none" : "inline-flex" }}
+              sx={{ display: userRole === "Staff" || userRole === "Supervisor" || isOblfTenant ? "none" : "inline-flex" }}
           /> */}
           {showGroups && (
             <Tab
               label={t("LEARNER_APP.COMMON.GROUPS")}
               value="groups"
-                sx={{ display: userRole === "Staff" || userRole === "Supervisor" ? "none" : "inline-flex" }}
+                sx={{ display: userRole === "Staff" || userRole === "Supervisor" || isOblfTenant ? "none" : "inline-flex" }}
             />
           )}
           {showAttendance && (

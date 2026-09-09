@@ -298,6 +298,7 @@ const SimpleTeacherDashboard = () => {
   const tenantIcon = contentFilter?.icon || "/logo.png";
   const tenantName = contentFilter?.title || tenant?.name || "Tenant";
   const tenantAlt = `${tenantName} logo`;
+  const isOblfTenant = typeof tenantName === 'string' && tenantName.toLowerCase().includes('oblf');
 
   const [classId, setClassId] = useState("");
   const [yearSelect, setYearSelect] = useState("");
@@ -2853,7 +2854,7 @@ const SimpleTeacherDashboard = () => {
               value="content"
               sx={{
                 display:
-                  userRole === "Staff" || userRole === "Supervisor"
+                  userRole === "Staff" || userRole === "Supervisor" || isOblfTenant
                     ? "none"
                     : "inline-flex",
               }}
@@ -2863,7 +2864,7 @@ const SimpleTeacherDashboard = () => {
               value="Course"
               sx={{
                 display:
-                  userRole === "Staff" || userRole === "Supervisor"
+                  userRole === "Staff" || userRole === "Supervisor" || isOblfTenant
                     ? "none"
                     : "inline-flex",
               }}
@@ -2873,7 +2874,7 @@ const SimpleTeacherDashboard = () => {
               value="groups"
               sx={{
                 display:
-                  userRole === "Staff" || userRole === "Supervisor"
+                  userRole === "Staff" || userRole === "Supervisor" || isOblfTenant
                     ? "none"
                     : "inline-flex",
               }}

@@ -70,7 +70,7 @@ import Layout from "@learner/components/Layout";
 import { AccountCircleOutlined } from "@mui/icons-material";
 import ProfileMenu from "../../components/ProfileMenu/ProfileMenu";
 import ConfirmationModal from "../../components/ConfirmationModal/ConfirmationModal";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { gredientStyle } from "@learner/utils/style";
 import { useTenant } from "@learner/context/TenantContext";
 import { useTranslation } from "@shared-lib";
@@ -351,6 +351,7 @@ const SimpleTeacherDashboard = () => {
   }>({});
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { getLocation } = useGeolocation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
@@ -385,6 +386,23 @@ const SimpleTeacherDashboard = () => {
     () => isTodayDate(selectedDate),
     [selectedDate]
   );
+
+  useEffect(() => {
+    const queryCenterId = searchParams?.get('centerId');
+    const queryClassId = searchParams?.get('classId');
+    if (queryCenterId && queryClassId) {
+      setSelectedCenterId(queryCenterId);
+      setClassId(queryClassId);
+      
+      // Auto-open attendance modal for this class
+      if (isOblfTenant) {
+        // slight delay to ensure other states settle if needed
+        setTimeout(() => {
+          handleRemoteSession(queryClassId);
+        }, 500); 
+      }
+    }
+  }, [searchParams, isOblfTenant]);
 
   const showBackDateRestrictionMessage = () => {
     if (selectedDateDiffFromToday !== null && selectedDateDiffFromToday < 0) {
@@ -493,7 +511,8 @@ const SimpleTeacherDashboard = () => {
     return null;
   };
 
-  const handleRemoteSession = async () => {
+  const handleRemoteSession = async (overrideClassId?: string) => {
+    const currentClassId = overrideClassId || classId;
     if (!isSelectedDateWithinAllowedWindow) {
       showBackDateRestrictionMessage();
       return;
@@ -503,7 +522,7 @@ const SimpleTeacherDashboard = () => {
         localStorage.getItem("teacherApp") ?? "null"
       );
       const cohort = teacherApp?.state?.cohorts?.find?.(
-        (c: any) => c.cohortId === classId
+        (c: any) => c.cohortId === currentClassId
       );
       const REMOTE_COHORT_TYPE = "REMOTE" as const;
 
@@ -511,7 +530,7 @@ const SimpleTeacherDashboard = () => {
         setIsRemoteCohort(true);
       } else {
         // Fetch cohort member list for the selected date before opening modal
-        if (classId && selectedDate && classId !== "all") {
+        if (currentClassId && selectedDate && currentClassId !== "all") {
           try {
             // Reset attendance data before fetching new data
             setAttendanceData({
@@ -524,17 +543,17 @@ const SimpleTeacherDashboard = () => {
               bulkAttendanceStatus: "",
             });
 
-            console.log(
-              "[handleRemoteSession] Fetching cohort member list for:",
-              {
-                classId,
-                selectedDate,
-              }
-            );
+              console.log(
+                "[handleRemoteSession] Fetching cohort member list for:",
+                {
+                  currentClassId,
+                  selectedDate,
+                }
+              );
 
-            const limit = 300;
-            const page = 0;
-            const filters = { cohortId: classId, status: [Status.ACTIVE] };
+              const limit = 300;
+              const page = 0;
+              const filters = { cohortId: currentClassId, status: [Status.ACTIVE] };
             const response = await getMyCohortMemberList({
               limit,
               page,
@@ -676,7 +695,7 @@ const SimpleTeacherDashboard = () => {
                 nameUserIdArray &&
                 nameUserIdArray.length > 0 &&
                 selectedDate &&
-                classId
+                currentClassId
               ) {
                 console.log(
                   "[handleRemoteSession] Calling fetchAttendanceDetails"
@@ -709,7 +728,7 @@ const SimpleTeacherDashboard = () => {
                   fetchAttendanceDetails(
                     nameUserIdArray,
                     selectedDateStr,
-                    classId,
+                    currentClassId,
                     updateCallback
                   ).catch((error) => {
                     console.error(
@@ -727,7 +746,7 @@ const SimpleTeacherDashboard = () => {
                   {
                     nameUserIdArrayLength: nameUserIdArray?.length || 0,
                     selectedDate,
-                    classId,
+                    currentClassId,
                   }
                 );
                 // Still open modal even if no members (to show empty state)

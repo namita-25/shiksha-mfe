@@ -154,8 +154,10 @@ const DashboardContent = () => {
       setUserRole(role);
       
       // If user is Staff or Supervisor, redirect directly to attendance page
-      if (role === "Staff" || role === "Supervisor" || isOblfTenant) {
+      if (role === "Staff" || role === "Supervisor") {
         router.push("/attandence");
+      } else if (isOblfTenant) {
+        // OBLF teachers stay on dashboard but default to myClasses
       }
     }
   }, [router]);
@@ -164,7 +166,7 @@ const DashboardContent = () => {
   useEffect(() => {
     const updateTabFromURL = () => {
       // If user is Staff or Supervisor, redirect directly to attendance page
-      if (userRole === "Staff" || userRole === "Supervisor" || isOblfTenant) {
+      if (userRole === "Staff" || userRole === "Supervisor") {
         router.push("/attandence");
         return;
       }
@@ -187,10 +189,18 @@ const DashboardContent = () => {
         setActiveTab("shortVideos");
       } else if (tabParam === "0" || !tabParam) {
         // Default to Content tab (first tab) if no tab parameter or tab=0
-        setActiveTab("content");
+        if (isOblfTenant && showAttendance) {
+          setActiveTab("myClasses");
+        } else {
+          setActiveTab("content");
+        }
       } else {
         // If tab param doesn't match any valid tab, default to first available
-        setActiveTab("content");
+        if (isOblfTenant && showAttendance) {
+          setActiveTab("myClasses");
+        } else {
+          setActiveTab("content");
+        }
       }
     };
 
@@ -399,7 +409,7 @@ const DashboardContent = () => {
               };
               telemetryFactory.interact(telemetryInteract);
             console.log("telemetryInteract",telemetryInteract);
-    if (userRole === "Staff" || userRole === "Supervisor" || isOblfTenant) {
+    if (userRole === "Staff" || userRole === "Supervisor") {
       router.push("/attandence");
       return;
     }

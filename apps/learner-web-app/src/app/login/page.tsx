@@ -282,12 +282,17 @@ const LoginComponent: React.FC<LoginComponentProps> = ({
           "User does not exist"
         ) {
           console.log("User does not exist - showing error message");
+          showToastMessage(
+            t("LEARNER_APP.LOGIN.USER_NOT_FOUND") || "User does not exist. Please check your phone number.",
+            "error"
+          );
+          setHasCheckedUser(false);
           // Show error message and call the redirect handler
           if (onRedirectToLogin) {
             // Add a small delay to ensure the error message is properly displayed
             setTimeout(() => {
               onRedirectToLogin();
-            }, 100);
+            }, 1500);
           }
           return;
         }
@@ -853,6 +858,22 @@ const LoginComponent: React.FC<LoginComponentProps> = ({
                 backgroundColor: "#E0E0E0",
               }}
             />
+          </Box>
+
+          {/* Fallback to Password Toggle */}
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: primaryColor,
+                cursor: 'pointer',
+                fontWeight: 500,
+                '&:hover': { textDecoration: 'underline' }
+              }}
+              onClick={() => setForcePasswordMode(true)}
+            >
+              {t("LEARNER_APP.LOGIN.LOGIN_WITH_PASSWORD") || "Don't have a mobile number? Log in with Password"}
+            </Typography>
           </Box>
         </>
       ) : (

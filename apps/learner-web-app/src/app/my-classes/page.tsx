@@ -186,7 +186,11 @@ const MyClassesPage = () => {
     }
   };
 
-  const handleBatchClickForCenter = (batchId: string) => {
+  const handleBatchClickForCenter = (centerId: string, batchId: string) => {
+    if (isOblfTenant) {
+      router.push(`/attandence?centerId=${centerId}&classId=${batchId}`);
+      return;
+    }
     setSelectedBatchForCenter(batchId);
     fetchBatchMembers(batchId);
   };
@@ -577,7 +581,7 @@ const MyClassesPage = () => {
                                           .map((batch: any) => (
                                             <Box
                                               key={batch.cohortId}
-                                              onClick={() => handleBatchClickForCenter(batch.cohortId)}
+                                              onClick={() => handleBatchClickForCenter(center.centerId, batch.cohortId)}
                                               sx={{
                                                 p: { xs: 1.25, md: 1.5 },
                                                 my: 1,

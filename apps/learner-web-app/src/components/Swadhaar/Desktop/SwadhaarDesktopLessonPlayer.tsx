@@ -800,47 +800,40 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                   const currentSubtopic = (currentModule?.children || []).find((s: any) => s.identifier === subtopicId);
                   const subtopicLessons = allLessons.filter(l => l.parentSubtopicId === subtopicId);
                   const isFirstLesson = subtopicLessons[0]?.identifier === currentLesson.identifier;
-                  const rawDisplayDescription = isFirstLesson
-                    ? (currentSubtopic?.description || currentLesson.description || '-')
-                    : (currentLesson.description || '-');
-                  const displayDescription = rawDisplayDescription === '-' ? 'No description available' : rawDisplayDescription;
+                  
+                  const subtopicDescription = currentSubtopic?.description;
+                  const showDescriptionBox = isFirstLesson && subtopicDescription && subtopicDescription !== '-';
+                  const subtopicNameDisplay = currentSubtopic?.name || 'Description';
 
-                  const subtopicName = currentSubtopic?.name || 'Description';
-                  // Always show the player header so the fullscreen button is visible
-                  const showPlayerHeader = true;
+                  const isTextOrQuiz = currentLesson?.mimeType === 'application/vnd.ekstep.html-archive' || currentLesson?.mimeType?.startsWith('text/') || currentLesson?.contentType === 'html' || currentLesson?.mimeType === 'application/vnd.sunbird.questionset' || currentLesson?.contentType === 'questionset';
 
                   return (
                     <>
-                      <Box sx={{ borderRadius: '12px', overflow: 'hidden', mb: 2.5, border: '1px solid #E5E7EB' }}>
-                        <Box sx={{ bgcolor: DARK_NAV, px: 2, py: 1 }}>
-                          <Typography sx={{ color: '#fff', fontSize: '11px', fontWeight: 600, fontFamily: 'Inter', textTransform: 'uppercase' }}>
-                            {subtopicName}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ bgcolor: '#fff', p: 2.5 }}>
-                          <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A', fontStyle: rawDisplayDescription === '-' ? 'italic' : 'normal', opacity: rawDisplayDescription === '-' ? 0.6 : 1 }}>
-                            {displayDescription}
-                          </Typography>
-                          {currentLesson.body && (
-                            <Typography sx={{ fontFamily: 'Open Sans', fontSize: '14px', color: '#1A1A1A', fontWeight: 400, lineHeight: 1.7, mt: 1.5 }}>
-                              {currentLesson.body}
+                      {showDescriptionBox && (
+                        <Box sx={{ borderRadius: '12px', overflow: 'hidden', mb: 2.5, border: '1px solid #E5E7EB' }}>
+                          <Box sx={{ bgcolor: DARK_NAV, px: 2, py: 1 }}>
+                            <Typography sx={{ color: '#fff', fontSize: '11px', fontWeight: 600, fontFamily: 'Inter', textTransform: 'uppercase' }}>
+                              {subtopicNameDisplay}
                             </Typography>
+                          </Box>
+                          <Box sx={{ bgcolor: '#fff', p: 2.5 }}>
+                            <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A' }}>
+                              {subtopicDescription}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+                      <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.5, minHeight: '36px' }}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans' }}>
+                            {!isTextOrQuiz ? currentLesson.name : ""}
+                          </Typography>
+                          {allowFullscreen && (
+                            <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
+                              {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                            </IconButton>
                           )}
                         </Box>
-                      </Box>
-                      <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
-                        {showPlayerHeader && (
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.5 }}>
-                            <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans' }}>
-                              {currentLesson.name}
-                            </Typography>
-                            {allowFullscreen && (
-                              <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
-                                {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-                              </IconButton>
-                            )}
-                          </Box>
-                        )}
                         <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                           <SwadhaarContentPlayer
                             key={currentLesson.identifier}

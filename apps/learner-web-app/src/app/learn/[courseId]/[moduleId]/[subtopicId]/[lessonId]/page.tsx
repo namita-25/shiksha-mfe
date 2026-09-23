@@ -357,7 +357,17 @@ export default function LessonViewerPage() {
         <Box sx={{ minHeight: '100dvh', bgcolor: '#F9FAFB', display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
           <Box sx={{ bgcolor: '#fff', px: 1, py: 1.5, display: 'flex', alignItems: 'center', gap: 1, position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid #F3F4F6' }}>
             <IconButton onClick={() => router.push(`/learn/${courseId}/${moduleId}`)}><ArrowBackIcon sx={{ color: '#1A1A1A', fontSize: 20 }} /></IconButton>
-            <Typography sx={{ fontWeight: 800, fontSize: 18, color: 'text.primary', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Typography sx={{ 
+              fontWeight: 800, 
+              fontSize: 16, 
+              lineHeight: 1.3,
+              color: 'text.primary', 
+              flex: 1, 
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}>
               {currentTopicTitle && currentTopicTitle !== currentLesson?.name ? `${currentTopicTitle} - ${currentLesson?.name}` : currentLesson?.name || subtopicName}
             </Typography>
           </Box>
@@ -380,12 +390,12 @@ export default function LessonViewerPage() {
             {currentLesson && (() => {
               const subtopicLessons = allLessons.filter(l => l.parentSubtopicId === subtopicId);
               const isFirstLesson = subtopicLessons[0]?.identifier === currentLesson.identifier;
-              const rawDisplayDescription = isFirstLesson
-                ? (subtopicDescription || currentLesson.description || '-')
-                : (currentLesson.description || '-');
-              const displayDescription = rawDisplayDescription === '-' ? 'No description available' : rawDisplayDescription;
+              
+              if (!isFirstLesson || !subtopicDescription || subtopicDescription === '-') {
+                return null;
+              }
 
-              const subtopicName = currentTopicTitle || 'Description';
+              const subtopicNameDisplay = currentTopicTitle || 'Description';
 
               return (
                 <Box sx={{
@@ -397,19 +407,13 @@ export default function LessonViewerPage() {
                 }}>
                   <Box sx={{ bgcolor: '#1C2B4A', px: 2, py: 1.5 }}>
                     <Typography sx={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'Inter', textTransform: 'uppercase' }}>
-                      {subtopicName}
+                      {subtopicNameDisplay}
                     </Typography>
                   </Box>
-                  {/* Body */}
                   <Box sx={{ bgcolor: '#fff', pt: 2, pb: 1, px: 2 }}>
-                    <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A', fontStyle: rawDisplayDescription === '-' ? 'italic' : 'normal', opacity: rawDisplayDescription === '-' ? 0.6 : 1 }}>
-                      {displayDescription}
+                    <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A' }}>
+                      {subtopicDescription}
                     </Typography>
-                    {currentLesson.body && (
-                      <Typography sx={{ fontFamily: 'Open Sans', fontSize: '14px', color: '#1A1A1A', fontWeight: 400, lineHeight: 1.7, mt: 1.5 }}>
-                        {currentLesson.body}
-                      </Typography>
-                    )}
                   </Box>
                 </Box>
               );
@@ -419,20 +423,13 @@ export default function LessonViewerPage() {
             {currentLesson && (
               isSwadhaarTenant ? (
                 (() => {
-                  const showPlayerHeader = true;
-
                   return (
                     <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
-                      {showPlayerHeader && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.5 }}>
-                          <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans' }}>
-                            {currentLesson.name}
-                          </Typography>
-                          {allowFullscreen && (
-                            <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
-                              {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
-                            </IconButton>
-                          )}
+                      {allowFullscreen && (
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', bgcolor: '#1C2B4A', px: 1, py: 0.5 }}>
+                          <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
+                            {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                          </IconButton>
                         </Box>
                       )}
                       <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

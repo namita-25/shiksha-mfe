@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  swadhaar-admin-repo:
+    build:
+      context: .
+      dockerfile: Dockerfile.swadhaar-admin-repo
+    ports:
+      - '3004:3004'
+      - '4104:4104'
+      - '4106:4106'
+    environment:
+      - NODE_ENV=production
+      - PORT=3004

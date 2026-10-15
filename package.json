@@ -6,7 +6,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "fetch_shiksha": ""
+    "fetch_shiksha": "",
+    "dev:swadhaar-admin": "npx nx dev swadhaar-admin-repo",
+    "build:swadhaar-admin": "npx nx build swadhaar-admin-repo",
+    "start:swadhaar-admin": "npx nx start swadhaar-admin-repo"
   },
   "private": true,
   "dependencies": {
@@ -99,7 +102,8 @@
     "uuid": "^10.0.0",
     "webpack": "^5.95.0",
     "yup": "^1.6.1",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "@nx/next": "^20.2.2"
   },
   "devDependencies": {
     "@babel/core": "^7.14.5",

@@ -1,37 +1,84 @@
 # syntax=docker/dockerfile:1
-FROM node:20
 
-# Set the working directory
+# =========================================================================
+# STAGE 1: Builder
+# =========================================================================
+FROM node:20-slim AS builder
+
 WORKDIR /workspace
 
-# Set npm configuration to handle memory issues
+# Optimization environment flags
 ENV NODE_OPTIONS="--max-old-space-size=8192"
+ENV CYPRESS_INSTALL_BINARY=0
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV npm_config_cache="/tmp/.npm"
 ENV npm_config_prefer-offline=true
 ENV npm_config_fetch_retries=3
 ENV npm_config_fetch_retry_mintimeout=5000
 ENV npm_config_fetch_retry_maxtimeout=60000
 
-# Copy package.json and package-lock.json to the working directory
+# Copy package manifests first for caching
 COPY package*.json ./
 
-# Install dependencies in stages to avoid memory issues
+# Install dependencies (skipping scripts to avoid unnecessary downloads)
 RUN npm install --legacy-peer-deps --no-audit --no-fund --cache /tmp/.npm --prefer-offline --ignore-scripts
 
-# Copy the entire NX workspace
+# Copy workspace source files
 COPY . .
 
-# Run the patch script to fix Nx lockfile parsing bug and clean package-lock.json
+# Run patch script for Nx lockfile parser bug
 RUN node patch-nx.js
 
-# Build Specific Application
-# Build only specific applications
+# Build only target applications (learner-web-app, players, forget-password)
 RUN --mount=type=secret,id=env,target=/workspace/.env \
     npx nx run-many --target=build --projects=learner-web-app,players,forget-password --verbose
 
-# Install PM2 to manage multiple apps
-RUN npm install -g pm2@6.0.8
-# Expose the ports for all apps
+# Remove Next.js build caches (.next/cache) which take >1.5 GB and are unused at runtime
+RUN rm -rf apps/learner-web-app/.next/cache \
+           mfes/players/.next/cache \
+           mfes/forget-password/.next/cache \
+           .nx/cache \
+           /tmp/.npm
+
+# Prune devDependencies (Jest, Cypress, Babel, TypeScript, ESLint, Vite, etc.)
+RUN npm prune --legacy-peer-deps --omit=dev --no-audit --no-fund
+
+# Strip unused Alpine/musl binaries, source maps, and test folders from node_modules (saves ~400-500 MB)
+RUN rm -rf /workspace/node_modules/@next/swc-linux-x64-musl \
+           /workspace/node_modules/@swc/core-linux-x64-musl && \
+    find /workspace/node_modules -type f -name "*.map" -delete && \
+    find /workspace/node_modules -type d \( -name "__tests__" -o -name "test" -o -name "tests" \) -prune -exec rm -rf {} + 2>/dev/null || true
+
+# Clean any residual npm cache
+RUN npm cache clean --force
+
+# =========================================================================
+# STAGE 2: Lightweight Production Runner
+# =========================================================================
+FROM node:20-slim AS runner
+
+WORKDIR /workspace
+
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# Install PM2 runtime and clean npm cache
+RUN npm install -g pm2@6.0.8 && npm cache clean --force
+
+# Copy package files and pruned production node_modules
+COPY --from=builder /workspace/package*.json ./
+COPY --from=builder /workspace/node_modules ./node_modules
+COPY --from=builder /workspace/ecosystem.learner-web-app.config.js ./
+
+# Copy shared libraries needed at runtime
+COPY --from=builder /workspace/libs ./libs
+
+# Copy only the target applications (built output, static assets, configs)
+COPY --from=builder /workspace/apps/learner-web-app ./apps/learner-web-app
+COPY --from=builder /workspace/mfes/players ./mfes/players
+COPY --from=builder /workspace/mfes/forget-password ./mfes/forget-password
+
+# Expose ports for learner-web-app (3003), players (4108), forget-password (4109)
 EXPOSE 3003 4108 4109
 
 # Command to run all apps using PM2

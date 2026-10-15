@@ -43,8 +43,8 @@
       "@ContentPlayer": ["mfes/content/src/pages/player/[identifier].tsx"],
       "@shared-lib-v2/*": ["libs/shared-lib-v2/src/*"],
       "@shiksha/plugin-like": ["libs/plugin-like/src/index.ts"],
-      "@shiksha/plugin-download": ["libs/plugin-download/src/index.ts"]
-
+      "@shiksha/plugin-download": ["libs/plugin-download/src/index.ts"],
+      "@swadhaar-admin/*": ["apps/swadhaar-admin-repo/src/*"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -1,0 +1,8 @@
+{
+  "name": "swadhaar-admin-repo",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/swadhaar-admin-repo",
+  "projectType": "application",
+  "tags": ["tenant:swadhaar", "type:admin"],
+  "targets": {}
+}

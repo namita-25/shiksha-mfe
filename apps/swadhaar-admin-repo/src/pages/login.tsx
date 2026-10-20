@@ -49,7 +49,7 @@ export default function LoginPage() {
       const token = localStorage.getItem('token');
       const userId = localStorage.getItem('userId');
       if (token && userId) {
-        router.replace('/dashboard');
+        router.replace('/users');
       } else {
         setIsCheckingAuth(false);
       }

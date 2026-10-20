@@ -24,7 +24,7 @@ export default function NotFoundPage() {
       <Typography variant="body2" sx={{ color: '#6B7280', maxWidth: 400, mb: 3 }}>
         The page you are looking for does not exist or has been moved within the Swadhaar Admin Portal.
       </Typography>
-      <Link href="/dashboard" style={{ textDecoration: 'none' }}>
+      <Link href="/users" style={{ textDecoration: 'none' }}>
         <Button
           variant="contained"
           sx={{
@@ -33,7 +33,7 @@ export default function NotFoundPage() {
             fontWeight: 600,
           }}
         >
-          Return to Dashboard
+          Return to Home
         </Button>
       </Link>
     </Box>

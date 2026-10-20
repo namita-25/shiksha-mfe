@@ -16,6 +16,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import HubIcon from '@mui/icons-material/Hub';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
+import AltRouteIcon from '@mui/icons-material/AltRoute';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import SecurityIcon from '@mui/icons-material/Security';
@@ -45,7 +46,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Keep expandedMenu in sync with current route
   useEffect(() => {
     const path = router.pathname;
-    if (path.startsWith('/content') || path.startsWith('/course')) {
+    if (
+      path.startsWith('/content') ||
+      path.startsWith('/course') ||
+      path.startsWith('/learning-paths')
+    ) {
       setExpandedMenu('learning');
     } else if (
       path.startsWith('/user') ||
@@ -91,6 +96,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isContentActive =
     router.pathname === '/content' || router.pathname.startsWith('/content/library');
+
+  const isPathsActive =
+    router.pathname.startsWith('/learning-paths') ||
+    router.pathname.startsWith('/content/learning-paths');
 
   const sidebarContent = (
     <Box
@@ -440,6 +449,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     primaryTypographyProps={{
                       fontSize: '13px',
                       fontWeight: isContentActive ? 600 : 500,
+                    }}
+                  />
+                </ListItemButton>
+              </Link>
+
+              {/* Learning Paths Sub-option */}
+              <Link key="paths-sub" href="/learning-paths" style={{ textDecoration: 'none' }}>
+                <ListItemButton
+                  selected={isPathsActive}
+                  onClick={onSidebarClose}
+                  sx={{
+                    borderRadius: '8px',
+                    mb: 0.5,
+                    py: 0.8,
+                    px: 1.5,
+                    pl: 3.5,
+                    color: isPathsActive ? 'primary.main' : 'text.primary',
+                    backgroundColor: isPathsActive ? 'primary.100' : 'transparent',
+                    fontWeight: isPathsActive ? 600 : 500,
+                    '&:hover': {
+                      backgroundColor: isPathsActive ? 'primary.200' : 'rgba(0, 0, 0, 0.04)',
+                      color: 'primary.main',
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main',
+                      },
+                    },
+                    '&.Mui-selected': {
+                      backgroundColor: 'primary.100',
+                      color: 'primary.main',
+                      '&:hover': {
+                        backgroundColor: 'primary.200',
+                      },
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 32,
+                      color: isPathsActive ? 'primary.main' : 'text.secondary',
+                    }}
+                  >
+                    <AltRouteIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Learning paths"
+                    primaryTypographyProps={{
+                      fontSize: '13px',
+                      fontWeight: isPathsActive ? 600 : 500,
                     }}
                   />
                 </ListItemButton>

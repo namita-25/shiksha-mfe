@@ -172,14 +172,14 @@ export const SDBVHierarchyFilter: React.FC<SDBVHierarchyFilterProps> = ({
 
   const hasActiveFilters = Boolean(
     values.state ||
-      values.district ||
-      values.block ||
-      values.branch ||
-      values.village ||
-      values.program ||
-      values.search ||
-      (values.status && values.status !== 'all') ||
-      (values.role && values.role !== 'all')
+    values.district ||
+    values.block ||
+    values.branch ||
+    values.village ||
+    values.program ||
+    values.search ||
+    (values.status && values.status !== 'all') ||
+    (values.role && values.role !== 'all')
   );
 
   // If two-row search layout requested (matching media_1792067589917.png)

@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   resetPassword: `${baseurl}/user/reset-password`,
   fieldOptionsRead: `${baseurl}/fields/options/read`,
   cohortSearch: `${baseurl}/cohort/search`,
+  cohortContentSearch: `${baseurl}/user/cohortcontent/search`,
   fieldOptionDelete: (type: string, option: string) => `${baseurl}/fields/options/delete/${type}?option=${option}`,
   fieldUpdate: (fieldId: string) => `${baseurl}/fields/update/${fieldId}`,
   cohortUpdate: (cohortId: string) => `${baseurl}/cohort/update/${cohortId}`,
@@ -44,4 +45,5 @@ export const API_ENDPOINTS = {
   framework: (frameworkId: string) => `${baseurl}/framework/v1/read/${frameworkId}`,
   actionObject: `${baseurl}/action/object/category/definition/v1/read?fields=objectMetadata,forms,name,label`,
   compositeSearch: `${baseurl}/action/composite/v3/search`,
+  contentHierarchy: (doId: string) => `${baseurl}/action/content/v3/hierarchy/${doId}`,
 };

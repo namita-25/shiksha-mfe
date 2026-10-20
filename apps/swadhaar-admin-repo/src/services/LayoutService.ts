@@ -55,12 +55,12 @@ export const LayoutService = {
    */
   getNavigationItems: (userRoles: string[] = ['Admin']): NavItemConfig[] => {
     const allItems: NavItemConfig[] = [
-      {
-        label: 'Dashboard',
-        path: '/dashboard',
-        iconName: 'DashboardIcon',
-        section: 'GENERAL',
-      },
+      // {
+      //   label: 'Dashboard',
+      //   path: '/dashboard',
+      //   iconName: 'DashboardIcon',
+      //   section: 'GENERAL',
+      // },
       // PEOPLE
       {
         label: 'Users',

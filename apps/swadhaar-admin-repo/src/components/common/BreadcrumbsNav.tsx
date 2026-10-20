@@ -20,7 +20,7 @@ export const BreadcrumbsNav: React.FC<BreadcrumbsNavProps> = ({ items }) => {
         separator={<NavigateNextIcon fontSize="small" sx={{ color: 'text.secondary' }} />}
         aria-label="breadcrumb"
       >
-        <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', color: '#6B7280' }}>
+        <Link href="/users" style={{ display: 'inline-flex', alignItems: 'center', color: '#6B7280' }}>
           <HomeOutlinedIcon sx={{ fontSize: 18, mr: 0.5, color: 'text.secondary' }} />
           <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, '&:hover': { color: 'primary.main' } }}>
             Home

@@ -10,93 +10,94 @@ export const MasterDataService = {
   getStates: async (): Promise<LocationOption[]> => {
     try {
       const response = await post(API_ENDPOINTS.fieldOptionsRead, {
-        fieldName: 'state',
         limit: 100,
         offset: 0,
+        fieldName: 'state',
+        // controllingfieldfk: ['4'],
       });
-      if (response?.data?.result?.values) {
+      if (response?.data?.result?.values && response.data.result.values.length > 0) {
         return response.data.result.values.map((v: any) => ({
-          value: v.value || v.id || v.name,
+          value: String(v.value ?? v.id ?? v.name),
           label: v.name || v.label || v.value,
         }));
       }
     } catch (e) {
-      // Fallback defaults for Maharashtra / Gujarat
+      console.warn('Failed to fetch states from API, using fallback', e);
     }
     return [
-      { value: 'maharashtra', label: 'Maharashtra' },
-      { value: 'gujarat', label: 'Gujarat' },
-      { value: 'madhya_pradesh', label: 'Madhya Pradesh' },
+      { value: '3', label: 'Maharashtra' },
+      { value: '4', label: 'Gujarat' },
+      { value: '5', label: 'Madhya Pradesh' },
     ];
   },
 
   getDistricts: async (stateValue?: string): Promise<LocationOption[]> => {
     try {
-      if (stateValue) {
+      if (stateValue && stateValue !== 'all') {
         const response = await post(API_ENDPOINTS.fieldOptionsRead, {
-          fieldName: 'district',
-          controllingfieldfk: stateValue,
           limit: 100,
           offset: 0,
+          fieldName: 'district',
+          controllingfieldfk: [String(stateValue || '3')],
         });
-        if (response?.data?.result?.values?.length > 0) {
+        if (response?.data?.result?.values && response.data.result.values.length > 0) {
           return response.data.result.values.map((v: any) => ({
-            value: v.value || v.id || v.name,
+            value: String(v.value ?? v.id ?? v.name),
             label: v.name || v.label || v.value,
           }));
         }
       }
     } catch (e) {
-      // Fallback
+      console.warn('Failed to fetch districts from API, using fallback', e);
     }
 
-    if (stateValue === 'gujarat') {
+    if (stateValue === '4' || stateValue === 'gujarat') {
       return [
-        { value: 'ahmedabad', label: 'Ahmedabad' },
-        { value: 'surat', label: 'Surat' },
-        { value: 'vadodara', label: 'Vadodara' },
+        { value: '201', label: 'Ahmedabad' },
+        { value: '202', label: 'Surat' },
+        { value: '203', label: 'Vadodara' },
       ];
     }
     return [
-      { value: 'pune', label: 'Pune' },
-      { value: 'nagpur', label: 'Nagpur' },
-      { value: 'nashik', label: 'Nashik' },
-      { value: 'mumbai_suburban', label: 'Mumbai Suburban' },
+      { value: '143', label: 'Pune' },
+      { value: '144', label: 'Nagpur' },
+      { value: '145', label: 'Nashik' },
+      { value: '146', label: 'Mumbai Suburban' },
     ];
   },
 
   getBlocks: async (districtValue?: string): Promise<LocationOption[]> => {
     try {
-      if (districtValue) {
+      if (districtValue && districtValue !== 'all') {
         const response = await post(API_ENDPOINTS.fieldOptionsRead, {
-          fieldName: 'block',
-          controllingfieldfk: districtValue,
           limit: 100,
           offset: 0,
+          fieldName: 'block',
+          controllingfieldfk: [String(districtValue || '143')],
         });
-        if (response?.data?.result?.values?.length > 0) {
+        if (response?.data?.result?.values && response.data.result.values.length > 0) {
           return response.data.result.values.map((v: any) => ({
-            value: v.value || v.id || v.name,
+            value: String(v.value ?? v.id ?? v.name),
             label: v.name || v.label || v.value,
           }));
         }
       }
     } catch (e) {
-      // Fallback
+      console.warn('Failed to fetch blocks from API, using fallback', e);
     }
 
-    if (districtValue === 'nagpur') {
+    if (districtValue === '144' || districtValue === 'nagpur') {
       return [
-        { value: 'nagpur_rural', label: 'Nagpur Rural' },
-        { value: 'kamthi', label: 'Kamthi' },
-        { value: 'hingna', label: 'Hingna' },
+        { value: '301', label: 'Nagpur Rural' },
+        { value: '302', label: 'Kamthi' },
+        { value: '303', label: 'Hingna' },
       ];
     }
     return [
-      { value: 'haveli', label: 'Haveli' },
-      { value: 'pune_city', label: 'Pune City' },
-      { value: 'baramati', label: 'Baramati' },
-      { value: 'khed', label: 'Khed' },
+      { value: '401', label: 'Haveli' },
+      { value: '402', label: 'Pune City' },
+      { value: '403', label: 'Baramati' },
+      { value: '404', label: 'Khed' },
     ];
   },
 

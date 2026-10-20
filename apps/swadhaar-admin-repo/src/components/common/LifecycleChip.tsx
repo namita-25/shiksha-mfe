@@ -38,12 +38,12 @@ interface StateStyleConfig {
 const getStateConfig = (state: string): StateStyleConfig => {
   const normalized = state?.toLowerCase() || '';
 
-  if (normalized === 'published') {
+  if (normalized === 'published' || normalized === 'live') {
     return {
       label: 'Published',
-      bg: '#E8F5E9',
-      color: '#1A8825',
-      dotColor: '#1A8825',
+      bg: '#DCFCE7',
+      color: '#15803D',
+      dotColor: '#15803D',
     };
   }
   if (normalized === 'active') {

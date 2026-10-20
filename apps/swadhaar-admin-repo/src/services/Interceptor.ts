@@ -1,5 +1,6 @@
 import axios from 'axios';
 import TenantService from './TenantService';
+import { SWADHAAR_ACADEMIC_YEAR_ID } from '@/utils/app.constant';
 
 const instance = axios.create();
 
@@ -10,10 +11,12 @@ instance.interceptors.request.use(
       if (token && config.url && !config.url.endsWith('user/v1/auth/login')) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      const academicYearId = localStorage.getItem('academicYearId');
+      const academicYearId = localStorage.getItem('academicYearId') || SWADHAAR_ACADEMIC_YEAR_ID;
       if (academicYearId) {
         config.headers.academicyearid = academicYearId;
       }
+    } else {
+      config.headers.academicyearid = SWADHAAR_ACADEMIC_YEAR_ID;
     }
     
     const tenantId = TenantService.getTenantId();

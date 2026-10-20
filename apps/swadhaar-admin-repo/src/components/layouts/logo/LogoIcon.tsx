@@ -5,7 +5,7 @@ import { Box, Typography } from '@mui/material';
 
 const LogoIcon = () => {
   return (
-    <Link href="/dashboard" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+    <Link href="/users" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
       <Box
         sx={{
           display: 'flex',

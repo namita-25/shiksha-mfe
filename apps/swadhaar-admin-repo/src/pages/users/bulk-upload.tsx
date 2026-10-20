@@ -1,0 +1,1114 @@
+import React, { useState, useRef } from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Grid,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  CircularProgress,
+  LinearProgress,
+  Alert,
+} from '@mui/material';
+import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
+import CheckIcon from '@mui/icons-material/Check';
+import Papa from 'papaparse';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import nextI18NextConfig from '../../../next-i18next.config.js';
+import { createUserAccount, CreateUserPayload } from '@/services/UserService';
+import TenantService from '@/services/TenantService';
+import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
+
+interface ParsedUserRow {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  employee_id?: string;
+  gender?: string;
+  state?: string;
+  district?: string;
+  branch?: string;
+  program?: string;
+  role?: string;
+  [key: string]: any;
+}
+
+interface FailedRowItem {
+  rowNum: number;
+  employeeId: string;
+  email: string;
+  reason: string;
+}
+
+const MANDATORY_COLUMNS = [
+  'full_name',
+  'email',
+  'phone',
+  'employee_id',
+  'gender',
+  'state',
+  'district',
+  'branch',
+  'program',
+  'role',
+];
+
+export default function BulkUploadUsersPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Stepper state: 1: Upload file, 2: Validate & Process, 3: Summary
+  const [step, setStep] = useState<number>(1);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [parsedRows, setParsedRows] = useState<ParsedUserRow[]>([]);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Processing & Results states
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [createdCount, setCreatedCount] = useState<number>(0);
+  const [failedRows, setFailedRows] = useState<FailedRowItem[]>([]);
+
+  // 1. Template Download Handler
+  const handleDownloadTemplate = () => {
+    const csvContent =
+      'full_name,email,phone,employee_id,gender,state,district,branch,program,role\n' +
+      'Aarav Sharma,aarav.sharma@example.com,9876543210,EMP1001,Male,Maharashtra,Pune,Haveli,Financial Literacy,Trainer\n' +
+      'Priya Patel,priya.patel@example.com,9876543211,EMP1002,Female,Gujarat,Ahmedabad,City,Women Empowerment,ARM\n' +
+      'Rohan Deshmukh,rohan.deshmukh@example.com,9876543212,EMP1003,Male,Maharashtra,Nagpur,Nagpur Rural,Digital Banking,DI\n';
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'swadhaar_users_bulk_template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 2. File Selection & Parsing Handler
+  const processUploadedFile = (file: File) => {
+    setErrorMsg(null);
+    setSelectedFile(file);
+
+    Papa.parse<ParsedUserRow>(file, {
+      header: true,
+      skipEmptyLines: 'greedy',
+      transformHeader: (header: string) => header.trim().toLowerCase().replace(/\s+/g, '_'),
+      complete: (results) => {
+        const rows = results.data.filter((r) =>
+          Object.values(r).some((v) => v !== null && v !== undefined && String(v).trim() !== '')
+        );
+        setParsedRows(rows);
+      },
+      error: (err) => {
+        console.error('CSV parse error:', err);
+        setErrorMsg('Failed to read CSV file. Please ensure it is a valid CSV document.');
+      },
+    });
+  };
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setParsedRows([]);
+    setErrorMsg(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // 3. Validation and User Creation Workflow
+  const handleValidateAndCreate = async () => {
+    if (!selectedFile || parsedRows.length === 0) {
+      setErrorMsg('Please upload a CSV file with at least one user record.');
+      return;
+    }
+
+    setStep(2);
+    setIsProcessing(true);
+    setProgressPercent(10);
+    setErrorMsg(null);
+
+    const failures: FailedRowItem[] = [];
+    let successCount = 0;
+
+    const seenEmployeeIds = new Set<string>();
+    const seenEmails = new Set<string>();
+    const seenPhones = new Set<string>();
+
+    const total = parsedRows.length;
+    const tenantId = TenantService.getTenantId() || SWADHAAR_TENANT_ID;
+
+    for (let i = 0; i < total; i++) {
+      const row = parsedRows[i];
+      const rowNum = i + 2; // Row 1 is header, so data starts at row 2
+
+      const fullName = (row.full_name || '').trim();
+      const email = (row.email || '').trim();
+      const phone = (row.phone || '').trim();
+      const employeeId = (row.employee_id || '').trim();
+      const state = (row.state || '').trim();
+      const district = (row.district || '').trim();
+      const branch = (row.branch || '').trim();
+      const program = (row.program || '').trim();
+      const role = (row.role || '').trim();
+      const gender = (row.gender || '').trim();
+
+      // Field Validations
+      let failureReason = '';
+
+      if (!fullName) {
+        failureReason = 'Mandatory field missing: Full name';
+      } else if (!employeeId) {
+        failureReason = 'Mandatory field missing: Employee ID';
+      } else if (seenEmployeeIds.has(employeeId.toLowerCase())) {
+        failureReason = 'Employee ID already exists in file';
+      } else if (!email) {
+        failureReason = 'Mandatory field missing: Email';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        failureReason = 'Invalid email address format';
+      } else if (seenEmails.has(email.toLowerCase())) {
+        failureReason = 'Email already exists in file';
+      } else if (!phone) {
+        failureReason = 'Mandatory field missing: Phone number';
+      } else if (!/^\d{10}$/.test(phone)) {
+        failureReason = 'Invalid phone: must be a 10-digit number';
+      } else if (seenPhones.has(phone)) {
+        failureReason = 'Phone number already exists in file';
+      } else if (!state) {
+        failureReason = 'Mandatory field missing: State';
+      } else if (!district) {
+        failureReason = 'Mandatory field missing: District';
+      } else if (!branch) {
+        failureReason = 'Mandatory field missing: Branch';
+      } else if (!program) {
+        failureReason = 'Mandatory field missing: Program';
+      } else if (!role) {
+        failureReason = 'Mandatory field missing: Role';
+      }
+
+      if (failureReason) {
+        failures.push({
+          rowNum,
+          employeeId: employeeId || '-',
+          email: email || '-',
+          reason: failureReason,
+        });
+      } else {
+        // Track unique keys
+        seenEmployeeIds.add(employeeId.toLowerCase());
+        seenEmails.add(email.toLowerCase());
+        seenPhones.add(phone);
+
+        // Prepare user creation payload
+        const nameParts = fullName.split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || '';
+
+        const payload: CreateUserPayload = {
+          name: fullName,
+          username: phone || email,
+          password: 'Password@123',
+          firstName: firstName,
+          lastName: lastName,
+          gender: gender ? gender.toLowerCase() : 'male',
+          email: email,
+          mobile: phone,
+          tenantCohortRoleMapping: [
+            {
+              tenantId: tenantId,
+              roleId: '57bc16f8-f446-4e5d-b595-c908a229e776',
+            },
+          ],
+          customFields: [
+            {
+              fieldId: '800265b1-9058-482a-94f4-726197e1dfe4',
+              value: [String(state || '4')],
+            },
+          ],
+        };
+
+        try {
+          const resp = await createUserAccount(payload);
+          if (
+            resp?.responseCode === 'OK' ||
+            resp?.result ||
+            resp?.params?.status === 'successful'
+          ) {
+            successCount++;
+          } else {
+            const apiError =
+              resp?.params?.errmsg ||
+              resp?.message ||
+              'User account creation failed on server';
+            failures.push({
+              rowNum,
+              employeeId: employeeId || '-',
+              email: email || '-',
+              reason: apiError,
+            });
+          }
+        } catch (apiErr: any) {
+          const errDetail =
+            apiErr?.response?.data?.params?.errmsg ||
+            apiErr?.response?.data?.message ||
+            apiErr?.message ||
+            'Server error during user creation';
+          failures.push({
+            rowNum,
+            employeeId: employeeId || '-',
+            email: email || '-',
+            reason: errDetail,
+          });
+        }
+      }
+
+      // Update progress bar percentage
+      const currentPct = Math.min(95, Math.round(((i + 1) / total) * 100));
+      setProgressPercent(currentPct);
+    }
+
+    setProgressPercent(100);
+    setCreatedCount(successCount);
+    setFailedRows(failures);
+    setIsProcessing(false);
+    setStep(3); // Go to summary
+  };
+
+  // 4. Download Failed Rows CSV Handler
+  const handleDownloadFailedRows = () => {
+    if (failedRows.length === 0) return;
+
+    let csvContent = 'Row,Employee ID,Email,Reason for failure\n';
+    failedRows.forEach((item) => {
+      csvContent += `"${item.rowNum}","${item.employeeId}","${item.email}","${item.reason.replace(/"/g, '""')}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `failed_users_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // 5. Reset to Step 1 for corrected file upload
+  const handleResetForCorrection = () => {
+    setStep(1);
+    setSelectedFile(null);
+    setParsedRows([]);
+    setFailedRows([]);
+    setCreatedCount(0);
+    setErrorMsg(null);
+    setProgressPercent(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <Box sx={{ py: 1, minHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Top Breadcrumb */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          mb: 2.5,
+          fontSize: '13px',
+          color: '#6B6862',
+        }}
+      >
+        <span>People</span>
+        <span>/</span>
+        <Link
+          href="/users"
+          style={{ color: '#6B6862', textDecoration: 'none', transition: 'color 0.2s' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#E6873C')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = '#6B6862')}
+        >
+          Users
+        </Link>
+        <span>/</span>
+        <Typography component="span" sx={{ color: '#1F1E1C', fontWeight: 600, fontSize: '13px' }}>
+          Bulk upload
+        </Typography>
+      </Box>
+
+      {/* Header and Stepper Progress Bar */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          mb: 3,
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
+        {/* Title and Subtitle */}
+        <Box sx={{ maxWidth: '640px' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8, flexWrap: 'wrap' }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
+              {step === 3 ? 'Upload summary' : 'Bulk upload users'}
+            </Typography>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                backgroundColor: '#EDE9FE',
+                color: '#6B21A8',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                fontWeight: 600,
+                px: 1,
+                py: 0.4,
+                borderRadius: '4px',
+              }}
+            >
+              BRD §4.1 Bulk
+            </Box>
+          </Box>
+          <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '14px', lineHeight: 1.5 }}>
+            {step === 3
+              ? `${selectedFile?.name || 'users_file.csv'} · validated and processed`
+              : 'Upload a CSV or Excel file to create many users at once. Each created user receives a welcome message.'}
+          </Typography>
+        </Box>
+
+        {/* 3-Step Stepper Progress Bar matching Prototype */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          {/* Step 1 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: step >= 1 ? '#1F1E1C' : '#FFFFFF',
+                color: step >= 1 ? '#FFFFFF' : '#6B6862',
+                border: step >= 1 ? 'none' : '1.5px solid #BDB9B1',
+              }}
+            >
+              {step > 1 ? <CheckIcon sx={{ fontSize: 14 }} /> : '1'}
+            </Box>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                fontWeight: step === 1 ? 600 : 500,
+                color: step === 1 ? '#1F1E1C' : '#6B6862',
+              }}
+            >
+              Upload file
+            </Typography>
+          </Box>
+
+          {/* Divider 1 */}
+          <Box
+            sx={{
+              width: 36,
+              height: '1px',
+              backgroundColor: step >= 2 ? '#1F1E1C' : '#BDB9B1',
+            }}
+          />
+
+          {/* Step 2 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: step === 2 ? '#E6873C' : step > 2 ? '#1F1E1C' : '#FFFFFF',
+                color: step >= 2 ? '#FFFFFF' : '#6B6862',
+                border: step >= 2 ? 'none' : '1.5px solid #BDB9B1',
+              }}
+            >
+              {step > 2 ? <CheckIcon sx={{ fontSize: 14 }} /> : '2'}
+            </Box>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                fontWeight: step === 2 ? 600 : 500,
+                color: step === 2 ? '#E6873C' : '#6B6862',
+              }}
+            >
+              Validate
+            </Typography>
+          </Box>
+
+          {/* Divider 2 */}
+          <Box
+            sx={{
+              width: 36,
+              height: '1px',
+              backgroundColor: step >= 3 ? '#1F1E1C' : '#BDB9B1',
+            }}
+          />
+
+          {/* Step 3 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box
+              sx={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: step === 3 ? '#1F1E1C' : '#FFFFFF',
+                color: step === 3 ? '#FFFFFF' : '#6B6862',
+                border: step === 3 ? 'none' : '1.5px solid #BDB9B1',
+              }}
+            >
+              3
+            </Box>
+            <Typography
+              sx={{
+                fontSize: '14px',
+                fontWeight: step === 3 ? 600 : 500,
+                color: step === 3 ? '#1F1E1C' : '#6B6862',
+              }}
+            >
+              Summary
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Error Alert */}
+      {errorMsg && (
+        <Alert severity="error" sx={{ mb: 3, borderRadius: '6px' }} onClose={() => setErrorMsg(null)}>
+          {errorMsg}
+        </Alert>
+      )}
+
+      {/* ======================================================== */}
+      {/* STEP 1: Upload File Layout (Left 8 cols, Right 4 cols)     */}
+      {/* ======================================================== */}
+      {step === 1 && (
+        <Grid container spacing={3} sx={{ flex: 1 }}>
+          {/* Left Column: Dropzone and File Card */}
+          <Grid item xs={12} lg={8}>
+            {/* Dropzone Box */}
+            <Box
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              sx={{
+                height: 290,
+                boxSizing: 'border-box',
+                border: isDragging ? '2px dashed #E6873C' : '2px dashed #BDB9B1',
+                borderRadius: '10px',
+                backgroundColor: isDragging ? '#FDF8F3' : '#FFFFFF',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1.5,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  borderColor: '#E6873C',
+                  backgroundColor: '#FCFAF7',
+                },
+              }}
+            >
+              <CloudUploadOutlinedIcon sx={{ fontSize: 44, color: isDragging ? '#E6873C' : '#3D3B37' }} />
+              <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#1F1E1C' }}>
+                Drop a file here or browse
+              </Typography>
+              <Typography sx={{ fontSize: '13px', color: '#6B6862' }}>
+                CSV or Excel
+              </Typography>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                style={{ display: 'none' }}
+                onChange={handleFileInputChange}
+              />
+            </Box>
+
+            {/* Selected File Card */}
+            {selectedFile && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  p: 2,
+                  mt: 2,
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #D6D3CC',
+                  borderRadius: '8px',
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.8 }}>
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '6px',
+                      backgroundColor: '#F4F3EF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontFamily: 'monospace',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      color: '#3D3B37',
+                    }}
+                  >
+                    CSV
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>
+                      {selectedFile.name}
+                    </Typography>
+                    <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
+                      {parsedRows.length} rows detected
+                    </Typography>
+                  </Box>
+                </Box>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleRemoveFile}
+                  sx={{
+                    height: 34,
+                    borderColor: '#D6D3CC',
+                    color: '#374151',
+                    textTransform: 'none',
+                    fontWeight: 500,
+                    fontSize: '13px',
+                    borderRadius: '6px',
+                    '&:hover': {
+                      backgroundColor: '#F9FAFB',
+                      borderColor: '#9CA3AF',
+                    },
+                  }}
+                >
+                  Remove
+                </Button>
+              </Box>
+            )}
+          </Grid>
+
+          {/* Right Column: File Requirements Card */}
+          <Grid item xs={12} lg={4}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                backgroundColor: '#FFFFFF',
+                border: '1px solid #D6D3CC',
+                borderRadius: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
+                File requirements
+              </Typography>
+              <Typography sx={{ fontSize: '13px', color: '#6B6862', lineHeight: 1.5 }}>
+                One row per user. Every mandatory field must be filled in.
+              </Typography>
+
+              {/* Required Columns Chips */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.8 }}>
+                {MANDATORY_COLUMNS.map((col) => (
+                  <Box
+                    key={col}
+                    sx={{
+                      backgroundColor: '#F4F3EF',
+                      border: '1px solid #D6D3CC',
+                      borderRadius: '4px',
+                      px: 1,
+                      py: 0.4,
+                      fontSize: '12px',
+                      fontFamily: 'monospace',
+                      color: '#3D3B37',
+                    }}
+                  >
+                    {col}
+                  </Box>
+                ))}
+              </Box>
+
+              <Typography sx={{ fontSize: '12px', color: '#6B6862', lineHeight: 1.5 }}>
+                Role = company role (ARM, DI, Trainer…). Learner / Reviewer are set per group, not in this file.
+              </Typography>
+
+              <Button
+                variant="outlined"
+                onClick={handleDownloadTemplate}
+                sx={{
+                  alignSelf: 'flex-start',
+                  borderColor: '#D6D3CC',
+                  color: '#1F1E1C',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  borderRadius: '6px',
+                  px: 2,
+                  py: 0.8,
+                  '&:hover': {
+                    borderColor: '#E6873C',
+                    backgroundColor: '#FDF3E9',
+                    color: '#E6873C',
+                  },
+                }}
+              >
+                Download template
+              </Button>
+            </Paper>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* ======================================================== */}
+      {/* STEP 2: Validating and Processing View                    */}
+      {/* ======================================================== */}
+      {step === 2 && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 6,
+            my: 'auto',
+            border: '1px solid #D6D3CC',
+            borderRadius: '10px',
+            backgroundColor: '#FFFFFF',
+            textAlign: 'center',
+            maxWidth: 580,
+            mx: 'auto',
+            width: '100%',
+          }}
+        >
+          <CircularProgress sx={{ color: '#E6873C', mb: 3 }} size={52} thickness={4} />
+          <Typography variant="h6" sx={{ fontWeight: 600, color: '#1F1E1C', mb: 1 }}>
+            Validating and creating users…
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#6B6862', mb: 3 }}>
+            Verifying mandatory columns, formatting, and creating active accounts on Swadhaar.
+          </Typography>
+          <Box sx={{ width: '100%', mb: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={progressPercent}
+              sx={{
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: '#F4F3EF',
+                '& .MuiLinearProgress-bar': {
+                  backgroundColor: '#E6873C',
+                },
+              }}
+            />
+          </Box>
+          <Typography variant="caption" sx={{ color: '#6B6862' }}>
+            {progressPercent}% completed
+          </Typography>
+        </Paper>
+      )}
+
+      {/* ======================================================== */}
+      {/* STEP 3: Summary Results View                              */}
+      {/* ======================================================== */}
+      {step === 3 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+          {/* 3 Metric Summary Tiles matching Prototype */}
+          <Grid container spacing={2.5}>
+            {/* Tile 1: Rows in file */}
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: '10px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #D6D3CC',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                }}
+              >
+                <Typography sx={{ fontSize: '13px', color: '#6B6862', fontWeight: 500 }}>
+                  Rows in file
+                </Typography>
+                <Typography sx={{ fontSize: '30px', fontWeight: 700, color: '#1F1E1C' }}>
+                  {parsedRows.length}
+                </Typography>
+                <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
+                  Total records detected in file
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Tile 2: Users created (Green) */}
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: '10px',
+                  backgroundColor: '#F6FBF7',
+                  border: '1.5px solid #86B896',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                }}
+              >
+                <Typography sx={{ fontSize: '13px', color: '#1D5B34', fontWeight: 600 }}>
+                  Users created
+                </Typography>
+                <Typography sx={{ fontSize: '30px', fontWeight: 700, color: '#1D5B34' }}>
+                  {createdCount}
+                </Typography>
+                <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
+                  Welcome email / SMS sent to each
+                </Typography>
+              </Paper>
+            </Grid>
+
+            {/* Tile 3: Rows failed (Red) */}
+            <Grid item xs={12} md={4}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  borderRadius: '10px',
+                  backgroundColor: '#FDF6F6',
+                  border: '1.5px solid #E3A3A3',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                }}
+              >
+                <Typography sx={{ fontSize: '13px', color: '#8A1C1C', fontWeight: 600 }}>
+                  Rows failed
+                </Typography>
+                <Typography sx={{ fontSize: '30px', fontWeight: 700, color: '#8A1C1C' }}>
+                  {failedRows.length}
+                </Typography>
+                <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
+                  Not created — see reasons below
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          {/* Failed Rows Table Section (if any failures) */}
+          {failedRows.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 1.8,
+                  flexWrap: 'wrap',
+                  gap: 1.5,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Typography variant="h6" sx={{ fontSize: '18px', fontWeight: 600, color: '#1F1E1C' }}>
+                    Failed rows
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      backgroundColor: '#FEF3C7',
+                      color: '#B45309',
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      fontWeight: 600,
+                      px: 1,
+                      py: 0.3,
+                      borderRadius: '4px',
+                    }}
+                  >
+                    PROPOSED
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  <Button
+                    variant="outlined"
+                    onClick={handleDownloadFailedRows}
+                    sx={{
+                      borderColor: '#D6D3CC',
+                      color: '#1F1E1C',
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      fontSize: '13px',
+                      borderRadius: '6px',
+                      height: 36,
+                      px: 2,
+                      backgroundColor: '#FFFFFF',
+                      '&:hover': {
+                        backgroundColor: '#F9FAFB',
+                        borderColor: '#9CA3AF',
+                      },
+                    }}
+                  >
+                    Download failed rows
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={handleResetForCorrection}
+                    sx={{
+                      borderColor: '#D6D3CC',
+                      color: '#1F1E1C',
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      fontSize: '13px',
+                      borderRadius: '6px',
+                      height: 36,
+                      px: 2,
+                      backgroundColor: '#FFFFFF',
+                      '&:hover': {
+                        borderColor: '#E6873C',
+                        backgroundColor: '#FDF3E9',
+                        color: '#E6873C',
+                      },
+                    }}
+                  >
+                    Upload corrected file
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Table */}
+              <Paper
+                elevation={0}
+                sx={{
+                  border: '1px solid #D6D3CC',
+                  borderRadius: '8px',
+                  backgroundColor: '#FFFFFF',
+                  overflow: 'hidden',
+                }}
+              >
+                <Table size="medium">
+                  <TableHead sx={{ backgroundColor: '#F9FAFB' }}>
+                    <TableRow>
+                      <TableCell sx={{ width: '80px', fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
+                        Row
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
+                        Employee ID
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
+                        Email
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
+                        Reason for failure
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {failedRows.map((fail, index) => (
+                      <TableRow
+                        key={`fail-${index}`}
+                        sx={{
+                          '&:last-child td': { borderBottom: 0 },
+                          '&:hover': { backgroundColor: '#FDFBF9' },
+                        }}
+                      >
+                        <TableCell sx={{ fontSize: '13px', color: '#1F1E1C', fontWeight: 500 }}>
+                          #{fail.rowNum}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '13px', color: '#1F1E1C' }}>
+                          {fail.employeeId}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '13px', color: '#1F1E1C' }}>
+                          {fail.email}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: '13px', color: '#DC2626', fontWeight: 500 }}>
+                          {fail.reason}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Paper>
+            </Box>
+          )}
+        </Box>
+      )}
+
+      {/* ======================================================== */}
+      {/* Bottom Actions Bar matching Prototype                    */}
+      {/* ======================================================== */}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: 1.5,
+          mt: 'auto',
+          pt: 4,
+        }}
+      >
+        {step === 1 && (
+          <>
+            <Button
+              variant="outlined"
+              onClick={() => router.push('/users')}
+              sx={{
+                borderColor: '#D6D3CC',
+                color: '#1F1E1C',
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '14px',
+                borderRadius: '6px',
+                height: 38,
+                px: 2.5,
+                backgroundColor: '#FFFFFF',
+                '&:hover': {
+                  backgroundColor: '#F9FAFB',
+                  borderColor: '#9CA3AF',
+                },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              disabled={!selectedFile || parsedRows.length === 0}
+              onClick={handleValidateAndCreate}
+              sx={{
+                backgroundColor: '#E6873C',
+                color: '#FFFFFF',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '14px',
+                borderRadius: '6px',
+                height: 38,
+                px: 2.5,
+                boxShadow: 'none',
+                '&:hover': {
+                  backgroundColor: '#C66C23',
+                  boxShadow: 'none',
+                },
+                '&.Mui-disabled': {
+                  backgroundColor: '#E5E7EB',
+                  color: '#9CA3AF',
+                },
+              }}
+            >
+              Validate and create users
+            </Button>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <Button
+              variant="outlined"
+              onClick={() => router.push('/users')}
+              sx={{
+                borderColor: '#D6D3CC',
+                color: '#1F1E1C',
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '14px',
+                borderRadius: '6px',
+                height: 38,
+                px: 2.5,
+                backgroundColor: '#FFFFFF',
+                '&:hover': {
+                  backgroundColor: '#F9FAFB',
+                  borderColor: '#9CA3AF',
+                },
+              }}
+            >
+              View created users
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => router.push('/users')}
+              sx={{
+                backgroundColor: '#E6873C',
+                color: '#FFFFFF',
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '14px',
+                borderRadius: '6px',
+                height: 38,
+                px: 3,
+                boxShadow: 'none',
+                '&:hover': {
+                  backgroundColor: '#C66C23',
+                  boxShadow: 'none',
+                },
+              }}
+            >
+              Done
+            </Button>
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+export const getStaticProps = async ({ locale }: { locale: string }) => {
+  return {
+    props: {
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+    },
+  };
+};

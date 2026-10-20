@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import {
   Box,
   Typography,
@@ -15,10 +16,12 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import SDBVHierarchyFilter, { SDBVFilterValues } from '@/components/common/SDBVHierarchyFilter';
 import SwadhaarDataTable, { ColumnDef } from '@/components/common/SwadhaarDataTable';
+import CreateUserModal from '@/components/common/CreateUserModal';
 import { getUserList } from '@/services/UserService';
 
-interface UserRowItem {
+export interface UserRowItem {
   id: string;
+  userId: string;
   fullName: string;
   email: string;
   role: string;
@@ -26,9 +29,21 @@ interface UserRowItem {
   branch: string;
   program: string;
   status: string;
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
+  username?: string;
+  mobile?: string;
+  phone?: string;
+  employeeId?: string;
+  gender?: string;
+  state?: string;
+  district?: string;
+  rawUser?: any;
 }
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<UserRowItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -52,7 +67,11 @@ export default function UsersPage() {
 
   // Action menu state for row actions
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
-  const [, setActiveUser] = useState<UserRowItem | null>(null);
+  const [activeUser, setActiveUser] = useState<UserRowItem | null>(null);
+
+  // Create & Edit modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -97,24 +116,92 @@ export default function UsersPage() {
           setAvailableRoles((prev) => Array.from(new Set([...prev, ...apiRoles])));
         }
 
+        const toStr = (val: any): string => (val !== null && val !== undefined ? String(val) : '');
+
         const mappedUsers: UserRowItem[] = rawList.map((u: any, idx: number) => {
+          const userId = toStr(u.userId || u.id || `user-${idx}`);
+          const fn = toStr(u.firstName);
+          const ln = toStr(u.lastName);
+          const mn = toStr(u.middleName);
+          const uUsername = toStr(u.username);
           const name =
-            u.name ||
-            `${u.firstName || ''} ${u.lastName || ''}`.trim() ||
-            (u.username ? u.username : '-');
-          const email = u.email || (u.username ? `${u.username}@swadhaar.org` : '-');
-          const actualRole = u.role || '-';
+            toStr(u.name) ||
+            [fn, mn, ln].filter(Boolean).join(' ') ||
+            uUsername ||
+            '-';
+          const email = u.email && u.email !== '-' ? toStr(u.email) : '-';
+          const actualRole = toStr(u.role || u.tenantData?.[0]?.roleName) || '-';
+
+          // Extract phone/mobile as clean string
+          const rawMobile = toStr(u.mobile || u.phone);
+          const mobile = rawMobile || (/^\d{10}$/.test(uUsername) ? uUsername : '');
+
+          // Extract employeeId as clean string
+          const rawEmpId = toStr(u.employeeId);
+          const employeeId =
+            rawEmpId ||
+            (!/^\d{10}$/.test(uUsername) && uUsername ? uUsername : '');
+
+          // Extract location fields
+          let userState = toStr(u.state);
+          let userDistrict = toStr(u.district);
+          let userBranch = toStr(u.branch || u.block);
+          if (Array.isArray(u.customFields)) {
+            const stateField = u.customFields.find(
+              (cf: any) =>
+                cf.fieldId === '800265b1-9058-482a-94f4-726197e1dfe4' ||
+                cf.label?.toLowerCase() === 'state' ||
+                cf.name?.toLowerCase() === 'state'
+            );
+            if (stateField && stateField.value?.[0]) {
+              userState = toStr(stateField.value[0]);
+            }
+            const districtField = u.customFields.find(
+              (cf: any) =>
+                cf.label?.toLowerCase() === 'district' ||
+                cf.name?.toLowerCase() === 'district'
+            );
+            if (districtField && districtField.value?.[0]) {
+              userDistrict = String(districtField.value[0]);
+            }
+            const branchField = u.customFields.find(
+              (cf: any) =>
+                cf.label?.toLowerCase() === 'branch' ||
+                cf.label?.toLowerCase() === 'block' ||
+                cf.name?.toLowerCase() === 'branch' ||
+                cf.name?.toLowerCase() === 'block'
+            );
+            if (branchField && branchField.value?.[0]) {
+              userBranch = String(branchField.value[0]);
+            }
+          }
 
           return {
-            id: u.userId || `user-${idx}`,
+            id: userId,
+            userId: userId,
             fullName: name,
+            firstName: u.firstName || '',
+            lastName: u.lastName || '',
+            middleName: u.middleName || '',
+            username: u.username || '',
             email: email,
             role: actualRole,
+            mobile: mobile,
+            phone: mobile,
+            employeeId: employeeId,
+            gender: u.gender || '',
+            state: userState,
+            district: userDistrict,
+            branch: userBranch && userBranch !== '[Branch]' ? userBranch : '',
+            program: u.program && u.program !== '[Program]' ? u.program : '',
             stateDistrict:
-              u.state && u.district ? `${u.state} · ${u.district}` : '[State] · [District]',
-            branch: u.branch || '[Branch]',
-            program: u.program || '[Program]',
+              u.state && u.district
+                ? `${u.state} · ${u.district}`
+                : userState
+                  ? `${userState}`
+                  : '[State] · [District]',
             status: u.status || 'Active',
+            rawUser: u,
           };
         });
 
@@ -155,7 +242,11 @@ export default function UsersPage() {
 
   const handleCloseActionMenu = () => {
     setMenuAnchorEl(null);
-    setActiveUser(null);
+  };
+
+  const handleEditClick = () => {
+    setMenuAnchorEl(null);
+    setIsEditModalOpen(true);
   };
 
   // Status chip colors matching exact user specification
@@ -324,8 +415,9 @@ export default function UsersPage() {
           <Button
             variant="outlined"
             startIcon={<FileUploadOutlinedIcon />}
+            onClick={() => router.push('/users/bulk-upload')}
             sx={{
-              borderColor: '#D1D5DB',
+              borderColor: '#D4752A',
               color: '#374151',
               fontWeight: 600,
               fontSize: '13px',
@@ -345,8 +437,9 @@ export default function UsersPage() {
           <Button
             variant="contained"
             startIcon={<PersonAddAlt1Icon />}
+            onClick={() => setIsCreateModalOpen(true)}
             sx={{
-              backgroundColor: '#1F1F1E',
+              backgroundColor: '#D4752A',
               color: '#FFFFFF',
               fontWeight: 600,
               fontSize: '13px',
@@ -405,21 +498,6 @@ export default function UsersPage() {
           Showing {totalCount > 0 ? page * rowsPerPage + 1 : 0}–
           {Math.min((page + 1) * rowsPerPage, totalCount)} of {totalCount} users
         </Typography>
-
-        <Box
-          sx={{
-            border: '1px dashed #9CA3AF',
-            borderRadius: '4px',
-            px: 1.2,
-            py: 0.4,
-            display: 'inline-flex',
-            alignItems: 'center',
-          }}
-        >
-          <Typography sx={{ fontSize: '11px', color: '#6B7280', fontWeight: 500 }}>
-            PROPOSAL · District / Branch / Program filters here too
-          </Typography>
-        </Box>
       </Box>
 
       {/* 4. Common Table Component: SwadhaarDataTable */}
@@ -462,7 +540,7 @@ export default function UsersPage() {
           View details
         </MenuItem>
         <MenuItem
-          onClick={handleCloseActionMenu}
+          onClick={handleEditClick}
           sx={{ fontSize: '13px', py: 0.8, color: '#1F2937', fontWeight: 500 }}
         >
           Edit
@@ -480,6 +558,29 @@ export default function UsersPage() {
           Delete
         </MenuItem>
       </Menu>
+
+      {/* 6. Create User Modal */}
+      <CreateUserModal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSuccess={fetchUsers}
+        availableRoles={availableRoles}
+      />
+
+      {/* 7. Edit User Modal */}
+      {activeUser && (
+        <CreateUserModal
+          open={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setActiveUser(null);
+          }}
+          onSuccess={fetchUsers}
+          availableRoles={availableRoles}
+          initialData={activeUser}
+          isEdit={true}
+        />
+      )}
     </Box>
   );
 }

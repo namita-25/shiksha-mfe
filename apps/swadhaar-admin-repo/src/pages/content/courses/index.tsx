@@ -78,29 +78,24 @@ export default function CoursesPage() {
     });
   }, [debouncedSearch]);
 
-  // Fetch courses from composite search API
+  // Fetch courses from Aspire LMS search API
   const fetchCourses = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       // Determine status filter based on active tab
-      let statusFilter: string[] = ['Live', 'live'];
-      if (statusTab === 'all') {
-        statusFilter = ['Live', 'live', 'Draft', 'draft'];
-      } else if (statusTab === 'published') {
-        statusFilter = ['Live', 'live'];
+      let statusParam: string | undefined = undefined;
+      if (statusTab === 'published') {
+        statusParam = 'published';
       } else if (statusTab === 'draft') {
-        statusFilter = ['Draft', 'draft'];
+        statusParam = 'unpublished';
       }
 
       const params: CourseSearchParams = {
         query: debouncedSearch.trim(),
         limit: rowsPerPage,
         offset: page * rowsPerPage,
-        filters: {
-          status: statusFilter,
-          primaryCategory: ['Course'],
-        },
+        status: statusParam,
       };
 
       const response = await getCourseList(params);
@@ -122,7 +117,7 @@ export default function CoursesPage() {
       }));
     } catch (err: any) {
       console.error('Error fetching courses:', err);
-      setError('Failed to fetch courses from Sunbird server. Please try again.');
+      setError('Failed to fetch courses from LMS server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -171,7 +166,7 @@ export default function CoursesPage() {
             </Typography>
           )}
           <Link
-            href={`/content/courses/${row.identifier}`}
+            href={`/content/courses/${row.courseId || row.identifier}`}
             style={{ textDecoration: 'none' }}
           >
             <Typography
@@ -188,7 +183,7 @@ export default function CoursesPage() {
                 },
               }}
             >
-              {row.cleanTitle || row.name}
+              {row.cleanTitle || row.title || row.name}
             </Typography>
           </Link>
         </Box>
@@ -201,9 +196,9 @@ export default function CoursesPage() {
       minWidth: 100,
       render: (row) => {
         const count =
-          row.leafNodesCount !== undefined
-            ? Math.min(row.leafNodesCount, 7)
-            : row.childNodes?.length || '—';
+          row.moduleCount !== undefined
+            ? `${row.moduleCount} modules`
+            : (row.leafNodesCount !== undefined ? row.leafNodesCount : (row.childNodes?.length || '—'));
         return (
           <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F1E1C', fontSize: '13px' }}>
             {count}
@@ -217,7 +212,7 @@ export default function CoursesPage() {
       minWidth: 130,
       render: (row) => (
         <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '13px' }}>
-          {row.formattedDuration || '—'}
+          {row.enrolledUsersCount !== undefined ? `${row.enrolledUsersCount.toLocaleString()} enrolled` : (row.formattedDuration || '—')}
         </Typography>
       ),
     },
@@ -268,7 +263,7 @@ export default function CoursesPage() {
           <Tooltip title="Open Course Structure">
             <IconButton
               size="small"
-              onClick={() => router.push(`/content/courses/${row.identifier}`)}
+              onClick={() => router.push(`/content/courses/${row.courseId || row.identifier}`)}
               sx={{
                 color: '#1F1E1C',
                 border: '1px solid #D6D3CC',
@@ -289,7 +284,7 @@ export default function CoursesPage() {
           <Tooltip title="Edit details">
             <IconButton
               size="small"
-              onClick={() => router.push(`/content/courses/${row.identifier}`)}
+              onClick={() => router.push(`/content/courses/${row.courseId || row.identifier}`)}
               sx={{
                 color: '#6B6862',
                 border: '1px solid #D6D3CC',

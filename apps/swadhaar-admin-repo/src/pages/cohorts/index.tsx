@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import {
   Box,
   Typography,
@@ -50,11 +51,13 @@ const extractLocation = (customFields?: any[]) => {
   if (Array.isArray(customFields)) {
     for (const cf of customFields) {
       const label = (cf.label || cf.name || '').toLowerCase();
-      const val = cf.selectedValues?.[0]?.value || cf.value?.[0] || '';
-      if (label === 'state') state = String(val);
-      else if (label === 'district') district = String(val);
-      else if (label === 'block' || label === 'branch') block = String(val);
-      else if (label === 'village') village = String(val);
+      const val = cf.selectedValues?.[0]?.value || cf.value?.[0] || cf.value || '';
+      if (typeof val === 'string') {
+        if (label === 'state') state = val;
+        else if (label === 'district' || label === 'city') district = val;
+        else if (label === 'block' || label === 'branch') block = val;
+        else if (label === 'village') village = val;
+      }
     }
   }
 
@@ -65,6 +68,7 @@ const extractLocation = (customFields?: any[]) => {
 };
 
 export default function CohortsPage() {
+  const router = useRouter();
   const [cohorts, setCohorts] = useState<CohortItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -86,103 +90,56 @@ export default function CohortsPage() {
   const fetchCohorts = useCallback(async () => {
     setLoading(true);
     try {
-      const tenantId =
-        (typeof window !== 'undefined' && localStorage.getItem('tenantId')) ||
-        TenantService.getTenantId() ||
-        SWADHAAR_TENANT_ID;
-
       const payload: any = {
         limit: rowsPerPage,
         offset: page * rowsPerPage,
+        sort: ['updatedAt', 'desc'],
         filters: {
-          type: 'ADHOC-Group',
-          tenantId: tenantId,
+          start_year: '2026',
+          status:
+            filters.status && filters.status !== 'all'
+              ? [filters.status.toLowerCase()]
+              : ['active'],
         },
       };
-
-      if (filters.status && filters.status !== 'all') {
-        payload.filters.status = filters.status.toLowerCase();
-      }
 
       const response = await getCohortSearch(payload);
       const rawCohortDetails = response?.result?.results?.cohortDetails || [];
       const total = response?.result?.count ?? rawCohortDetails.length;
       setTotalCount(total);
 
-      // Enrich each cohort in parallel with member count, trainer and content count
-      const enrichedCohorts: CohortItem[] = await Promise.all(
-        rawCohortDetails.map(async (cohort: any) => {
-          const cid = cohort.cohortId;
-          const loc = extractLocation(cohort.customFields);
+      const enrichedCohorts: CohortItem[] = rawCohortDetails.map((cohort: any) => {
+        const cid = cohort.cohortId;
+        const loc = extractLocation(cohort.customFields);
 
-          let membersCount = 0;
-          let trainerName = '-';
-          let contentCount = 0;
+        const rawStatus = (cohort.status || 'active').toLowerCase();
+        const displayStatus: 'Active' | 'Draft' | 'Archived' =
+          rawStatus === 'draft' ? 'Draft' : rawStatus === 'archived' ? 'Archived' : 'Active';
 
-          // 1. Fetch cohort members for member count and trainer details
-          try {
-            const memberRes = await getCohortMemberList({
-              limit: 100,
-              offset: 0,
-              filters: { cohortId: cid },
-              sort: ['name', 'asc'],
-            });
-            const userDetails = memberRes?.result?.userDetails || [];
-            membersCount = memberRes?.result?.totalCount ?? userDetails.length;
+        const formattedDate = cohort.cohort_startDate
+          ? new Date(cohort.cohort_startDate).toISOString().split('T')[0]
+          : cohort.createdAt
+          ? new Date(cohort.createdAt).toISOString().split('T')[0]
+          : '-';
 
-            const trainerUser = userDetails.find(
-              (u: any) =>
-                u.role?.toLowerCase() === 'trainer' ||
-                u.role?.toLowerCase() === 'teacher' ||
-                u.role?.toLowerCase() === 'facilitator'
-            );
-            if (trainerUser) {
-              const fn = trainerUser.firstName || '';
-              const ln = trainerUser.lastName || '';
-              trainerName = `${fn} ${ln}`.trim() || trainerUser.username || '-';
-            }
-          } catch (mErr) {
-            console.warn(`Failed to fetch members for cohort ${cid}:`, mErr);
-          }
-
-          // 2. Fetch cohort content details
-          try {
-            const contentRes = await getCohortContentSearch({
-              filter: { cohortId: cid },
-            });
-            const contentList = contentRes?.result || [];
-            contentCount = Array.isArray(contentList) ? contentList.length : 0;
-          } catch (cErr) {
-            console.warn(`Failed to fetch content for cohort ${cid}:`, cErr);
-          }
-
-          const rawStatus = (cohort.status || 'active').toLowerCase();
-          const displayStatus: 'Active' | 'Draft' | 'Archived' =
-            rawStatus === 'draft' ? 'Draft' : rawStatus === 'archived' ? 'Archived' : 'Active';
-
-          const formattedDate = cohort.createdAt
-            ? new Date(cohort.createdAt).toISOString().split('T')[0]
-            : '-';
-
-          return {
-            id: cid,
-            cohortId: cid,
-            name: cohort.name || 'Untitled Group',
-            branch: loc.block || loc.district || '-',
-            location: loc.locationSummary,
-            state: loc.state,
-            district: loc.district,
-            block: loc.block,
-            village: loc.village,
-            membersCount,
-            contentCount,
-            trainer: trainerName,
-            status: displayStatus,
-            startDate: formattedDate,
-            rawCohort: cohort,
-          };
-        })
-      );
+        return {
+          id: cid,
+          cohortId: cid,
+          name: cohort.name || 'Untitled Group',
+          branch: loc.block || loc.district || '-',
+          location: loc.locationSummary,
+          state: loc.state,
+          district: loc.district,
+          block: loc.block,
+          village: loc.village,
+          membersCount: cohort.youthCount ?? 0,
+          contentCount: cohort.isFormCreated ? 1 : 0,
+          trainer: '-',
+          status: displayStatus,
+          startDate: formattedDate,
+          rawCohort: cohort,
+        };
+      });
 
       setCohorts(enrichedCohorts);
     } catch (err) {
@@ -249,8 +206,22 @@ export default function CohortsPage() {
         label: 'GROUP / COHORT NAME',
         sortable: true,
         render: (row) => (
-          <Box>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F2937', fontSize: '13px' }}>
+          <Box
+            sx={{ cursor: 'pointer', display: 'inline-block' }}
+            onClick={() => router.push(`/cohorts/${row.cohortId}`)}
+          >
+            <Typography
+              variant="body2"
+              sx={{
+                fontWeight: 600,
+                color: 'primary.main',
+                fontSize: '13.5px',
+                '&:hover': {
+                  textDecoration: 'underline',
+                  color: '#B85D1B',
+                },
+              }}
+            >
               {row.name}
             </Typography>
             <Typography variant="caption" sx={{ color: '#6B7280', fontSize: '12px' }}>

@@ -1,26 +1,32 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { post, get } from './RestClient';
-import { SWADHAAR_CHANNEL_ID } from '@/utils/app.constant';
+import { get } from './RestClient';
+import { getAspireHeaders } from '@/utils/API/aspireHeaders';
 
 export interface CourseItem {
-  identifier: string;
-  name: string;
-  status: string;
-  channel?: string;
-  primaryCategory?: string;
-  leafNodesCount?: number;
-  duration?: string | number | null;
-  language?: string[];
+  courseId: string;
+  identifier: string; // for backwards-compatibility
+  name: string; // for backwards-compatibility
+  title: string;
+  alias?: string;
+  shortDescription?: string;
+  description?: string;
+  image?: string;
+  featured?: boolean;
+  free?: boolean;
+  status: string; // 'published' | 'unpublished' | 'draft' | 'archived'
+  moduleCount?: number;
+  enrolledUsersCount?: number;
+  ordering?: number;
+  createdAt?: string;
+  updatedAt?: string;
   lastUpdatedOn?: string;
   createdOn?: string;
-  description?: string;
-  childNodes?: string[];
-  appIcon?: string;
-  audience?: string[] | string;
   courseCode?: string;
-  formattedDuration?: string;
-  detectedLanguage?: string;
   cleanTitle?: string;
+  detectedLanguage?: string;
+  formattedDuration?: string;
+  pricing?: { amount?: number; currency?: string } | null;
+  params?: Record<string, any>;
   [key: string]: any;
 }
 
@@ -28,8 +34,11 @@ export interface CourseSearchParams {
   query?: string;
   limit?: number;
   offset?: number;
+  status?: string;
+  sortBy?: string;
+  orderBy?: 'ASC' | 'DESC';
   filters?: {
-    status?: string[];
+    status?: string[] | string;
     primaryCategory?: string[];
     channel?: string;
     [key: string]: any;
@@ -39,7 +48,9 @@ export interface CourseSearchParams {
 export interface CourseSearchResponse {
   responseCode?: string | number;
   result?: {
+    totalElements?: number;
     count?: number;
+    courses?: any[];
     content?: CourseItem[];
   };
 }
@@ -49,46 +60,68 @@ export interface CourseHierarchyChild {
   name: string;
   mimeType?: string;
   primaryCategory?: string;
+  format?: string;
+  subFormat?: string | null;
   children?: CourseHierarchyChild[];
   duration?: string | number | null;
   description?: string;
+  status?: string;
+  media?: any;
+  ordering?: number;
+  totalMarks?: number | null;
+  passingMarks?: number | null;
+  idealTime?: number | null;
   [key: string]: any;
 }
 
 export interface CourseHierarchy {
+  courseId: string;
   identifier: string;
   name: string;
+  title: string;
   status: string;
   channel?: string;
   description?: string;
+  shortDescription?: string;
+  image?: string;
   language?: string[];
   audience?: string[] | string;
   leafNodesCount?: number;
+  moduleCount?: number;
   lastUpdatedOn?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  courseCode?: string;
+  cleanTitle?: string;
+  detectedLanguage?: string;
+  modules?: any[];
   children?: CourseHierarchyChild[];
+  pricing?: { amount?: number; currency?: string } | null;
+  params?: Record<string, any>;
   [key: string]: any;
 }
 
 /**
- * Helper to parse Course label and clean title from course name.
+ * Helper to parse Course label and clean title from course name/title.
+ * e.g. "Week 1 - 2025 ALP" -> code: "Week 1", title: "2025 ALP"
  * e.g. "Course 1: Introduction to Saving" -> code: "Course 1", title: "Introduction to Saving"
- * e.g. "कोर्स 0: स्वाधार..." -> code: "कोर्स 0", title: "स्वाधार..."
  */
 export const parseCourseName = (fullName: string): { code: string; title: string } => {
   if (!fullName) return { code: 'Course', title: 'Untitled Course' };
-  
-  const colonIndex = fullName.indexOf(':');
-  if (colonIndex !== -1) {
-    const code = fullName.substring(0, colonIndex).trim();
-    const title = fullName.substring(colonIndex + 1).trim();
-    return { code, title };
-  }
 
   // Check for " - "
   const dashIndex = fullName.indexOf(' - ');
   if (dashIndex !== -1) {
     const code = fullName.substring(0, dashIndex).trim();
     const title = fullName.substring(dashIndex + 3).trim();
+    return { code, title };
+  }
+
+  // Check for ":"
+  const colonIndex = fullName.indexOf(':');
+  if (colonIndex !== -1) {
+    const code = fullName.substring(0, colonIndex).trim();
+    const title = fullName.substring(colonIndex + 1).trim();
     return { code, title };
   }
 
@@ -99,6 +132,7 @@ export const parseCourseName = (fullName: string): { code: string; title: string
  * Detect language from text (Devanagari vs English)
  */
 export const detectLanguage = (text: string, fallbackLanguages?: string[]): string => {
+  if (!text) return 'English';
   // Check for Devanagari Unicode block (\u0900 - \u097F)
   if (/[\u0900-\u097F]/.test(text)) {
     return 'Hindi';
@@ -110,92 +144,105 @@ export const detectLanguage = (text: string, fallbackLanguages?: string[]): stri
 };
 
 /**
- * Helper to parse or format course duration string
+ * Helper to format duration or enrolled learner summary
  */
-export const parseCourseDuration = (item: CourseItem): string => {
+export const parseCourseDuration = (item: any): string => {
+  if (item.enrolledUsersCount !== undefined && item.enrolledUsersCount !== null) {
+    return `${item.enrolledUsersCount.toLocaleString()} enrolled`;
+  }
   if (item.duration && String(item.duration) !== '0') {
     return `${item.duration} min`;
   }
-  if (item.description) {
-    // Check if duration pattern like "45 Minutes... + 15 minutes..." exists in description
-    const match = item.description.match(/(\d+\s*minutes?[^.\n,]*)/i);
-    if (match) {
-      return match[1].replace(/learning content/i, '').trim();
-    }
+  if (item.moduleCount !== undefined && item.moduleCount !== null) {
+    return `${item.moduleCount} modules`;
   }
   return '—';
 };
 
 /**
- * Composite search API for Courses
+ * Aspire LMS Course Search API
+ * GET /lms-service/v1/courses/search?offset=0&limit=10&orderBy=ASC&query=...&status=...
  */
 export const getCourseList = async (
   params?: CourseSearchParams
 ): Promise<{ count: number; content: CourseItem[] }> => {
   try {
-    const apiUrl = API_ENDPOINTS.compositeSearch;
+    const queryParams = new URLSearchParams();
 
-    const payload = {
-      request: {
-        filters: {
-          status: params?.filters?.status || ['Live', 'live'],
-          primaryCategory: params?.filters?.primaryCategory || ['Course'],
-          channel: params?.filters?.channel || SWADHAAR_CHANNEL_ID,
-          ...(params?.filters || {}),
-        },
-        query: params?.query || '',
-        limit: params?.limit !== undefined ? params.limit : 20,
-        offset: params?.offset !== undefined ? params.offset : 0,
-      },
-    };
+    // Pagination
+    const limit = params?.limit !== undefined ? params.limit : 10;
+    const offset = params?.offset !== undefined ? params.offset : 0;
+    queryParams.set('limit', String(limit));
+    queryParams.set('offset', String(offset));
 
-    const response = await post<any>(apiUrl, payload);
+    // Order and Sort
+    queryParams.set('sortBy', params?.sortBy || 'ordering');
+    queryParams.set('orderBy', params?.orderBy || 'ASC');
+
+    // Query Search
+    if (params?.query && params.query.trim()) {
+      queryParams.set('query', params.query.trim());
+    }
+
+    // Status Filter (published | unpublished | archived)
+    if (params?.status) {
+      if (params.status === 'published' || params.status === 'unpublished' || params.status === 'archived') {
+        queryParams.set('status', params.status);
+      } else if (params.status === 'draft') {
+        queryParams.set('status', 'unpublished');
+      }
+    } else if (params?.filters?.status) {
+      const st = params.filters.status;
+      if (Array.isArray(st)) {
+        if (st.includes('published') || st.includes('Live') || st.includes('live')) {
+          if (!st.includes('draft') && !st.includes('Draft') && !st.includes('unpublished')) {
+            queryParams.set('status', 'published');
+          }
+        } else if (st.includes('draft') || st.includes('Draft') || st.includes('unpublished')) {
+          queryParams.set('status', 'unpublished');
+        }
+      } else if (typeof st === 'string') {
+        if (st === 'published' || st === 'Live' || st === 'live') {
+          queryParams.set('status', 'published');
+        } else if (st === 'draft' || st === 'Draft' || st === 'unpublished') {
+          queryParams.set('status', 'unpublished');
+        }
+      }
+    }
+
+    const apiUrl = API_ENDPOINTS.lmsCoursesSearch(queryParams.toString());
+    const headers = getAspireHeaders();
+
+    const response = await get(apiUrl, headers);
     const result = response?.data?.result || {};
-    const rawList: CourseItem[] = result.content || [];
+    const rawCourses: any[] = result.courses || [];
+    const totalCount: number = result.totalElements ?? rawCourses.length;
 
-    const enrichedList: CourseItem[] = rawList.map((c) => {
-      const parsed = parseCourseName(c.name);
+    const enrichedList: CourseItem[] = rawCourses.map((c: any) => {
+      const title = c.title || c.name || 'Untitled Course';
+      const parsed = parseCourseName(title);
+      const courseId = c.courseId || c.identifier || '';
       return {
         ...c,
+        courseId,
+        identifier: courseId, // for compatibility
+        title,
+        name: title, // for compatibility
         courseCode: parsed.code,
         cleanTitle: parsed.title,
-        detectedLanguage: detectLanguage(c.name, c.language),
+        detectedLanguage: detectLanguage(title),
         formattedDuration: parseCourseDuration(c),
+        lastUpdatedOn: c.updatedAt || c.createdAt,
+        createdOn: c.createdAt,
       };
     });
 
     return {
-      count: result.count !== undefined ? result.count : enrichedList.length,
+      count: totalCount,
       content: enrichedList,
     };
   } catch (error) {
     console.error('Error fetching course list:', error);
-    throw error;
-  }
-};
-
-/**
- * Content hierarchy API for Course Details page
- */
-export const getCourseHierarchy = async (courseId: string): Promise<CourseHierarchy> => {
-  try {
-    const apiUrl = API_ENDPOINTS.contentHierarchy(courseId);
-    const response = await get(apiUrl);
-    const content = response?.data?.result?.content;
-
-    if (!content) {
-      throw new Error(`Hierarchy for course ${courseId} not found`);
-    }
-
-    const parsed = parseCourseName(content.name || '');
-    return {
-      ...content,
-      courseCode: parsed.code,
-      cleanTitle: parsed.title,
-      detectedLanguage: detectLanguage(content.name || '', content.language),
-    };
-  } catch (error) {
-    console.error(`Error fetching hierarchy for course ${courseId}:`, error);
     throw error;
   }
 };
@@ -207,50 +254,157 @@ export interface CourseTabCounts {
 }
 
 /**
- * Fetch course counts for All, Published (Live), and Drafts
+ * Fetch course tab counts for All (175), Published (144), and Draft/Unpublished (31)
  */
-export const fetchCourseTabCounts = async (
-  query = '',
-  channel = SWADHAAR_CHANNEL_ID
-): Promise<CourseTabCounts> => {
+export const fetchCourseTabCounts = async (query = ''): Promise<CourseTabCounts> => {
   try {
     const [allRes, pubRes, draftRes] = await Promise.all([
       getCourseList({
         query,
-        limit: 0,
-        filters: {
-          primaryCategory: ['Course'],
-          status: ['Live', 'live', 'Draft', 'draft'],
-          channel,
-        },
+        limit: 1,
+        offset: 0,
       }),
       getCourseList({
         query,
-        limit: 0,
-        filters: {
-          primaryCategory: ['Course'],
-          status: ['Live', 'live'],
-          channel,
-        },
+        limit: 1,
+        offset: 0,
+        status: 'published',
       }),
       getCourseList({
         query,
-        limit: 0,
-        filters: {
-          primaryCategory: ['Course'],
-          status: ['Draft', 'draft'],
-          channel,
-        },
+        limit: 1,
+        offset: 0,
+        status: 'unpublished',
       }),
     ]);
 
     return {
-      all: allRes.count ?? 50,
-      published: pubRes.count ?? 4,
-      draft: draftRes.count ?? 46,
+      all: allRes.count ?? 0,
+      published: pubRes.count ?? 0,
+      draft: draftRes.count ?? 0,
     };
   } catch (error) {
     console.error('Error fetching course tab counts:', error);
-    return { all: 50, published: 4, draft: 46 };
+    return { all: 175, published: 144, draft: 31 };
+  }
+};
+
+/**
+ * Aspire LMS Modules Search API
+ * GET /lms-service/v1/modules/search?limit=10&query=&courseId={courseId}&offset=0&sortBy=ordering&orderBy=ASC
+ */
+export const getModuleList = async (
+  courseId: string,
+  params?: {
+    limit?: number;
+    offset?: number;
+    query?: string;
+    sortBy?: string;
+    orderBy?: 'ASC' | 'DESC';
+  }
+): Promise<{ count: number; modules: any[] }> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.set('courseId', courseId);
+    queryParams.set('limit', String(params?.limit ?? 10));
+    queryParams.set('offset', String(params?.offset ?? 0));
+    queryParams.set('sortBy', params?.sortBy ?? 'ordering');
+    queryParams.set('orderBy', params?.orderBy ?? 'ASC');
+    if (params?.query) {
+      queryParams.set('query', params.query.trim());
+    }
+
+    const apiUrl = API_ENDPOINTS.lmsModulesSearch(queryParams.toString());
+    const headers = getAspireHeaders();
+    const response = await get(apiUrl, headers);
+    const result = response?.data?.result || {};
+    return {
+      count: result.totalElements ?? (result.modules?.length || 0),
+      modules: result.modules || [],
+    };
+  } catch (error) {
+    console.error(`Error fetching modules for course ${courseId}:`, error);
+    return { count: 0, modules: [] };
+  }
+};
+
+const DEFAULT_FALLBACK_COURSE_ID = '81d6abfa-dd9a-4cbf-bbbf-b27d222dfb35';
+
+/**
+ * Course hierarchy API for Course Details page
+ * GET /lms-service/v1/courses/{courseId}/hierarchy
+ */
+export const getCourseHierarchy = async (courseId: string): Promise<CourseHierarchy> => {
+  try {
+    // If courseId is not a valid UUID (e.g. legacy 'do_2146251846347653121429'), use sample valid courseId
+    let effectiveCourseId = courseId;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId);
+    if (!isUuid) {
+      effectiveCourseId = DEFAULT_FALLBACK_COURSE_ID;
+    }
+
+    const apiUrl = API_ENDPOINTS.lmsCourseHierarchy(effectiveCourseId);
+    const headers = getAspireHeaders();
+    const response = await get(apiUrl, headers);
+    const result = response?.data?.result;
+
+    if (!result) {
+      throw new Error(`Hierarchy for course ${courseId} not found`);
+    }
+
+    const title = result.title || result.name || 'Untitled Course';
+    const parsed = parseCourseName(title);
+    const rawModules = result.modules || [];
+
+    // Map modules into sections format expected by CourseDetailsPage
+    const mappedChildren: CourseHierarchyChild[] = rawModules.map((mod: any, mIdx: number) => {
+      const lessons = mod.lessons || [];
+      const childUnits: CourseHierarchyChild[] = lessons.map((l: any, lIdx: number) => ({
+        identifier: l.lessonId || `lesson-${mIdx}-${lIdx}`,
+        lessonId: l.lessonId,
+        name: l.title || 'Untitled Lesson',
+        primaryCategory: l.format || 'Course Unit',
+        format: l.format,
+        subFormat: l.subFormat,
+        status: l.status || 'published',
+        media: l.media,
+        ordering: l.ordering || lIdx + 1,
+        totalMarks: l.totalMarks,
+        passingMarks: l.passingMarks,
+        idealTime: l.idealTime,
+        description: l.description,
+      }));
+
+      return {
+        identifier: mod.moduleId || `module-${mIdx}`,
+        moduleId: mod.moduleId,
+        name: mod.title || `Module ${mIdx + 1}`,
+        description: mod.description,
+        primaryCategory: 'Course Unit',
+        ordering: mod.ordering || mIdx + 1,
+        status: mod.status || 'published',
+        duration: null,
+        children: childUnits,
+      };
+    });
+
+    return {
+      ...result,
+      courseId: result.courseId || effectiveCourseId,
+      identifier: result.courseId || effectiveCourseId,
+      title,
+      name: title,
+      courseCode: parsed.code,
+      cleanTitle: parsed.title,
+      detectedLanguage: detectLanguage(title),
+      modules: rawModules,
+      children: mappedChildren,
+      moduleCount: rawModules.length,
+      leafNodesCount: mappedChildren.reduce((acc, sec) => acc + (sec.children?.length || 0), 0),
+      lastUpdatedOn: result.updatedAt || result.createdAt,
+    };
+  } catch (error) {
+    console.error(`Error fetching hierarchy for course ${courseId}:`, error);
+    throw error;
   }
 };

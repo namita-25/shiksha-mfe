@@ -21,7 +21,9 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import Link from 'next/link';
+import ContentPreviewModal, { PreviewContentData } from '@/components/common/ContentPreviewModal';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import SwadhaarDataTable, { ColumnDef } from '@/components/common/SwadhaarDataTable';
@@ -57,6 +59,9 @@ export default function ContentLibraryPage() {
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [courseFilter, setCourseFilter] = useState<string>('all');
   const [languageFilter, setLanguageFilter] = useState<string>('all');
+
+  // Preview Modal state (Native in-app viewer, no external player/workspace MFE)
+  const [previewContent, setPreviewContent] = useState<PreviewContentData | null>(null);
 
   // Pagination
   const [page, setPage] = useState<number>(0);
@@ -247,6 +252,31 @@ export default function ContentLibraryPage() {
       minWidth: 110,
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
+          <Tooltip title={`View ${activeTab === 'videos' ? 'video' : 'PDF'}`}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                setPreviewContent({
+                  ...row,
+                  type: activeTab === 'videos' ? 'video' : 'pdf',
+                });
+              }}
+              sx={{
+                color: '#6B6862',
+                border: '1px solid #D6D3CC',
+                borderRadius: '6px',
+                width: 32,
+                height: 32,
+                '&:hover': {
+                  backgroundColor: '#FDF3E9',
+                  borderColor: '#E6873C',
+                  color: '#E6873C',
+                },
+              }}
+            >
+              <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Edit content">
             <IconButton
               size="small"
@@ -401,6 +431,31 @@ export default function ContentLibraryPage() {
       minWidth: 110,
       render: (row) => (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
+          <Tooltip title="Preview Assessment">
+            <IconButton
+              size="small"
+              onClick={() => {
+                setPreviewContent({
+                  ...row,
+                  type: 'assessment',
+                });
+              }}
+              sx={{
+                color: '#6B6862',
+                border: '1px solid #D6D3CC',
+                borderRadius: '6px',
+                width: 32,
+                height: 32,
+                '&:hover': {
+                  backgroundColor: '#FDF3E9',
+                  borderColor: '#E6873C',
+                  color: '#E6873C',
+                },
+              }}
+            >
+              <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Edit assessment">
             <IconButton
               size="small"
@@ -862,6 +917,13 @@ export default function ContentLibraryPage() {
             : 'Titles, section counts and durations from the course document table of contents.'}
         </Typography>
       </Box>
+
+      {/* In-App Native Preview Modal (PDF / Video / Assessment) */}
+      <ContentPreviewModal
+        open={Boolean(previewContent)}
+        onClose={() => setPreviewContent(null)}
+        content={previewContent}
+      />
     </Box>
   );
 }

@@ -300,7 +300,7 @@ export default function LearningPathsListPage() {
 
         <Button
           variant="contained"
-          startIcon={<AddCircleOutlineIcon />}
+          // startIcon={<AddCircleOutlineIcon />}
           onClick={() => router.push('/learning-paths/builder')}
           sx={{
             backgroundColor: '#E6873C',
@@ -347,12 +347,12 @@ export default function LearningPathsListPage() {
             prev.map((item) =>
               item.name === activePathTitle
                 ? {
-                    ...item,
-                    enrolled:
-                      type === 'groups'
-                        ? `${count} groups · [N] users`
-                        : `[N] groups · ${count} users`,
-                  }
+                  ...item,
+                  enrolled:
+                    type === 'groups'
+                      ? `${count} groups · [N] users`
+                      : `[N] groups · ${count} users`,
+                }
                 : item
             )
           );

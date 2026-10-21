@@ -41,6 +41,22 @@ import {
   parseCourseName,
 } from '@/services/CourseService';
 import LifecycleChip from '@/components/common/LifecycleChip';
+import ContentPreviewModal from '@/components/common/ContentPreviewModal';
+
+const getLessonIcon = (format?: string, subFormat?: string | null) => {
+  const f = (format || '').toLowerCase();
+  const sf = (subFormat || '').toLowerCase();
+  if (f === 'video' || sf.includes('youtube')) {
+    return <PlayCircleOutlineIcon sx={{ color: '#E6873C', fontSize: 20 }} />;
+  }
+  if (f === 'document' || sf.includes('pdf')) {
+    return <DescriptionOutlinedIcon sx={{ color: '#0284C7', fontSize: 20 }} />;
+  }
+  if (f === 'test' || sf.includes('quiz') || sf.includes('assessment') || sf.includes('feedback')) {
+    return <QuizOutlinedIcon sx={{ color: '#7C3AED', fontSize: 20 }} />;
+  }
+  return <PlayCircleOutlineIcon sx={{ color: '#E6873C', fontSize: 20 }} />;
+};
 
 export default function CourseDetailsPage() {
   const router = useRouter();
@@ -59,9 +75,8 @@ export default function CourseDetailsPage() {
   const [editTitle, setEditTitle] = useState('');
   const [editAudience, setEditAudience] = useState('');
 
-  // Add Section Modal State
-  const [isAddSectionModalOpen, setIsAddSectionModalOpen] = useState(false);
-  const [newSectionTitle, setNewSectionTitle] = useState('');
+  // Native In-App Preview Modal State (No external player/workspace MFE)
+  const [previewItem, setPreviewItem] = useState<any | null>(null);
 
   const fetchHierarchy = useCallback(async () => {
     if (!courseId) return;
@@ -73,7 +88,9 @@ export default function CourseDetailsPage() {
       const title = (router.query.title as string) || 'New Course';
       const audience = (router.query.audience as string) || 'New field trainers and Community Resource Persons';
       setCourse({
+        courseId: courseId,
         identifier: courseId,
+        title: title,
         name: title,
         status: 'Draft',
         audience: audience,
@@ -95,38 +112,25 @@ export default function CourseDetailsPage() {
     try {
       const data = await getCourseHierarchy(courseId);
       setCourse(data);
-      setEditTitle(data.name || '');
+      setEditTitle(data.title || data.name || '');
       setEditAudience(
         Array.isArray(data.audience)
           ? data.audience.join(', ')
-          : data.audience || 'field trainers'
+          : data.audience || 'Field trainers and learners'
       );
 
-      // Separate main numbered sections from course-level items (FAQs, Summary, Assessment, Transition)
+      // In Aspire LMS, course children are the modules, and module children are lessons
       const allChildren = data.children || [];
-      const mainSections: CourseHierarchyChild[] = [];
-      const levelItems: CourseHierarchyChild[] = [];
-
-      allChildren.forEach((child) => {
-        const nameLower = (child.name || '').toLowerCase();
-        if (
-          nameLower.includes('faq') ||
-          nameLower.includes('summary') ||
-          nameLower.includes('assessment') ||
-          nameLower.includes('transition') ||
-          nameLower.includes('questionset')
-        ) {
-          levelItems.push(child);
-        } else {
-          mainSections.push(child);
-        }
-      });
-
-      setSections(mainSections);
-      setCourseLevelItems(levelItems);
+      setSections(allChildren);
+      setCourseLevelItems([
+        { identifier: 'item-faq', name: 'Course FAQs', primaryCategory: 'Explanation' },
+        { identifier: 'item-summary', name: 'Course Summary', primaryCategory: 'Explanation' },
+        { identifier: 'item-assessment', name: 'Assessment', primaryCategory: 'Practice Question Set' },
+        { identifier: 'item-transition', name: 'Transition', primaryCategory: 'Explanation' },
+      ]);
     } catch (err: any) {
       console.error('Failed to load course hierarchy:', err);
-      setError('Unable to load course structure from server. Please verify your connection.');
+      setError('Unable to load course structure from LMS server. Please verify your connection.');
     } finally {
       setLoading(false);
     }
@@ -161,35 +165,6 @@ export default function CourseDetailsPage() {
       });
     }
     setIsEditModalOpen(false);
-  };
-
-  const handleAddSection = () => {
-    if (!newSectionTitle.trim()) return;
-    const newSection: CourseHierarchyChild = {
-      identifier: `sec-new-${Date.now()}`,
-      name: newSectionTitle,
-      primaryCategory: 'Course Unit',
-      children: [
-        {
-          identifier: `sub-1-${Date.now()}`,
-          name: 'HOOK',
-          primaryCategory: 'Course Unit',
-        },
-        {
-          identifier: `sub-2-${Date.now()}`,
-          name: 'Concept',
-          primaryCategory: 'Course Unit',
-        },
-        {
-          identifier: `sub-3-${Date.now()}`,
-          name: 'Analysis',
-          primaryCategory: 'Course Unit',
-        },
-      ],
-    };
-    setSections([...sections, newSection]);
-    setNewSectionTitle('');
-    setIsAddSectionModalOpen(false);
   };
 
   const handleDeleteSection = (secId: string) => {
@@ -283,7 +258,7 @@ export default function CourseDetailsPage() {
                     height: 24,
                   }}
                 />
-                <LifecycleChip state={course?.status || 'Live'} />
+                <LifecycleChip state={course?.status || 'published'} />
               </>
             )}
           </Box>
@@ -292,7 +267,7 @@ export default function CourseDetailsPage() {
             {loading ? (
               <Skeleton width={260} />
             ) : (
-              `Audience: ${audienceText} · ${languageText} · ${sections.length} sections`
+              `Audience: ${audienceText} · ${languageText} · ${sections.length} modules`
             )}
           </Typography>
         </Box>
@@ -331,7 +306,25 @@ export default function CourseDetailsPage() {
               height: 38,
               '&:hover': { borderColor: '#1F1E1C', backgroundColor: '#F9F9F8' },
             }}
-            onClick={() => alert(`Preview mode for: ${cleanTitle}`)}
+            onClick={() => {
+              // Preview first available lesson or course overview
+              const firstSection = sections[0];
+              const firstLesson = firstSection?.children?.[0];
+              if (firstLesson) {
+                setPreviewItem({
+                  name: firstLesson.name,
+                  type: firstLesson.format || firstLesson.subFormat || 'video',
+                  description: firstLesson.description || `${cleanTitle} · ${firstSection.name}`,
+                  duration: firstLesson.idealTime ? `${firstLesson.idealTime} min` : undefined,
+                });
+              } else {
+                setPreviewItem({
+                  name: cleanTitle,
+                  type: 'video',
+                  description: course?.description || 'Course overview preview.',
+                });
+              }
+            }}
           >
             Preview
           </Button>
@@ -368,8 +361,11 @@ export default function CourseDetailsPage() {
             <Button
               variant="outlined"
               size="small"
-              startIcon={<AddCircleOutlineIcon fontSize="small" />}
-              onClick={() => setIsAddSectionModalOpen(true)}
+              // startIcon={<AddCircleOutlineIcon fontSize="small" />}
+              onClick={() => {
+                const basePath = router.asPath.startsWith('/courses') ? '/courses' : '/content/courses';
+                router.push(`${basePath}/${courseId}/sections/create`);
+              }}
               sx={{
                 borderColor: '#D6D3CC',
                 color: '#1F1E1C',
@@ -495,13 +491,15 @@ export default function CourseDetailsPage() {
                           </Typography>
                           <Typography sx={{ fontSize: '13px', color: '#6B6862' }}>
                             {section.duration ? `${section.duration} min · ` : ''}
-                            {subUnitNames || `${childUnits.length} modules · Concept · Analysis`}
+                            {childUnits.length > 0
+                              ? `${childUnits.length} lessons · ${childUnits.slice(0, 3).map((u) => u.name).join(' · ')}`
+                              : (section.description?.replace(/<[^>]+>/g, '').trim() || 'Module content')}
                           </Typography>
                         </Box>
 
                         <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
                           <Chip
-                            label="Complete"
+                            label={section.status === 'published' ? 'Active' : (section.status || 'Active')}
                             size="small"
                             sx={{
                               backgroundColor: '#DCFCE7',
@@ -562,11 +560,11 @@ export default function CourseDetailsPage() {
                               mb: 1,
                             }}
                           >
-                            Section Units & Learning Assets ({childUnits.length})
+                            Module Lessons & Learning Assets ({childUnits.length})
                           </Typography>
                           {childUnits.length === 0 ? (
                             <Typography variant="body2" sx={{ color: '#8A867F', fontSize: '13px' }}>
-                              No sub-units found in this section.
+                              No lessons found in this module.
                             </Typography>
                           ) : (
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -585,26 +583,58 @@ export default function CourseDetailsPage() {
                                   }}
                                 >
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                    <PlayCircleOutlineIcon sx={{ color: '#E6873C', fontSize: 20 }} />
+                                    {getLessonIcon(unit.format, unit.subFormat)}
                                     <Box>
                                       <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
                                         {unit.name}
                                       </Typography>
                                       <Typography sx={{ fontSize: '11px', color: '#6B6862' }}>
-                                        {unit.primaryCategory || 'Course Unit'}
+                                        {unit.subFormat
+                                          ? unit.subFormat.replace('.', ' ').toUpperCase()
+                                          : (unit.format ? unit.format.toUpperCase() : (unit.primaryCategory || 'LESSON'))}
+                                        {unit.idealTime ? ` · ${unit.idealTime} min` : ''}
+                                        {unit.totalMarks ? ` · Marks: ${unit.passingMarks || 0}/${unit.totalMarks}` : ''}
                                       </Typography>
                                     </Box>
                                   </Box>
-                                  <Chip
-                                    label="Active"
-                                    size="small"
-                                    sx={{
-                                      backgroundColor: '#F3F4F6',
-                                      color: '#4B5563',
-                                      fontSize: '10px',
-                                      height: 20,
-                                    }}
-                                  />
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Chip
+                                      label={unit.status || 'Active'}
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: '#F3F4F6',
+                                        color: '#4B5563',
+                                        fontSize: '10px',
+                                        height: 20,
+                                      }}
+                                    />
+                                    <Tooltip title="Preview lesson">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => {
+                                          setPreviewItem({
+                                            name: unit.name,
+                                            type: unit.format || unit.subFormat || 'video',
+                                            description: unit.description || `${cleanTitle} · Lesson`,
+                                            duration: unit.idealTime ? `${unit.idealTime} min` : undefined,
+                                            totalMarks: unit.totalMarks,
+                                            passingMarks: unit.passingMarks,
+                                          });
+                                        }}
+                                        sx={{
+                                          color: '#6B6862',
+                                          width: 28,
+                                          height: 28,
+                                          '&:hover': {
+                                            backgroundColor: '#FDF3E9',
+                                            color: '#E6873C',
+                                          },
+                                        }}
+                                      >
+                                        <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Box>
                                 </Box>
                               ))}
                             </Box>
@@ -763,14 +793,22 @@ export default function CourseDetailsPage() {
                   <Typography variant="body2" sx={{ color: '#6B6862' }}>
                     Status
                   </Typography>
-                  <LifecycleChip state={course?.status || 'Live'} />
+                  <LifecycleChip state={course?.status || 'published'} />
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Typography variant="body2" sx={{ color: '#6B6862' }}>
-                    Unpublished changes
+                    Modules
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F1E1C' }}>
-                    1 section
+                    {sections.length} modules
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="body2" sx={{ color: '#6B6862' }}>
+                    Total Lessons
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F1E1C' }}>
+                    {sections.reduce((acc, s) => acc + (s.children?.length || 0), 0)} lessons
                   </Typography>
                 </Box>
               </Box>
@@ -852,38 +890,12 @@ export default function CourseDetailsPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Add Section Dialog */}
-      <Dialog open={isAddSectionModalOpen} onClose={() => setIsAddSectionModalOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, color: '#1F1E1C' }}>Add New Section</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
-          <TextField
-            fullWidth
-            label="Section Title (e.g. 1.5 · Advanced Savings Products)"
-            value={newSectionTitle}
-            onChange={(e) => setNewSectionTitle(e.target.value)}
-            size="small"
-            placeholder="e.g. 1.5 · Emergency Fund Planning"
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setIsAddSectionModalOpen(false)} sx={{ color: '#6B6862' }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleAddSection}
-            variant="contained"
-            disabled={!newSectionTitle.trim()}
-            sx={{
-              backgroundColor: '#E6873C',
-              color: '#FFFFFF',
-              fontWeight: 600,
-              '&:hover': { backgroundColor: '#C66C23' },
-            }}
-          >
-            Add Section
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Native In-App Content Preview Modal (No MFE required) */}
+      <ContentPreviewModal
+        open={Boolean(previewItem)}
+        onClose={() => setPreviewItem(null)}
+        content={previewItem}
+      />
     </Box>
   );
 }

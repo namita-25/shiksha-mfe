@@ -8,24 +8,30 @@ instance.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined' && window.localStorage) {
       const token = localStorage.getItem('token');
-      if (token && config.url && !config.url.endsWith('user/v1/auth/login')) {
+      if (token && config.url && !config.url.endsWith('user/v1/auth/login') && !config.headers.Authorization) {
         config.headers.Authorization = `Bearer ${token}`;
       }
       const academicYearId = localStorage.getItem('academicYearId') || SWADHAAR_ACADEMIC_YEAR_ID;
-      if (academicYearId) {
+      if (academicYearId && !config.headers.academicyearid) {
         config.headers.academicyearid = academicYearId;
       }
-    } else {
+    } else if (!config.headers.academicyearid) {
       config.headers.academicyearid = SWADHAAR_ACADEMIC_YEAR_ID;
     }
     
     const tenantId = TenantService.getTenantId();
     const channelId = TenantService.getChannelId();
 
-    // Standard headers across Sunbird / Shiksha MFE APIs
-    config.headers.tenantid = tenantId;
-    config.headers['X-Tenant-Id'] = tenantId;
-    config.headers['X-Channel-Id'] = channelId;
+    // Standard headers across Sunbird / Shiksha MFE APIs (preserve if already provided)
+    if (!config.headers.tenantid) {
+      config.headers.tenantid = tenantId;
+    }
+    if (!config.headers['X-Tenant-Id']) {
+      config.headers['X-Tenant-Id'] = tenantId;
+    }
+    if (!config.headers['X-Channel-Id']) {
+      config.headers['X-Channel-Id'] = channelId;
+    }
 
     return config;
   },
@@ -39,7 +45,7 @@ instance.interceptors.response.use(
     return response;
   },
   async (error) => {
-    if (error?.response?.status === 401 && typeof window !== 'undefined') {
+    if (error?.response?.status === 401 && typeof window !== 'undefined' && !error.config?.url?.includes('aspireleaders.org')) {
       window.location.href = '/logout';
     }
     return Promise.reject(error);

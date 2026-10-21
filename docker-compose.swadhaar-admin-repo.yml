@@ -6,8 +6,6 @@ services:
       dockerfile: Dockerfile.swadhaar-admin-repo
     ports:
       - '3004:3004'
-      - '4104:4104'
-      - '4106:4106'
     environment:
       - NODE_ENV=production
       - PORT=3004

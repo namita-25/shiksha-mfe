@@ -2,6 +2,18 @@
 
 Centralized administrative portal for Swadhaar FinAccess operations, managing regional training centers, batches, CFL/DI trainers, and learner progression through Swadhaar training modules.
 
+## Architecture: 100% Standalone (No MFEs / No Workspace)
+
+Swadhaar Admin operates as a **completely standalone Next.js application** that does **NOT** rely on Sunbird Workspace, generic editors, question-set editors, or external player MFEs:
+- **Create Content In-App:**
+  - **PDFs:** Native upload & metadata form (`/content/create-pdf`).
+  - **Videos:** Native YouTube URL / MP4 upload form (`/content/create-video`).
+  - **Assessments:** Built-in interactive quiz and question bank builder (`/content/create-assessment` and `/content/assessments/[id]`).
+- **View & Play In-App:**
+  - **PDFs:** Native embedded in-app viewer with toolbar, new window preview, and download options.
+  - **Videos:** Native HTML5 / YouTube embed player with duration, language, and metadata display.
+  - **Assessments:** Native interactive evaluator supporting both **Answer Key Mode** and **Interactive Test Mode**.
+
 ## Tenant Configuration
 
 - **Tenant Name:** Swadhaar FinAccess
@@ -18,6 +30,7 @@ Centralized administrative portal for Swadhaar FinAccess operations, managing re
 - **Dashboard:** Real-time metrics on learners, trainers, centers, and batch completion rates.
 - **Center & Batch Management:** Track and monitor centers and ongoing batches.
 - **Learner & Trainer Rosters:** Filter and manage user progression through Swadhaar levels.
+- **Content Library:** In-app creation and viewing for videos, PDFs, and assessments.
 - **Reports:** Export training summaries and certification records.
 
 ## Running Locally
@@ -25,7 +38,7 @@ Centralized administrative portal for Swadhaar FinAccess operations, managing re
 Run via Nx from the workspace root:
 
 ```bash
-# Start development server
+# Start development server (Port 3004)
 npx nx dev swadhaar-admin-repo
 
 # Build production bundle
@@ -44,16 +57,6 @@ npm run build:swadhaar-admin
 
 ## Docker & PM2 Support
 
-- Dockerfile: `Dockerfile.swadhaar-admin-repo`
-- Docker Compose: `docker-compose.swadhaar-admin-repo.yml`
-- PM2 Ecosystem: `ecosystem.swadhaar-admin-repo.config.js`
-
-
-# Start development server (Nx)
-npx nx dev swadhaar-admin-repo
-
-# Or via npm script
-npm run dev:swadhaar-admin
-
-# Build production bundle
-npm run build:swadhaar-admin
+- Dockerfile: `Dockerfile.swadhaar-admin-repo` (Builds only `swadhaar-admin-repo`)
+- Docker Compose: `docker-compose.swadhaar-admin-repo.yml` (Exposes port `3004`)
+- PM2 Ecosystem: `ecosystem.swadhaar-admin-repo.config.js` (Manages only `swadhaar-admin-repo`)

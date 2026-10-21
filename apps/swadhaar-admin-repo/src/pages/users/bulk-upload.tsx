@@ -390,22 +390,6 @@ export default function BulkUploadUsersPage() {
             <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
               {step === 3 ? 'Upload summary' : 'Bulk upload users'}
             </Typography>
-            <Box
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                backgroundColor: '#EDE9FE',
-                color: '#6B21A8',
-                fontSize: '11px',
-                fontFamily: 'monospace',
-                fontWeight: 600,
-                px: 1,
-                py: 0.4,
-                borderRadius: '4px',
-              }}
-            >
-              BRD §4.1 Bulk
-            </Box>
           </Box>
           <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '14px', lineHeight: 1.5 }}>
             {step === 3

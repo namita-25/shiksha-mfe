@@ -54,7 +54,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
       dotColor: '#15803D',
     };
   }
-  if (normalized.includes('draft')) {
+  if (normalized.includes('draft') || normalized === 'unpublished') {
     return {
       label: 'Draft',
       bg: '#FFF8E1',

@@ -280,6 +280,7 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
                     color: 'text.secondary',
                     textTransform: 'uppercase',
                     backgroundColor: 'secondary.100',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {column.sortable ? (

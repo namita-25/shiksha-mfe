@@ -15,7 +15,8 @@ export const API_ENDPOINTS = {
   verifyOTP: `${baseurl}/user/verify-otp`,
   resetPassword: `${baseurl}/user/reset-password`,
   fieldOptionsRead: `${baseurl}/fields/options/read`,
-  cohortSearch: `${baseurl}/cohort/search`,
+  cohortSearch: process.env.NEXT_PUBLIC_COHORT_SEARCH_URL || 'https://middleware-qa.aspireleaders.org/user/v1/cohort/search',
+  cohortMemberListApplication: process.env.NEXT_PUBLIC_COHORT_MEMBER_APPLICATION_URL || 'https://middleware-qa.aspireleaders.org/user/v1/cohortmember/list-application',
   cohortContentSearch: `${baseurl}/user/cohortcontent/search`,
   fieldOptionDelete: (type: string, option: string) => `${baseurl}/fields/options/delete/${type}?option=${option}`,
   fieldUpdate: (fieldId: string) => `${baseurl}/fields/update/${fieldId}`,
@@ -26,9 +27,11 @@ export const API_ENDPOINTS = {
   tenantUpdate: (tenantId: string) => `${baseurl}/tenant/update/${tenantId}`,
   tenantDelete: (tenantId: string) => `${baseurl}/tenant/delete/${tenantId}`,
   tenantSearch: `${baseurl}/tenant/search`,
-  userList: `${baseurl}/user/list`,
+  adminUserList: `${baseurl}/user/list`,
+  userList: process.env.NEXT_PUBLIC_USER_LIST_URL || 'https://middleware-qa.aspireleaders.org/user/v1/list',
   cohortMemberList: `${baseurl}/cohortmember/list`,
-  userRead: (userId: string | string[], fieldValue: boolean) => `${baseurl}/user/read/${userId}?fieldvalue=${fieldValue}`,
+  userRead: (userId: string | string[], fieldValue: boolean = true) =>
+    `${process.env.NEXT_PUBLIC_USER_READ_URL || 'https://middleware-qa.aspireleaders.org/user/v1/read'}/${userId}?fieldvalue=${fieldValue}`,
   suggestUsername: `${baseurl}/user/suggestUsername`,
   cohortUpdateUser: (userId?: string) => `${baseurl}/cohort/update/${userId}`,
   formReadWithContext: (context: string, contextType: string) => `${baseurl}/form/read?context=${context}&contextType=${contextType}`,
@@ -46,4 +49,18 @@ export const API_ENDPOINTS = {
   actionObject: `${baseurl}/action/object/category/definition/v1/read?fields=objectMetadata,forms,name,label`,
   compositeSearch: `${baseurl}/action/composite/v3/search`,
   contentHierarchy: (doId: string) => `${baseurl}/action/content/v3/hierarchy/${doId}`,
+  lmsCoursesSearch: (queryString: string = '') => {
+    const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
+    const qs = queryString ? (queryString.startsWith('?') ? queryString : `?${queryString}`) : '';
+    return `${lmsBase}/courses/search${qs}`;
+  },
+  lmsModulesSearch: (queryString: string = '') => {
+    const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
+    const qs = queryString ? (queryString.startsWith('?') ? queryString : `?${queryString}`) : '';
+    return `${lmsBase}/modules/search${qs}`;
+  },
+  lmsCourseHierarchy: (courseId: string) => {
+    const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
+    return `${lmsBase}/courses/${courseId}/hierarchy`;
+  },
 };

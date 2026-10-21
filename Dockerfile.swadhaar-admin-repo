@@ -16,19 +16,17 @@ COPY . .
 # Run patch script for Nx lockfile parser bug if present
 RUN if [ -f patch-nx.js ]; then node patch-nx.js; fi
 
-# Build Swadhaar Admin, workspace, and players
-RUN npx nx run-many --target=build --projects=swadhaar-admin-repo,workspace,players
+# Build Swadhaar Admin application (Standalone - no workspace or player MFEs needed)
+RUN npx nx build swadhaar-admin-repo
 
 # Cleanup build caches
 RUN rm -rf apps/swadhaar-admin-repo/.next/cache \
-           mfes/workspace/.next/cache \
-           mfes/players/.next/cache \
            .nx/cache \
            /tmp/.npm
 
 # Install PM2
 RUN npm install -g pm2@6.0.8 && npm cache clean --force
 
-EXPOSE 3004 4104 4106
+EXPOSE 3004
 
 CMD ["pm2-runtime", "ecosystem.swadhaar-admin-repo.config.js"]

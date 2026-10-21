@@ -27,7 +27,7 @@ export const checkAdminUserExistence = async (
   mobile: string,
   tenantId: string = SWADHAAR_TENANT_ID
 ): Promise<any> => {
-  const apiUrl = API_ENDPOINTS.userList;
+  const apiUrl = API_ENDPOINTS.adminUserList || API_ENDPOINTS.userList;
   const payload = {
     limit: 10,
     filters: {

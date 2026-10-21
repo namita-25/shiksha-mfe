@@ -8,6 +8,10 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Tooltip,
+  Dialog,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined';
@@ -62,12 +66,26 @@ export default function UsersPage() {
   });
 
   // Dynamic status and role options extracted from API response
-  const [availableStatuses, setAvailableStatuses] = useState<string[]>(['active', 'archived']);
-  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+  const [availableStatuses, setAvailableStatuses] = useState<string[]>(['active', 'inactive']);
+  const [availableRoles, setAvailableRoles] = useState<string[]>(['Student']);
 
   // Action menu state for row actions
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
   const [activeUser, setActiveUser] = useState<UserRowItem | null>(null);
+
+  // Dialog state for Block, Unblock, Delete
+  const [dialogType, setDialogType] = useState<'block' | 'unblock' | 'delete' | null>(null);
+  const [selectedUserForAction, setSelectedUserForAction] = useState<UserRowItem | null>(null);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'info' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   // Create & Edit modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -79,15 +97,15 @@ export default function UsersPage() {
       const payload: any = {
         limit: rowsPerPage,
         offset: page * rowsPerPage,
-        filters: {},
+        filters: {
+          role: filters.role && filters.role !== 'all' ? [filters.role] : ['Student'],
+          status:
+            filters.status && filters.status !== 'all'
+              ? [filters.status.toLowerCase()]
+              : ['active', 'inactive'],
+        },
+        sort: ['name', 'asc'],
       };
-
-      if (filters.status && filters.status !== 'all') {
-        payload.filters.status = filters.status.toLowerCase();
-      }
-      if (filters.role && filters.role !== 'all') {
-        payload.filters.role = filters.role;
-      }
 
       const response = await getUserList(payload);
       if (response?.result?.getUserDetails) {
@@ -116,7 +134,7 @@ export default function UsersPage() {
           setAvailableRoles((prev) => Array.from(new Set([...prev, ...apiRoles])));
         }
 
-        const toStr = (val: any): string => (val !== null && val !== undefined ? String(val) : '');
+        const toStr = (val: any): string => (val !== null && val !== undefined ? String(val).trim() : '');
 
         const mappedUsers: UserRowItem[] = rawList.map((u: any, idx: number) => {
           const userId = toStr(u.userId || u.id || `user-${idx}`);
@@ -129,8 +147,8 @@ export default function UsersPage() {
             [fn, mn, ln].filter(Boolean).join(' ') ||
             uUsername ||
             '-';
-          const email = u.email && u.email !== '-' ? toStr(u.email) : '-';
-          const actualRole = toStr(u.role || u.tenantData?.[0]?.roleName) || '-';
+          const email = u.email && u.email !== '-' ? toStr(u.email) : (uUsername || '-');
+          const actualRole = toStr(u.role || u.tenantData?.[0]?.roleName) || 'Student';
 
           // Extract phone/mobile as clean string
           const rawMobile = toStr(u.mobile || u.phone);
@@ -142,39 +160,75 @@ export default function UsersPage() {
             rawEmpId ||
             (!/^\d{10}$/.test(uUsername) && uUsername ? uUsername : '');
 
-          // Extract location fields
+          // Extract location fields from customFields, direct properties, and country fields
           let userState = toStr(u.state);
-          let userDistrict = toStr(u.district);
+          let userDistrict = toStr(u.district || u.city);
           let userBranch = toStr(u.branch || u.block);
+          let userProgram = toStr(u.program);
+
           if (Array.isArray(u.customFields)) {
             const stateField = u.customFields.find(
               (cf: any) =>
+                cf.fieldId === '1c5e2836-4831-4b34-b963-8aeffd1c14f7' ||
+                cf.fieldId === 'c572783a-4a0b-4936-8172-c2009d2453e3' ||
                 cf.fieldId === '800265b1-9058-482a-94f4-726197e1dfe4' ||
                 cf.label?.toLowerCase() === 'state' ||
                 cf.name?.toLowerCase() === 'state'
             );
-            if (stateField && stateField.value?.[0]) {
-              userState = toStr(stateField.value[0]);
+            if (stateField && stateField.value) {
+              const val = Array.isArray(stateField.value) ? stateField.value[0] : stateField.value;
+              if (val) userState = toStr(val);
             }
+
             const districtField = u.customFields.find(
               (cf: any) =>
+                cf.fieldId === '56ce5f2b-1d81-4d60-9eba-798f764008d3' ||
+                cf.fieldId === 'd0368400-8529-407e-b8c6-f41c29297fa6' ||
+                cf.label?.toLowerCase() === 'city' ||
                 cf.label?.toLowerCase() === 'district' ||
+                cf.name?.toLowerCase() === 'city' ||
                 cf.name?.toLowerCase() === 'district'
             );
-            if (districtField && districtField.value?.[0]) {
-              userDistrict = String(districtField.value[0]);
+            if (districtField && districtField.value) {
+              const val = Array.isArray(districtField.value) ? districtField.value[0] : districtField.value;
+              if (val) userDistrict = toStr(val);
             }
+
             const branchField = u.customFields.find(
               (cf: any) =>
+                cf.fieldId === '2b5da81a-b803-4550-9af3-f4c61e8f8ca1' ||
+                cf.fieldId === 'ac8dcb40-8c45-4acb-b4ea-4d6282c51c22' ||
+                cf.label?.toLowerCase().includes('university or college') ||
                 cf.label?.toLowerCase() === 'branch' ||
                 cf.label?.toLowerCase() === 'block' ||
                 cf.name?.toLowerCase() === 'branch' ||
                 cf.name?.toLowerCase() === 'block'
             );
-            if (branchField && branchField.value?.[0]) {
-              userBranch = String(branchField.value[0]);
+            if (branchField && branchField.value) {
+              const val = Array.isArray(branchField.value) ? branchField.value[0] : branchField.value;
+              if (val) userBranch = toStr(val);
+            }
+
+            const programField = u.customFields.find(
+              (cf: any) =>
+                cf.fieldId === '1b92932d-648b-4b26-9f12-f43cec5416ef' ||
+                cf.fieldId === 'a64e51c9-082f-498f-a824-2c8fad206eae' ||
+                cf.label?.toLowerCase().includes('field(s) of study') ||
+                cf.label?.toLowerCase() === 'program' ||
+                cf.name?.toLowerCase() === 'program'
+            );
+            if (programField && programField.value) {
+              const val = Array.isArray(programField.value) ? programField.value[0] : programField.value;
+              if (val) userProgram = toStr(val);
             }
           }
+
+          // Build stateDistrict display string
+          const locParts = [userState, userDistrict].filter(Boolean);
+          const stateDistrict =
+            locParts.length > 0
+              ? locParts.join(' · ')
+              : toStr(u.country || u.permanentCountry || u.currentCountry || '-');
 
           return {
             id: userId,
@@ -192,21 +246,20 @@ export default function UsersPage() {
             gender: u.gender || '',
             state: userState,
             district: userDistrict,
-            branch: userBranch && userBranch !== '[Branch]' ? userBranch : '',
-            program: u.program && u.program !== '[Program]' ? u.program : '',
-            stateDistrict:
-              u.state && u.district
-                ? `${u.state} · ${u.district}`
-                : userState
-                  ? `${userState}`
-                  : '[State] · [District]',
+            branch: userBranch && userBranch !== '[Branch]' ? userBranch : '-',
+            program: userProgram && userProgram !== '[Program]' ? userProgram : '-',
+            stateDistrict: stateDistrict,
             status: u.status || 'Active',
             rawUser: u,
           };
         });
 
         setUsers(mappedUsers);
-        setTotalCount(response.result.totalCount || mappedUsers.length);
+        const count =
+          Number(response.result.totalCount) ||
+          Number(rawList[0]?.total_count) ||
+          mappedUsers.length;
+        setTotalCount(count);
       } else {
         setUsers([]);
         setTotalCount(0);
@@ -249,10 +302,66 @@ export default function UsersPage() {
     setIsEditModalOpen(true);
   };
 
+  const handleConfirmBlock = () => {
+    if (selectedUserForAction) {
+      const uid = selectedUserForAction.userId;
+      setBlockedUserIds((prev) => new Set([...prev, uid]));
+      setUsers((prev) =>
+        prev.map((u) => (u.userId === uid ? { ...u, status: 'blocked' } : u))
+      );
+      if (activeUser && activeUser.userId === uid) {
+        setActiveUser({ ...activeUser, status: 'blocked' });
+      }
+      setSnackbar({
+        open: true,
+        message: `[${selectedUserForAction.fullName || 'User'}] has been blocked.`,
+        severity: 'success',
+      });
+    }
+    setDialogType(null);
+  };
+
+  const handleConfirmUnblock = () => {
+    if (selectedUserForAction) {
+      const uid = selectedUserForAction.userId;
+      setBlockedUserIds((prev) => {
+        const next = new Set(prev);
+        next.delete(uid);
+        return next;
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.userId === uid ? { ...u, status: 'active' } : u))
+      );
+      if (activeUser && activeUser.userId === uid) {
+        setActiveUser({ ...activeUser, status: 'active' });
+      }
+      setSnackbar({
+        open: true,
+        message: `[${selectedUserForAction.fullName || 'User'}] has been unblocked.`,
+        severity: 'success',
+      });
+    }
+    setDialogType(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedUserForAction) {
+      const uid = selectedUserForAction.userId;
+      setUsers((prev) => prev.filter((u) => u.userId !== uid));
+      setTotalCount((prev) => Math.max(0, prev - 1));
+      setSnackbar({
+        open: true,
+        message: `[${selectedUserForAction.fullName || 'User'}] has been deleted.`,
+        severity: 'success',
+      });
+    }
+    setDialogType(null);
+  };
+
   // Status chip colors matching exact user specification
   const getStatusChipStyles = (status: string) => {
     const s = status.toLowerCase();
-    if (s === 'archived') {
+    if (s === 'archived' || s === 'inactive') {
       return {
         color: '#9F1239',
         backgroundColor: 'rgba(159, 18, 57, 0.12)', // faint shade of #9F1239
@@ -288,26 +397,56 @@ export default function UsersPage() {
       {
         id: 'fullName',
         label: 'FULL NAME',
+        minWidth: 160,
         render: (row) => (
-          <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F2937' }}>
-            {row.fullName}
-          </Typography>
+          <Box
+            sx={{ cursor: 'pointer', display: 'inline-block' }}
+            onClick={() => router.push(`/users/${row.userId}`)}
+          >
+            <Typography
+              sx={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: 'primary.main',
+                whiteSpace: 'nowrap',
+                '&:hover': {
+                  textDecoration: 'underline',
+                  color: '#B85D1B',
+                },
+              }}
+            >
+              {row.fullName}
+            </Typography>
+          </Box>
         ),
       },
       {
         id: 'email',
         label: 'EMAIL (LOGIN ID)',
+        minWidth: 180,
         render: (row) => (
-          <Typography sx={{ fontSize: '13px', color: '#1F2937' }}>
-            {row.email}
-          </Typography>
+          <Tooltip title={row.email} arrow placement="top">
+            <Typography
+              sx={{
+                fontSize: '13px',
+                color: '#1F2937',
+                maxWidth: 200,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                display: 'block',
+              }}
+            >
+              {row.email}
+            </Typography>
+          </Tooltip>
         ),
       },
       {
         id: 'role',
         label: 'ROLE',
         render: (row) => (
-          <Typography sx={{ fontSize: '13px', color: '#1F2937', fontWeight: 500 }}>
+          <Typography sx={{ fontSize: '13px', color: '#1F2937', fontWeight: 500, whiteSpace: 'nowrap' }}>
             {row.role}
           </Typography>
         ),
@@ -316,7 +455,7 @@ export default function UsersPage() {
         id: 'stateDistrict',
         label: 'STATE · DISTRICT',
         render: (row) => (
-          <Typography sx={{ fontSize: '13px', color: '#4B5563' }}>
+          <Typography sx={{ fontSize: '13px', color: '#4B5563', whiteSpace: 'nowrap' }}>
             {row.stateDistrict}
           </Typography>
         ),
@@ -325,7 +464,7 @@ export default function UsersPage() {
         id: 'branch',
         label: 'BRANCH',
         render: (row) => (
-          <Typography sx={{ fontSize: '13px', color: '#4B5563' }}>
+          <Typography sx={{ fontSize: '13px', color: '#4B5563', whiteSpace: 'nowrap' }}>
             {row.branch}
           </Typography>
         ),
@@ -334,7 +473,7 @@ export default function UsersPage() {
         id: 'program',
         label: 'PROGRAM',
         render: (row) => (
-          <Typography sx={{ fontSize: '13px', color: '#4B5563' }}>
+          <Typography sx={{ fontSize: '13px', color: '#4B5563', whiteSpace: 'nowrap' }}>
             {row.program}
           </Typography>
         ),
@@ -343,9 +482,12 @@ export default function UsersPage() {
         id: 'status',
         label: 'STATUS',
         render: (row) => {
-          const chipStyle = getStatusChipStyles(row.status);
+          const isBlocked =
+            blockedUserIds.has(row.userId) || row.status?.toLowerCase() === 'blocked';
+          const effectiveStatus = isBlocked ? 'blocked' : row.status;
+          const chipStyle = getStatusChipStyles(effectiveStatus);
           const displayStatus =
-            row.status.charAt(0).toUpperCase() + row.status.slice(1).toLowerCase();
+            effectiveStatus.charAt(0).toUpperCase() + effectiveStatus.slice(1).toLowerCase();
 
           return (
             <Chip
@@ -534,7 +676,11 @@ export default function UsersPage() {
         }}
       >
         <MenuItem
-          onClick={handleCloseActionMenu}
+          onClick={() => {
+            const uid = activeUser?.userId;
+            handleCloseActionMenu();
+            if (uid) router.push(`/users/${uid}`);
+          }}
           sx={{ fontSize: '13px', py: 0.8, color: '#1F2937', fontWeight: 500 }}
         >
           View details
@@ -545,14 +691,37 @@ export default function UsersPage() {
         >
           Edit
         </MenuItem>
+        {activeUser &&
+        (blockedUserIds.has(activeUser.userId) ||
+          activeUser.status?.toLowerCase() === 'blocked') ? (
+          <MenuItem
+            onClick={() => {
+              setSelectedUserForAction(activeUser);
+              setDialogType('unblock');
+              handleCloseActionMenu();
+            }}
+            sx={{ fontSize: '13px', py: 0.8, color: '#1F2937', fontWeight: 500 }}
+          >
+            Unblock
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              setSelectedUserForAction(activeUser);
+              setDialogType('block');
+              handleCloseActionMenu();
+            }}
+            sx={{ fontSize: '13px', py: 0.8, color: '#1F2937', fontWeight: 500 }}
+          >
+            Block
+          </MenuItem>
+        )}
         <MenuItem
-          onClick={handleCloseActionMenu}
-          sx={{ fontSize: '13px', py: 0.8, color: '#1F2937', fontWeight: 500 }}
-        >
-          Block
-        </MenuItem>
-        <MenuItem
-          onClick={handleCloseActionMenu}
+          onClick={() => {
+            setSelectedUserForAction(activeUser);
+            setDialogType('delete');
+            handleCloseActionMenu();
+          }}
           sx={{ fontSize: '13px', py: 0.8, color: '#DC2626', fontWeight: 500 }}
         >
           Delete
@@ -581,6 +750,313 @@ export default function UsersPage() {
           isEdit={true}
         />
       )}
+
+      {/* ============================================================ */}
+      {/* 8. Block User Dialog (Image 2)                               */}
+      {/* ============================================================ */}
+      <Dialog
+        open={dialogType === 'block'}
+        onClose={() => setDialogType(null)}
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '520px',
+            borderRadius: '16px',
+            p: 3,
+            backgroundColor: '#FFFFFF',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          },
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            fontSize: '18px',
+            fontWeight: 700,
+            color: '#111827',
+            mb: 2,
+          }}
+        >
+          Block [{selectedUserForAction?.fullName || 'Full name'}]?
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: '14px',
+            color: '#4B5563',
+            lineHeight: 1.5,
+            mb: 2,
+          }}
+        >
+          Their platform access is revoked immediately. The account and its data are not deleted, and
+          you can unblock at any time.
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: '14px',
+            color: '#4B5563',
+            lineHeight: 1.5,
+            mb: 3,
+          }}
+        >
+          They will see a message when they try to log in.
+        </Typography>
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setDialogType(null)}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#374151',
+              borderColor: '#D1D5DB',
+              backgroundColor: '#FFFFFF',
+              px: 2.2,
+              py: 0.8,
+              '&:hover': {
+                backgroundColor: '#F9FAFB',
+                borderColor: '#9CA3AF',
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmBlock}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backgroundColor: '#18181B',
+              color: '#FFFFFF',
+              px: 2.4,
+              py: 0.8,
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#27272A',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            Block user
+          </Button>
+        </Box>
+      </Dialog>
+
+      {/* ============================================================ */}
+      {/* 9. Unblock User Dialog (Image 4)                             */}
+      {/* ============================================================ */}
+      <Dialog
+        open={dialogType === 'unblock'}
+        onClose={() => setDialogType(null)}
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '520px',
+            borderRadius: '16px',
+            p: 3,
+            backgroundColor: '#FFFFFF',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          },
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            fontSize: '18px',
+            fontWeight: 700,
+            color: '#111827',
+            mb: 2,
+          }}
+        >
+          Unblock [{selectedUserForAction?.fullName || 'Full name'}]?
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: '14px',
+            color: '#4B5563',
+            lineHeight: 1.5,
+            mb: 3,
+          }}
+        >
+          Their platform access is restored immediately with their existing roles, groups and progress.
+        </Typography>
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setDialogType(null)}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#374151',
+              borderColor: '#D1D5DB',
+              backgroundColor: '#FFFFFF',
+              px: 2.2,
+              py: 0.8,
+              '&:hover': {
+                backgroundColor: '#F9FAFB',
+                borderColor: '#9CA3AF',
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmUnblock}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backgroundColor: '#18181B',
+              color: '#FFFFFF',
+              px: 2.4,
+              py: 0.8,
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#27272A',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            Unblock user
+          </Button>
+        </Box>
+      </Dialog>
+
+      {/* ============================================================ */}
+      {/* 10. Delete User Dialog (Image 3)                             */}
+      {/* ============================================================ */}
+      <Dialog
+        open={dialogType === 'delete'}
+        onClose={() => setDialogType(null)}
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '520px',
+            borderRadius: '16px',
+            p: 3,
+            backgroundColor: '#FFFFFF',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          },
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            fontSize: '18px',
+            fontWeight: 700,
+            color: '#111827',
+            mb: 1.5,
+          }}
+        >
+          Delete [{selectedUserForAction?.fullName || 'Full name'}]?
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: '14px',
+            color: '#4B5563',
+            lineHeight: 1.5,
+            mb: 2,
+          }}
+        >
+          The user can no longer log in. Their record is kept for audit.
+        </Typography>
+
+        {/* Shaded gray retention box matching Image 3 */}
+        <Box
+          sx={{
+            backgroundColor: '#F4F4F5',
+            border: '1px solid #E4E4E7',
+            borderRadius: '8px',
+            px: 2,
+            py: 1.5,
+            mb: 3,
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: '13.5px',
+              color: '#52525B',
+            }}
+          >
+            Retention period and access to retained data
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setDialogType(null)}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: '#374151',
+              borderColor: '#D1D5DB',
+              backgroundColor: '#FFFFFF',
+              px: 2.2,
+              py: 0.8,
+              '&:hover': {
+                backgroundColor: '#F9FAFB',
+                borderColor: '#9CA3AF',
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmDelete}
+            sx={{
+              textTransform: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              backgroundColor: '#9F1239',
+              color: '#FFFFFF',
+              px: 2.4,
+              py: 0.8,
+              boxShadow: 'none',
+              '&:hover': {
+                backgroundColor: '#881337',
+                boxShadow: 'none',
+              },
+            }}
+          >
+            Delete user
+          </Button>
+        </Box>
+      </Dialog>
+
+      {/* Snackbar feedback */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          sx={{ width: '100%', borderRadius: '8px' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

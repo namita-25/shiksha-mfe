@@ -1,5 +1,6 @@
 import React from 'react';
-import { Chip, Box, Typography } from '@mui/material';
+import { Box, Typography } from '@mui/material';
+import { useTranslation } from 'next-i18next';
 
 export type LifecycleState =
   | 'Draft'
@@ -29,7 +30,9 @@ interface LifecycleChipProps {
 }
 
 interface StateStyleConfig {
-  label: string;
+  /** i18n key for the label; when absent, `rawLabel` is shown as-is. */
+  labelKey?: string;
+  rawLabel?: string;
   bg: string;
   color: string;
   dotColor: string;
@@ -40,7 +43,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
 
   if (normalized === 'published' || normalized === 'live') {
     return {
-      label: 'Published',
+      labelKey: 'LIFECYCLE.PUBLISHED',
       bg: '#DCFCE7',
       color: '#15803D',
       dotColor: '#15803D',
@@ -48,7 +51,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized === 'active') {
     return {
-      label: 'Active',
+      labelKey: 'LIFECYCLE.ACTIVE',
       bg: '#DCFCE7',
       color: '#15803D',
       dotColor: '#15803D',
@@ -56,7 +59,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized.includes('draft') || normalized === 'unpublished') {
     return {
-      label: 'Draft',
+      labelKey: 'LIFECYCLE.DRAFT',
       bg: '#FFF8E1',
       color: '#B78103',
       dotColor: '#B78103',
@@ -64,7 +67,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized.includes('review') || normalized === 'submitted') {
     return {
-      label: 'In Review',
+      labelKey: 'LIFECYCLE.IN_REVIEW',
       bg: '#E3F2FD',
       color: '#1565C0',
       dotColor: '#1976D2',
@@ -72,7 +75,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized.includes('change')) {
     return {
-      label: 'Changes Requested',
+      labelKey: 'LIFECYCLE.CHANGES_REQUESTED',
       bg: '#FFF3E0',
       color: '#E65100',
       dotColor: '#E65100',
@@ -80,7 +83,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized === 'approved') {
     return {
-      label: 'Approved',
+      labelKey: 'LIFECYCLE.APPROVED',
       bg: '#E0F2F1',
       color: '#00695C',
       dotColor: '#00897B',
@@ -88,7 +91,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized === 'archived') {
     return {
-      label: 'Archived',
+      labelKey: 'LIFECYCLE.ARCHIVED',
       bg: 'rgba(159, 18, 57, 0.12)',
       color: '#9F1239',
       dotColor: '#9F1239',
@@ -96,7 +99,7 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
   if (normalized === 'suspended' || normalized === 'blocked' || normalized === 'deleted') {
     return {
-      label: normalized === 'deleted' ? 'Deleted' : 'Blocked',
+      labelKey: normalized === 'deleted' ? 'LIFECYCLE.DELETED' : 'LIFECYCLE.BLOCKED',
       bg: '#FFEBEE',
       color: '#C62828',
       dotColor: '#D32F2F',
@@ -104,7 +107,8 @@ const getStateConfig = (state: string): StateStyleConfig => {
   }
 
   return {
-    label: state || 'Unknown',
+    rawLabel: state,
+    labelKey: state ? undefined : 'LIFECYCLE.UNKNOWN',
     bg: '#F5F5F5',
     color: '#616161',
     dotColor: '#9E9E9E',
@@ -112,7 +116,9 @@ const getStateConfig = (state: string): StateStyleConfig => {
 };
 
 export const LifecycleChip: React.FC<LifecycleChipProps> = ({ state, size = 'small' }) => {
+  const { t } = useTranslation();
   const config = getStateConfig(state);
+  const label = config.labelKey ? t(config.labelKey) : config.rawLabel;
 
   return (
     <Box
@@ -145,7 +151,7 @@ export const LifecycleChip: React.FC<LifecycleChipProps> = ({ state, size = 'sma
           lineHeight: 1.2,
         }}
       >
-        {config.label}
+        {label}
       </Typography>
     </Box>
   );

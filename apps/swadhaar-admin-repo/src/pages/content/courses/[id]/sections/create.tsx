@@ -1022,7 +1022,7 @@ export default function CreateSectionPage() {
 export const getStaticProps = async ({ locale }: { locale: string }) => {
   return {
     props: {
-      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any, ['en', 'mr', 'hi'])),
     },
   };
 };

@@ -1,24 +1,64 @@
 import { experimental_extendTheme as extendTheme } from '@mui/material/styles';
 
+/**
+ * Swadhaar brand tokens, aligned with the Swadhaar tenant theme of learner-web-app
+ * (primary #E6873C, secondary #1A1A1A, background #F5F5F5, Poppins, pill buttons).
+ */
+export const BRAND = {
+  primary: '#E6873C',
+  primaryLight: '#FFA05C',
+  primaryDark: '#C66C23',
+  primarySoft: '#FDF3E9',
+  secondary: '#1A1A1A',
+  buttonText: '#FFFFFF',
+  background: '#F5F5F5',
+  surface: '#FFFFFF',
+  textPrimary: '#1F1B13',
+  textSecondary: '#4D4639',
+} as const;
+
+/** Neutral greys shared by tables, forms and dialogs. */
+export const NEUTRAL = {
+  ink: '#1F1E1C',
+  muted: '#6B6862',
+  subtle: '#8A867F',
+  border: '#D6D3CC',
+  borderStrong: '#BDB9B1',
+  divider: '#ECEAE5',
+  hover: '#F4F3EF',
+  canvas: '#FAF9F6',
+} as const;
+
+export const FONT_FAMILY = 'Poppins, Arial, sans-serif';
+
+declare module '@mui/material/styles' {
+  interface Palette {
+    neutral: typeof NEUTRAL;
+  }
+  interface PaletteOptions {
+    neutral?: typeof NEUTRAL;
+  }
+}
+
 const customTheme = extendTheme({
   colorSchemes: {
     light: {
       palette: {
         primary: {
-          main: '#E6873C', // Swadhaar Brand Primary Orange
-          light: '#FFA05C',
-          dark: '#C66C23',
-          contrastText: '#FFFFFF',
-          '100': '#FDF3E9',
+          main: BRAND.primary,
+          light: BRAND.primaryLight,
+          dark: BRAND.primaryDark,
+          contrastText: BRAND.buttonText,
+          '100': BRAND.primarySoft,
           '200': '#FBE3CD',
         },
         secondary: {
-          main: '#1C2B4A', // Swadhaar Dark Navy
-          light: '#2B406B',
-          dark: '#101B30',
-          contrastText: '#FFFFFF',
-          '100': '#F5F5F5',
-          '200': '#FFFFFF',
+          main: BRAND.secondary,
+          light: '#3D3B37',
+          dark: '#000000',
+          contrastText: BRAND.buttonText,
+          '100': BRAND.background,
+          '200': BRAND.surface,
           '300': '#E5E7EB',
           '400': '#D1D5DB',
         },
@@ -41,50 +81,55 @@ const customTheme = extendTheme({
           contrastText: '#FFFFFF',
         },
         info: {
-          main: '#1C2B4A',
-          light: '#EBF3FB',
-          dark: '#0D1626',
+          main: '#064471',
+          light: '#D6EEFF',
+          dark: '#03263F',
           contrastText: '#FFFFFF',
         },
         text: {
-          primary: '#1F2937',
-          secondary: '#4D4639',
+          primary: BRAND.textPrimary,
+          secondary: BRAND.textSecondary,
         },
         background: {
-          default: '#F5F5F5',
-          paper: '#FFFFFF',
+          default: BRAND.background,
+          paper: BRAND.surface,
         },
-        divider: '#E5E7EB',
+        divider: NEUTRAL.divider,
+        neutral: NEUTRAL,
       },
     },
     dark: {
       palette: {
         primary: {
-          main: '#FFA05C',
+          main: BRAND.primaryLight,
           light: '#FFBE8A',
-          dark: '#E6873C',
-          contrastText: '#1C2B4A',
+          dark: BRAND.primary,
+          contrastText: BRAND.secondary,
         },
         secondary: {
-          main: '#8BA6D8',
-          light: '#A6BEEC',
-          dark: '#1C2B4A',
-          contrastText: '#101B30',
+          main: '#E5E5E5',
+          light: '#FFFFFF',
+          dark: '#BDBDBD',
+          contrastText: BRAND.secondary,
         },
         background: {
-          default: '#0F172A',
-          paper: '#1E293B',
+          default: '#121212',
+          paper: '#1E1E1E',
         },
         text: {
-          primary: '#F8FAFC',
-          secondary: '#94A3B8',
+          primary: '#F5F5F5',
+          secondary: '#BDB9B1',
         },
-        divider: '#334155',
+        divider: '#3D3B37',
+        neutral: NEUTRAL,
       },
     },
   },
   typography: {
-    fontFamily: "'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: FONT_FAMILY,
+    allVariants: {
+      fontFamily: FONT_FAMILY,
+    },
     h1: {
       fontSize: '28px',
       fontWeight: 700,
@@ -128,33 +173,33 @@ const customTheme = extendTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '8px',
+          borderRadius: '50px',
           textTransform: 'none',
           fontWeight: 600,
-          boxShadow: 'none',
+          boxShadow: 'unset',
           '&:hover': {
-            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            boxShadow: 'unset',
           },
         },
         containedPrimary: {
-          backgroundColor: '#E6873C',
-          color: '#FFFFFF',
+          backgroundColor: BRAND.primary,
+          color: BRAND.buttonText,
           '&:hover': {
-            backgroundColor: '#C66C23',
+            backgroundColor: BRAND.primaryDark,
           },
         },
         containedSecondary: {
-          backgroundColor: '#1C2B4A',
-          color: '#FFFFFF',
+          backgroundColor: BRAND.secondary,
+          color: BRAND.buttonText,
           '&:hover': {
-            backgroundColor: '#101B30',
+            backgroundColor: '#000000',
           },
         },
         outlinedPrimary: {
-          borderColor: '#E6873C',
-          color: '#E6873C',
+          borderColor: BRAND.primary,
+          color: BRAND.primary,
           '&:hover': {
-            borderColor: '#C66C23',
+            borderColor: BRAND.primaryDark,
             backgroundColor: 'rgba(230, 135, 60, 0.05)',
           },
         },
@@ -164,7 +209,7 @@ const customTheme = extendTheme({
       styleOverrides: {
         root: {
           borderRadius: '12px',
-          border: '1px solid #E5E7EB',
+          border: `1px solid ${NEUTRAL.divider}`,
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
           backgroundImage: 'none',
         },
@@ -189,13 +234,13 @@ const customTheme = extendTheme({
       styleOverrides: {
         root: {
           fontSize: '13px',
-          borderColor: '#E5E7EB',
+          borderColor: NEUTRAL.divider,
           padding: '12px 16px',
         },
         head: {
           fontWeight: 600,
-          color: '#4D4639',
-          backgroundColor: '#F8FAFC',
+          color: BRAND.textSecondary,
+          backgroundColor: NEUTRAL.canvas,
           textTransform: 'uppercase',
           fontSize: '11px',
           letterSpacing: '0.5px',
@@ -207,11 +252,29 @@ const customTheme = extendTheme({
         root: {
           borderRadius: '8px',
           '&:hover .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#E6873C',
+            borderColor: BRAND.primary,
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-            borderColor: '#E6873C',
+            borderColor: BRAND.primary,
             borderWidth: '1.5px',
+          },
+        },
+      },
+    },
+    MuiRadio: {
+      styleOverrides: {
+        root: {
+          '&.Mui-checked': {
+            color: BRAND.primary,
+          },
+        },
+      },
+    },
+    MuiCheckbox: {
+      styleOverrides: {
+        root: {
+          '&.Mui-checked': {
+            color: BRAND.primary,
           },
         },
       },
@@ -222,8 +285,9 @@ const customTheme = extendTheme({
           textTransform: 'none',
           fontWeight: 600,
           fontSize: '14px',
+          color: BRAND.textSecondary,
           '&.Mui-selected': {
-            color: '#E6873C',
+            color: BRAND.primary,
           },
         },
       },
@@ -231,7 +295,7 @@ const customTheme = extendTheme({
     MuiTabs: {
       styleOverrides: {
         indicator: {
-          backgroundColor: '#E6873C',
+          backgroundColor: BRAND.primary,
           height: '3px',
           borderRadius: '3px 3px 0 0',
         },

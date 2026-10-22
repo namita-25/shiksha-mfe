@@ -1,10 +1,9 @@
 import '@/styles/globals.css';
-import '@/styles/style.css';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useEffect } from 'react';
 import { appWithTranslation } from 'next-i18next';
+import nextI18NextConfig from '../../next-i18next.config.js';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Experimental_CssVarsProvider as CssVarsProvider } from '@mui/material/styles';
@@ -41,7 +40,7 @@ function App({ Component, pageProps }: AppProps) {
         <meta name="description" content={metaTags.description} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
-        <meta name="theme-color" content="#1C2B4A" />
+        <meta name="theme-color" content="#1A1A1A" />
       </Head>
       <QueryClientProvider client={queryClient}>
         <CssVarsProvider theme={customTheme} defaultMode="light" modeStorageKey="swadhaar_theme_mode">
@@ -63,4 +62,4 @@ function App({ Component, pageProps }: AppProps) {
   );
 }
 
-export default appWithTranslation(App);
+export default appWithTranslation(App, nextI18NextConfig as any);

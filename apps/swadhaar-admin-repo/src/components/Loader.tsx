@@ -1,12 +1,16 @@
 import React from 'react';
 import { Box, CircularProgress, Typography } from '@mui/material';
+import { useTranslation } from 'next-i18next';
 
 interface LoaderProps {
   message?: string;
   minHeight?: string;
 }
 
-const Loader: React.FC<LoaderProps> = ({ message = 'Loading...', minHeight = '300px' }) => {
+const Loader: React.FC<LoaderProps> = ({ message, minHeight = '300px' }) => {
+  const { t } = useTranslation();
+  const text = message ?? t('LAYOUT.LOADING');
+
   return (
     <Box
       sx={{
@@ -18,10 +22,10 @@ const Loader: React.FC<LoaderProps> = ({ message = 'Loading...', minHeight = '30
         gap: 2,
       }}
     >
-      <CircularProgress sx={{ color: '#E6873C' }} size={44} />
-      {message && (
-        <Typography sx={{ color: '#6B7280', fontSize: '14px', fontWeight: 500 }}>
-          {message}
+      <CircularProgress sx={{ color: 'primary.main' }} size={44} />
+      {text && (
+        <Typography sx={{ color: 'text.secondary', fontSize: '14px', fontWeight: 500 }}>
+          {text}
         </Typography>
       )}
     </Box>

@@ -106,7 +106,7 @@ class TenantService {
   public resolveTenantFromHost(hostName?: string): string {
     if (typeof window === 'undefined' && !hostName) return SWADHAAR_TENANT_ID;
     const host = (hostName || (typeof window !== 'undefined' ? window.location.hostname : '')).toLowerCase();
-    
+
     if (host.includes('swadhaar') || host.includes('swadhar')) {
       return SWADHAAR_TENANT_ID;
     }
@@ -119,10 +119,10 @@ class TenantService {
   public async getTenantBranding(tenantId?: string): Promise<TenantBranding> {
     const targetTenantId = tenantId || this.getTenantId();
     try {
-      const base = typeof window !== 'undefined' 
+      const base = typeof window !== 'undefined'
         ? (window as any).__ENV?.NEXT_PUBLIC_MIDDLEWARE_URL || process.env.NEXT_PUBLIC_MIDDLEWARE_URL
         : process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
-      
+
       if (base) {
         const response = await fetch(`${base}/tenant/branding/${targetTenantId}`, {
           headers: {
@@ -138,7 +138,7 @@ class TenantService {
             name: 'Swadhaar FinAccess',
             logoUrl: '/images/swadhaar-logo.png',
             primaryColor: '#E6873C',
-            secondaryColor: '#1C2B4A',
+            secondaryColor: '#1A1A1A',
           };
         }
       }
@@ -151,7 +151,7 @@ class TenantService {
       name: 'Swadhaar FinAccess',
       logoUrl: '/images/swadhaar-logo.png',
       primaryColor: '#E6873C',
-      secondaryColor: '#1C2B4A',
+      secondaryColor: '#1A1A1A',
     };
   }
 }

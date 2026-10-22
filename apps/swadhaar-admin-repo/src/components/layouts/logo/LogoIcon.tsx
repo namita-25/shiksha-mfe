@@ -2,8 +2,10 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Box, Typography } from '@mui/material';
+import { useTranslation } from 'next-i18next';
 
 const LogoIcon = () => {
+  const { t } = useTranslation();
   return (
     <Link href="/users" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
       <Box
@@ -46,7 +48,7 @@ const LogoIcon = () => {
             sx={{
               fontWeight: 700,
               fontSize: '15px',
-              color: '#1F2937',
+              color: 'text.primary',
               lineHeight: 1.2,
               letterSpacing: '-0.2px',
             }}
@@ -57,12 +59,12 @@ const LogoIcon = () => {
             variant="caption"
             sx={{
               fontSize: '11px',
-              color: '#6B7280',
+              color: 'text.secondary',
               fontWeight: 500,
               lineHeight: 1.2,
             }}
           >
-            LMS Admin panel
+            {t('LAYOUT.ADMIN_PANEL_SUBTITLE')}
           </Typography>
         </Box>
       </Box>

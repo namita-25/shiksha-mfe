@@ -23,7 +23,7 @@ const PageWrapper = styled('div')(({ theme }) => ({
 }));
 
 export const FullLayout = ({ children }: { children: React.ReactNode }) => {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const theme = useTheme();

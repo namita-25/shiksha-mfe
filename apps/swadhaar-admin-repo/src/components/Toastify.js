@@ -7,55 +7,32 @@ const options = {
   autoClose: 2500,
 };
 
-export const showToastMessage = (message, type = 'success') => {
-  const commonOptions = {
-    ...options,
-    style: {
-      color: '#fff',
-      borderRadius: '8px',
-      fontSize: '14px',
-      fontWeight: 500,
-    },
-  };
+const baseStyle = {
+  color: '#fff',
+  borderRadius: '8px',
+  fontSize: '14px',
+  fontWeight: 500,
+};
 
-  switch (type) {
-    case 'error':
-      toast.error(message, {
-        ...commonOptions,
-        style: {
-          ...commonOptions.style,
-          background: '#DC3545',
-        },
-      });
-      break;
-    case 'success':
-      toast.success(message, {
-        ...commonOptions,
-        style: {
-          ...commonOptions.style,
-          background: '#28A745',
-        },
-      });
-      break;
-    case 'info':
-      toast.info(message, {
-        ...commonOptions,
-        style: {
-          ...commonOptions.style,
-          background: '#1C2B4A',
-        },
-      });
-      break;
-    case 'warning':
-      toast.warning(message, {
-        ...commonOptions,
-        style: {
-          ...commonOptions.style,
-          background: '#E6873C',
-        },
-      });
-      break;
-    default:
-      toast(message, commonOptions);
+// Toast function and background colour for each supported type.
+const TOAST_VARIANTS = {
+  error: { show: toast.error, background: '#DC3545' },
+  success: { show: toast.success, background: '#28A745' },
+  info: { show: toast.info, background: '#1A1A1A' },
+  warning: { show: toast.warning, background: '#E6873C' },
+};
+
+export const showToastMessage = (message, type = 'success') => {
+  const commonOptions = { ...options, style: baseStyle };
+  const variant = TOAST_VARIANTS[type];
+
+  if (!variant) {
+    toast(message, commonOptions);
+    return;
   }
+
+  variant.show(message, {
+    ...commonOptions,
+    style: { ...baseStyle, background: variant.background },
+  });
 };

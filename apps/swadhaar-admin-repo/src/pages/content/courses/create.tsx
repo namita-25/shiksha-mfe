@@ -1,39 +1,86 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Grid,
-  TextField,
-  IconButton,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  Tooltip,
-  Alert,
-} from '@mui/material';
+import { Box, Typography, Paper, Grid, IconButton, Tooltip, Alert } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import FormatBoldIcon from '@mui/icons-material/FormatBold';
-import FormatItalicIcon from '@mui/icons-material/FormatItalic';
-import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
-import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
-import InsertLinkIcon from '@mui/icons-material/InsertLink';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../../next-i18next.config.js';
+import CommonButton from '@/components/common/CommonButton';
+import CommonTextField from '@/components/common/CommonTextField';
+import CommonRadioGroup from '@/components/common/CommonRadioGroup';
+import FieldLabel from '@/components/common/FieldLabel';
+import { BRAND, NEUTRAL } from '@/styles/customTheme';
 
 interface ObjectiveItem {
   id: string;
   text: string;
 }
 
+const COURSES_LIST_PATH = '/content/courses';
+
+const LANGUAGE_OPTIONS = [
+  { value: 'hindi', labelKey: 'COURSES.LANGUAGE_HINDI' },
+  { value: 'english', labelKey: 'COURSES.LANGUAGE_ENGLISH' },
+];
+
+const CARD_SX = {
+  border: `1px solid ${NEUTRAL.border}`,
+  borderRadius: '10px',
+  backgroundColor: 'background.paper',
+  overflow: 'hidden',
+};
+
+const CARD_HEADER_SX = {
+  px: 2.5,
+  py: 1.8,
+  borderBottom: `1px solid ${NEUTRAL.divider}`,
+};
+
+const CARD_TITLE_SX = { fontSize: '15px', fontWeight: 600, color: NEUTRAL.ink };
+
+const TOOLBAR_ITEM_SX = {
+  cursor: 'pointer',
+  px: 0.6,
+  py: 0.2,
+  borderRadius: '3px',
+  '&:hover': { backgroundColor: '#EEEDE9', color: NEUTRAL.ink },
+};
+
+const TOOLBAR_ITEMS: { labelKey: string; display?: string; displayKey?: string; sx: object }[] = [
+  { labelKey: 'COURSES.EDITOR.BOLD', display: 'B', sx: { fontWeight: 700, fontSize: '13px' } },
+  { labelKey: 'COURSES.EDITOR.ITALIC', display: 'I', sx: { fontStyle: 'italic', fontSize: '13px' } },
+  { labelKey: 'COURSES.EDITOR.UNDERLINE', display: 'U', sx: { textDecoration: 'underline', fontSize: '13px' } },
+  {
+    labelKey: 'COURSES.EDITOR.BULLETED_LIST',
+    displayKey: 'COURSES.EDITOR.LIST',
+    sx: { fontSize: '12px', fontWeight: 500 },
+  },
+  {
+    labelKey: 'COURSES.EDITOR.INSERT_LINK',
+    displayKey: 'COURSES.EDITOR.LINK',
+    sx: { fontSize: '12px', fontWeight: 500 },
+  },
+];
+
+const OBJECTIVE_MOVE_BUTTON_SX = {
+  width: 22,
+  height: 18,
+  padding: 0,
+  borderRadius: '3px',
+  border: `1px solid ${NEUTRAL.border}`,
+  backgroundColor: 'background.paper',
+  color: '#3D3B37',
+  '&:hover': { backgroundColor: '#F3F4F6' },
+  '&.Mui-disabled': { opacity: 0.35 },
+};
+
 export default function CreateCoursePage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Form States matching Prototype
   const [courseName, setCourseName] = useState<string>('');
@@ -86,9 +133,7 @@ export default function CreateCoursePage() {
   };
 
   const handleUpdateObjective = (index: number, text: string) => {
-    const updated = [...objectives];
-    updated[index].text = text;
-    setObjectives(updated);
+    setObjectives(objectives.map((obj, idx) => (idx === index ? { ...obj, text } : obj)));
   };
 
   const handleAddObjective = () => {
@@ -109,7 +154,7 @@ export default function CreateCoursePage() {
   // Save actions
   const validateForm = () => {
     if (!courseName.trim()) {
-      setError('Course name is required.');
+      setError(t('COURSES.CREATE.NAME_REQUIRED'));
       return false;
     }
     setError(null);
@@ -118,15 +163,15 @@ export default function CreateCoursePage() {
 
   const handleSaveAsDraft = () => {
     if (!validateForm()) return;
-    setSuccessMsg(`Course "${courseName}" saved as draft successfully.`);
+    setSuccessMsg(t('COURSES.CREATE.SAVED_AS_DRAFT', { name: courseName }));
     setTimeout(() => {
-      router.push('/content/courses');
+      router.push(COURSES_LIST_PATH);
     }, 1200);
   };
 
   const handleSaveAndAddSections = () => {
     if (!validateForm()) return;
-    setSuccessMsg('Course created. Opening course structure...');
+    setSuccessMsg(t('COURSES.CREATE.CREATED_OPENING_STRUCTURE'));
     setTimeout(() => {
       router.push({
         pathname: '/content/courses/new',
@@ -142,20 +187,20 @@ export default function CreateCoursePage() {
   return (
     <Box sx={{ py: 1, maxWidth: 1400, mx: 'auto' }}>
       {/* Breadcrumb Navigation matching prototype */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 2, fontSize: '13px', color: '#6B6862' }}>
-        <span>Learning</span>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 2, fontSize: '13px', color: NEUTRAL.muted }}>
+        <span>{t('COURSES.BREADCRUMB_LEARNING')}</span>
         <span>/</span>
         <Link
-          href="/content/courses"
-          style={{ color: '#6B6862', textDecoration: 'none', transition: 'color 0.2s' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#E6873C')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#6B6862')}
+          href={COURSES_LIST_PATH}
+          style={{ color: NEUTRAL.muted, textDecoration: 'none', transition: 'color 0.2s' }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = BRAND.primary)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = NEUTRAL.muted)}
         >
-          Courses
+          {t('COURSES.BREADCRUMB_COURSES')}
         </Link>
         <span>/</span>
-        <Typography component="span" sx={{ color: '#1F1E1C', fontWeight: 600, fontSize: '13px' }}>
-          Create course
+        <Typography component="span" sx={{ color: NEUTRAL.ink, fontWeight: 600, fontSize: '13px' }}>
+          {t('COURSES.CREATE.TITLE')}
         </Typography>
       </Box>
 
@@ -171,8 +216,8 @@ export default function CreateCoursePage() {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
-            Create course
+          <Typography variant="h4" sx={{ fontWeight: 700, color: 'text.primary', fontSize: '26px' }}>
+            {t('COURSES.CREATE.TITLE')}
           </Typography>
           <Box
             sx={{
@@ -188,77 +233,22 @@ export default function CreateCoursePage() {
               borderRadius: '4px',
             }}
           >
-            Course doc · Course overview
+            {t('COURSES.CREATE.DOC_TAG')}
           </Box>
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            onClick={() => router.push('/content/courses')}
-            sx={{
-              borderColor: '#D6D3CC',
-              color: '#1F1E1C',
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: '14px',
-              borderRadius: '6px',
-              height: 38,
-              px: 2.2,
-              backgroundColor: '#FFFFFF',
-              '&:hover': {
-                backgroundColor: '#F3F4F6',
-                borderColor: '#BDB9B1',
-              },
-            }}
-          >
-            Cancel
-          </Button>
+          <CommonButton variant="outlined" onClick={() => router.push(COURSES_LIST_PATH)}>
+            {t('COMMON.CANCEL')}
+          </CommonButton>
 
-          <Button
-            variant="outlined"
-            onClick={handleSaveAsDraft}
-            sx={{
-              borderColor: '#D6D3CC',
-              color: '#1F1E1C',
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: '14px',
-              borderRadius: '6px',
-              height: 38,
-              px: 2.2,
-              backgroundColor: '#FFFFFF',
-              '&:hover': {
-                backgroundColor: '#FDF3E9',
-                borderColor: '#E6873C',
-                color: '#E6873C',
-              },
-            }}
-          >
-            Save as draft
-          </Button>
+          <CommonButton variant="outlined" onClick={handleSaveAsDraft}>
+            {t('COURSES.SAVE_AS_DRAFT')}
+          </CommonButton>
 
-          <Button
-            variant="contained"
-            onClick={handleSaveAndAddSections}
-            sx={{
-              backgroundColor: '#E6873C',
-              color: '#FFFFFF',
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '14px',
-              borderRadius: '6px',
-              height: 38,
-              px: 2.5,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: '#C66C23',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Save and add sections
-          </Button>
+          <CommonButton variant="primary" onClick={handleSaveAndAddSections}>
+            {t('COURSES.CREATE.SAVE_AND_ADD_SECTIONS')}
+          </CommonButton>
         </Box>
       </Box>
 
@@ -279,165 +269,70 @@ export default function CreateCoursePage() {
         {/* Left Column (8 cols): Course Overview + Objectives */}
         <Grid item xs={12} lg={8}>
           {/* Card 1: Course Overview */}
-          <Paper
-            elevation={0}
-            sx={{
-              border: '1px solid #D6D3CC',
-              borderRadius: '10px',
-              backgroundColor: '#FFFFFF',
-              mb: 2.5,
-              overflow: 'hidden',
-            }}
-          >
-            <Box
-              sx={{
-                px: 2.5,
-                py: 1.8,
-                borderBottom: '1px solid #ECEAE5',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                Course overview
-              </Typography>
+          <Paper elevation={0} sx={{ ...CARD_SX, mb: 2.5 }}>
+            <Box sx={{ ...CARD_HEADER_SX, display: 'flex', alignItems: 'center' }}>
+              <Typography sx={CARD_TITLE_SX}>{t('COURSES.CREATE.COURSE_OVERVIEW')}</Typography>
             </Box>
 
             <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2.2 }}>
               {/* Course Name */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Course name *
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={courseName}
-                  onChange={(e) => {
-                    setCourseName(e.target.value);
-                    if (error) setError(null);
-                  }}
-                  placeholder="e.g. Introduction to Swadhaar FinAccess & Its Digital Platform"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '6px',
-                      backgroundColor: '#FFFFFF',
-                      fontSize: '14px',
-                      '& fieldset': { borderColor: '#BDB9B1' },
-                      '&:hover fieldset': { borderColor: '#1F1E1C' },
-                      '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                    },
-                  }}
-                />
-              </Box>
+              <CommonTextField
+                id="course-name"
+                label={t('COURSES.CREATE.COURSE_NAME')}
+                required
+                value={courseName}
+                onChange={(e) => {
+                  setCourseName(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder={t('COURSES.CREATE.COURSE_NAME_PLACEHOLDER')}
+              />
 
               {/* Target Audience */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Target audience
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={targetAudience}
-                  onChange={(e) => setTargetAudience(e.target.value)}
-                  placeholder="New field trainers and Community Resource Persons joining Swadhaar FinAccess"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '6px',
-                      backgroundColor: '#FFFFFF',
-                      fontSize: '14px',
-                      '& fieldset': { borderColor: '#BDB9B1' },
-                      '&:hover fieldset': { borderColor: '#1F1E1C' },
-                      '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                    },
-                  }}
-                />
-              </Box>
+              <CommonTextField
+                id="course-target-audience"
+                label={t('COURSES.CREATE.TARGET_AUDIENCE')}
+                value={targetAudience}
+                onChange={(e) => setTargetAudience(e.target.value)}
+                placeholder={t('COURSES.CREATE.TARGET_AUDIENCE_PLACEHOLDER')}
+              />
 
               {/* 3-column Durations & Mode */}
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={4}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                    <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                      Learning content (min)
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={learningDuration}
-                      onChange={(e) => setLearningDuration(e.target.value)}
-                      placeholder="45"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '6px',
-                          backgroundColor: '#FFFFFF',
-                          fontSize: '14px',
-                          '& fieldset': { borderColor: '#BDB9B1' },
-                          '&:hover fieldset': { borderColor: '#1F1E1C' },
-                          '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                        },
-                      }}
-                    />
-                  </Box>
+                  <CommonTextField
+                    id="course-learning-duration"
+                    label={t('COURSES.CREATE.LEARNING_CONTENT_MIN')}
+                    value={learningDuration}
+                    onChange={(e) => setLearningDuration(e.target.value)}
+                    placeholder="45"
+                  />
                 </Grid>
 
                 <Grid item xs={12} sm={4}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                    <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                      Assessment (min)
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={assessmentDuration}
-                      onChange={(e) => setAssessmentDuration(e.target.value)}
-                      placeholder="15"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '6px',
-                          backgroundColor: '#FFFFFF',
-                          fontSize: '14px',
-                          '& fieldset': { borderColor: '#BDB9B1' },
-                          '&:hover fieldset': { borderColor: '#1F1E1C' },
-                          '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                        },
-                      }}
-                    />
-                  </Box>
+                  <CommonTextField
+                    id="course-assessment-duration"
+                    label={t('COURSES.CREATE.ASSESSMENT_MIN')}
+                    value={assessmentDuration}
+                    onChange={(e) => setAssessmentDuration(e.target.value)}
+                    placeholder="15"
+                  />
                 </Grid>
 
                 <Grid item xs={12} sm={4}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                    <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                      Delivery mode
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={deliveryMode}
-                      onChange={(e) => setDeliveryMode(e.target.value)}
-                      placeholder="Online learning via LMS"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '6px',
-                          backgroundColor: '#FFFFFF',
-                          fontSize: '14px',
-                          '& fieldset': { borderColor: '#BDB9B1' },
-                          '&:hover fieldset': { borderColor: '#1F1E1C' },
-                          '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                        },
-                      }}
-                    />
-                  </Box>
+                  <CommonTextField
+                    id="course-delivery-mode"
+                    label={t('COURSES.CREATE.DELIVERY_MODE')}
+                    value={deliveryMode}
+                    onChange={(e) => setDeliveryMode(e.target.value)}
+                    placeholder={t('COURSES.CREATE.DELIVERY_MODE_PLACEHOLDER')}
+                  />
                 </Grid>
               </Grid>
 
               {/* Introduction with Rich Text Toolbar */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Introduction
-                </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <FieldLabel label={t('COURSES.CREATE.INTRODUCTION')} htmlFor="course-introduction" />
                 <Box
                   sx={{
                     display: 'flex',
@@ -445,194 +340,69 @@ export default function CreateCoursePage() {
                     gap: 1.5,
                     px: 1.5,
                     py: 0.8,
-                    backgroundColor: '#FAF9F6',
-                    border: '1px solid #BDB9B1',
+                    backgroundColor: NEUTRAL.canvas,
+                    border: `1px solid ${NEUTRAL.borderStrong}`,
                     borderBottom: 'none',
                     borderRadius: '6px 6px 0 0',
-                    color: '#6B6862',
+                    color: NEUTRAL.muted,
                   }}
                 >
-                  <Tooltip title="Bold">
-                    <Box
-                      component="span"
-                      sx={{
-                        cursor: 'pointer',
-                        fontWeight: 700,
-                        fontSize: '13px',
-                        px: 0.6,
-                        py: 0.2,
-                        borderRadius: '3px',
-                        '&:hover': { backgroundColor: '#EEEDE9', color: '#1F1E1C' },
-                      }}
-                    >
-                      B
-                    </Box>
-                  </Tooltip>
-
-                  <Tooltip title="Italic">
-                    <Box
-                      component="span"
-                      sx={{
-                        cursor: 'pointer',
-                        fontStyle: 'italic',
-                        fontSize: '13px',
-                        px: 0.6,
-                        py: 0.2,
-                        borderRadius: '3px',
-                        '&:hover': { backgroundColor: '#EEEDE9', color: '#1F1E1C' },
-                      }}
-                    >
-                      I
-                    </Box>
-                  </Tooltip>
-
-                  <Tooltip title="Underline">
-                    <Box
-                      component="span"
-                      sx={{
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        fontSize: '13px',
-                        px: 0.6,
-                        py: 0.2,
-                        borderRadius: '3px',
-                        '&:hover': { backgroundColor: '#EEEDE9', color: '#1F1E1C' },
-                      }}
-                    >
-                      U
-                    </Box>
-                  </Tooltip>
-
-                  <Box sx={{ width: '1px', height: 16, backgroundColor: '#D6D3CC' }} />
-
-                  <Tooltip title="Bulleted List">
-                    <Box
-                      component="span"
-                      sx={{
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        px: 0.6,
-                        py: 0.2,
-                        borderRadius: '3px',
-                        '&:hover': { backgroundColor: '#EEEDE9', color: '#1F1E1C' },
-                      }}
-                    >
-                      • List
-                    </Box>
-                  </Tooltip>
-
-                  <Tooltip title="Insert Link">
-                    <Box
-                      component="span"
-                      sx={{
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        px: 0.6,
-                        py: 0.2,
-                        borderRadius: '3px',
-                        '&:hover': { backgroundColor: '#EEEDE9', color: '#1F1E1C' },
-                      }}
-                    >
-                      Link
-                    </Box>
-                  </Tooltip>
+                  {TOOLBAR_ITEMS.map((item, idx) => (
+                    <React.Fragment key={item.labelKey}>
+                      {idx === 3 && <Box sx={{ width: '1px', height: 16, backgroundColor: NEUTRAL.border }} />}
+                      <Tooltip title={t(item.labelKey)}>
+                        <Box component="span" sx={{ ...TOOLBAR_ITEM_SX, ...item.sx }}>
+                          {item.displayKey ? t(item.displayKey) : item.display}
+                        </Box>
+                      </Tooltip>
+                    </React.Fragment>
+                  ))}
                 </Box>
-                <TextField
-                  fullWidth
+                <CommonTextField
+                  id="course-introduction"
                   multiline
                   rows={3}
                   value={introduction}
                   onChange={(e) => setIntroduction(e.target.value)}
-                  placeholder="Welcome to your very first step as a Swadhaar FinAccess field trainer…"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '0 0 6px 6px',
-                      backgroundColor: '#FFFFFF',
-                      fontSize: '14px',
-                      '& fieldset': { borderColor: '#BDB9B1' },
-                      '&:hover fieldset': { borderColor: '#1F1E1C' },
-                      '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                    },
-                  }}
+                  placeholder={t('COURSES.CREATE.INTRODUCTION_PLACEHOLDER')}
+                  InputProps={{ sx: { borderRadius: '0 0 6px 6px' } }}
                 />
               </Box>
 
               {/* How it works */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                  How it works
-                </Typography>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={2}
-                  value={howItWorks}
-                  onChange={(e) => setHowItWorks(e.target.value)}
-                  placeholder="Complete each section and pass its assessment. Score 70% or above on the final assessment to progress to the next course…"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '6px',
-                      backgroundColor: '#FFFFFF',
-                      fontSize: '14px',
-                      '& fieldset': { borderColor: '#BDB9B1' },
-                      '&:hover fieldset': { borderColor: '#1F1E1C' },
-                      '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                    },
-                  }}
-                />
-              </Box>
+              <CommonTextField
+                id="course-how-it-works"
+                label={t('COURSES.CREATE.HOW_IT_WORKS')}
+                multiline
+                rows={2}
+                value={howItWorks}
+                onChange={(e) => setHowItWorks(e.target.value)}
+                placeholder={t('COURSES.CREATE.HOW_IT_WORKS_PLACEHOLDER')}
+              />
             </Box>
           </Paper>
 
           {/* Card 2: Course Objectives */}
-          <Paper
-            elevation={0}
-            sx={{
-              border: '1px solid #D6D3CC',
-              borderRadius: '10px',
-              backgroundColor: '#FFFFFF',
-              overflow: 'hidden',
-            }}
-          >
+          <Paper elevation={0} sx={CARD_SX}>
             <Box
               sx={{
-                px: 2.5,
+                ...CARD_HEADER_SX,
                 py: 1.5,
-                borderBottom: '1px solid #ECEAE5',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}
             >
-              <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                Course objectives
-              </Typography>
-              <Button
+              <Typography sx={CARD_TITLE_SX}>{t('COURSES.CREATE.COURSE_OBJECTIVES')}</Typography>
+              <CommonButton
                 variant="outlined"
                 size="small"
                 startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                 onClick={handleAddObjective}
-                sx={{
-                  borderColor: '#D6D3CC',
-                  color: '#1F1E1C',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  borderRadius: '6px',
-                  height: 30,
-                  px: 1.5,
-                  backgroundColor: '#FFFFFF',
-                  '&:hover': {
-                    borderColor: '#E6873C',
-                    backgroundColor: '#FDF3E9',
-                    color: '#E6873C',
-                  },
-                }}
+                sx={{ fontSize: '12px', height: 30, px: 1.5, py: 0 }}
               >
-                Add objective
-              </Button>
+                {t('COURSES.CREATE.ADD_OBJECTIVE')}
+              </CommonButton>
             </Box>
 
             <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -647,45 +417,27 @@ export default function CreateCoursePage() {
                 >
                   {/* Reorder Buttons Up/Down */}
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <Tooltip title="Move up">
+                    <Tooltip title={t('COURSES.MOVE_UP')}>
                       <span>
                         <IconButton
                           size="small"
+                          aria-label={t('COURSES.MOVE_UP')}
                           disabled={index === 0}
                           onClick={() => handleMoveObjective(index, 'up')}
-                          sx={{
-                            width: 22,
-                            height: 18,
-                            padding: 0,
-                            borderRadius: '3px',
-                            border: '1px solid #D6D3CC',
-                            backgroundColor: '#FFFFFF',
-                            color: '#3D3B37',
-                            '&:hover': { backgroundColor: '#F3F4F6' },
-                            '&.Mui-disabled': { opacity: 0.35 },
-                          }}
+                          sx={OBJECTIVE_MOVE_BUTTON_SX}
                         >
                           <KeyboardArrowUpIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </span>
                     </Tooltip>
-                    <Tooltip title="Move down">
+                    <Tooltip title={t('COURSES.MOVE_DOWN')}>
                       <span>
                         <IconButton
                           size="small"
+                          aria-label={t('COURSES.MOVE_DOWN')}
                           disabled={index === objectives.length - 1}
                           onClick={() => handleMoveObjective(index, 'down')}
-                          sx={{
-                            width: 22,
-                            height: 18,
-                            padding: 0,
-                            borderRadius: '3px',
-                            border: '1px solid #D6D3CC',
-                            backgroundColor: '#FFFFFF',
-                            color: '#3D3B37',
-                            '&:hover': { backgroundColor: '#F3F4F6' },
-                            '&.Mui-disabled': { opacity: 0.35 },
-                          }}
+                          sx={OBJECTIVE_MOVE_BUTTON_SX}
                         >
                           <KeyboardArrowDownIcon sx={{ fontSize: 16 }} />
                         </IconButton>
@@ -694,32 +446,21 @@ export default function CreateCoursePage() {
                   </Box>
 
                   {/* Objective Input */}
-                  <TextField
-                    fullWidth
-                    size="small"
+                  <CommonTextField
                     value={obj.text}
                     onChange={(e) => handleUpdateObjective(index, e.target.value)}
-                    placeholder={`Objective ${index + 1}`}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        backgroundColor: '#FFFFFF',
-                        fontSize: '14px',
-                        '& fieldset': { borderColor: '#BDB9B1' },
-                        '&:hover fieldset': { borderColor: '#1F1E1C' },
-                        '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                      },
-                    }}
+                    placeholder={t('COURSES.CREATE.OBJECTIVE_PLACEHOLDER', { number: index + 1 })}
                   />
 
                   {/* Delete Objective button */}
                   {objectives.length > 1 && (
-                    <Tooltip title="Remove objective">
+                    <Tooltip title={t('COURSES.CREATE.REMOVE_OBJECTIVE')}>
                       <IconButton
                         size="small"
+                        aria-label={t('COURSES.CREATE.REMOVE_OBJECTIVE')}
                         onClick={() => handleDeleteObjective(index)}
                         sx={{
-                          color: '#8A867F',
+                          color: NEUTRAL.subtle,
                           '&:hover': { color: '#DC2626', backgroundColor: '#FEE2E2' },
                         }}
                       >
@@ -731,8 +472,8 @@ export default function CreateCoursePage() {
               ))}
 
               {/* Bottom hint matching prototype */}
-              <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '12px', mt: 0.5 }}>
-                + 3 more in the course document
+              <Typography variant="caption" sx={{ color: NEUTRAL.subtle, fontSize: '12px', mt: 0.5 }}>
+                {t('COURSES.CREATE.MORE_IN_DOCUMENT', { count: 3 })}
               </Typography>
             </Box>
           </Paper>
@@ -742,104 +483,48 @@ export default function CreateCoursePage() {
         <Grid item xs={12} lg={4}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {/* Card 3: Language */}
-            <Paper
-              elevation={0}
-              sx={{
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                backgroundColor: '#FFFFFF',
-                overflow: 'hidden',
-              }}
-            >
+            <Paper elevation={0} sx={CARD_SX}>
               <Box
                 sx={{
-                  px: 2.5,
-                  py: 1.8,
-                  borderBottom: '1px solid #ECEAE5',
+                  ...CARD_HEADER_SX,
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Language *
-                </Typography>
+                <Typography sx={CARD_TITLE_SX}>{t('COMMON.LANGUAGE')} *</Typography>
               </Box>
 
               <Box sx={{ p: 2.5 }}>
-                <RadioGroup
+                <CommonRadioGroup
+                  name="course-language"
+                  row={false}
                   value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  sx={{ gap: 1 }}
-                >
-                  <FormControlLabel
-                    value="hindi"
-                    control={
-                      <Radio
-                        sx={{
-                          color: '#BDB9B1',
-                          '&.Mui-checked': { color: '#E6873C' },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: '14px', color: '#1F1E1C', fontWeight: 500 }}>
-                        Hindi
-                      </Typography>
-                    }
-                  />
-                  <FormControlLabel
-                    value="english"
-                    control={
-                      <Radio
-                        sx={{
-                          color: '#BDB9B1',
-                          '&.Mui-checked': { color: '#E6873C' },
-                        }}
-                      />
-                    }
-                    label={
-                      <Typography sx={{ fontSize: '14px', color: '#1F1E1C', fontWeight: 500 }}>
-                        English
-                      </Typography>
-                    }
-                  />
-                </RadioGroup>
+                  onChange={setLanguage}
+                  options={LANGUAGE_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: t(option.labelKey),
+                  }))}
+                />
 
-                <Typography variant="caption" sx={{ color: '#6B6862', fontSize: '12px', display: 'block', mt: 1.5 }}>
-                  One language per course. Other languages are separate courses.
+                <Typography variant="caption" sx={{ color: NEUTRAL.muted, fontSize: '12px', display: 'block', mt: 1.5 }}>
+                  {t('COURSES.CREATE.ONE_LANGUAGE_HINT')}
                 </Typography>
               </Box>
             </Paper>
 
             {/* Card 4: Added after saving */}
-            <Paper
-              elevation={0}
-              sx={{
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                backgroundColor: '#FFFFFF',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  px: 2.5,
-                  py: 1.8,
-                  borderBottom: '1px solid #ECEAE5',
-                }}
-              >
-                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Added after saving
-                </Typography>
+            <Paper elevation={0} sx={CARD_SX}>
+              <Box sx={CARD_HEADER_SX}>
+                <Typography sx={CARD_TITLE_SX}>{t('COURSES.CREATE.ADDED_AFTER_SAVING')}</Typography>
               </Box>
 
               <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-                <Typography sx={{ fontSize: '14px', color: '#1F1E1C' }}>
-                  Sections with their learning content
+                <Typography sx={{ fontSize: '14px', color: NEUTRAL.ink }}>
+                  {t('COURSES.CREATE.SECTIONS_WITH_CONTENT')}
                 </Typography>
-                <Typography sx={{ fontSize: '14px', color: '#1F1E1C' }}>
-                  FAQs · Summary · Transition
+                <Typography sx={{ fontSize: '14px', color: NEUTRAL.ink }}>
+                  {t('COURSES.CREATE.FAQS_SUMMARY_TRANSITION')}
                 </Typography>
                 <Box>
                   <Box
@@ -855,11 +540,11 @@ export default function CreateCoursePage() {
                       display: 'inline-block',
                     }}
                   >
-                    Course assessment (linked from Assessments)
+                    {t('COURSES.CREATE.LINKED_COURSE_ASSESSMENT')}
                   </Box>
                 </Box>
-                <Typography variant="caption" sx={{ color: '#6B6862', fontSize: '12px', display: 'block', mt: 1 }}>
-                  All appear in every course in the course document.
+                <Typography variant="caption" sx={{ color: NEUTRAL.muted, fontSize: '12px', display: 'block', mt: 1 }}>
+                  {t('COURSES.CREATE.ALL_APPEAR_IN_EVERY_COURSE')}
                 </Typography>
               </Box>
             </Paper>
@@ -873,7 +558,7 @@ export default function CreateCoursePage() {
 export const getStaticProps = async ({ locale }: { locale: string }) => {
   return {
     props: {
-      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any, ['en', 'mr', 'hi'])),
     },
   };
 };

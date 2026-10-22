@@ -1,8 +1,4 @@
-import LearningPathBuilderPage, { getStaticProps as builderStaticProps } from './builder';
-
-export default LearningPathBuilderPage;
-
-export const getStaticProps = builderStaticProps;
+export { default, getStaticProps } from './builder';
 
 export const getStaticPaths = async () => {
   return {

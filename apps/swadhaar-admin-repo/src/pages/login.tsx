@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
+import { useTranslation, UserConfig } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../next-i18next.config.js';
 import {
@@ -21,12 +21,23 @@ import {
 } from '@/services/LoginService';
 import { showToastMessage } from '@/components/Toastify';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
+import { BRAND, NEUTRAL } from '@/styles/customTheme';
 
 const PRIMARY = '#E6873C';
 const DARK_NAV = '#1C2B4A';
 const TIMER_SECS = 60;
 const MAX_RESEND = 3;
 const OTP_LEN = 6;
+
+interface ApiError {
+  response?: { data?: { params?: { errmsg?: string }; message?: string } };
+}
+
+/** Extracts the server-provided error message from an axios-style error, if any. */
+const getApiErrorMessage = (err: unknown): string | undefined => {
+  const data = (err as ApiError)?.response?.data;
+  return data?.params?.errmsg || data?.message;
+};
 
 export default function LoginPage() {
   const router = useRouter();
@@ -147,11 +158,11 @@ export default function LoginPage() {
   const handleSendOtp = useCallback(async () => {
     const trimmed = mobile.trim();
     if (trimmed.length !== 10) {
-      showToastMessage('Please enter a valid 10-digit mobile number', 'warning');
+      showToastMessage(t('LOGIN_PAGE.INVALID_MOBILE'), 'warning');
       return;
     }
     if (resendAttempts >= MAX_RESEND) {
-      showToastMessage('Maximum OTP resend attempts reached. Please try again later.', 'error');
+      showToastMessage(t('LOGIN_PAGE.MAX_RESEND_REACHED'), 'error');
       return;
     }
 
@@ -166,10 +177,7 @@ export default function LoginPage() {
         checkResp?.result;
 
       if (!userList || (Array.isArray(userList) && userList.length === 0)) {
-        showToastMessage(
-          'No Admin account found with this mobile number. Access is restricted to Administrator role.',
-          'error'
-        );
+        showToastMessage(t('LOGIN_PAGE.NO_ADMIN_ACCOUNT'), 'error');
         return;
       }
 
@@ -187,21 +195,19 @@ export default function LoginPage() {
       setOtp(Array(OTP_LEN).fill(''));
       setResendAttempts((prev) => prev + 1);
       startTimer();
-      showToastMessage('OTP sent successfully to registered mobile number', 'success');
+      showToastMessage(t('LOGIN_PAGE.OTP_SENT_SUCCESS'), 'success');
 
       // Auto-focus first digit
       setTimeout(() => focusOtpInput(0), 100);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Send OTP error:', err);
       const errorMsg =
-        err?.response?.data?.params?.errmsg ||
-        err?.response?.data?.message ||
-        'Failed to send OTP. Please check your network and try again.';
+        getApiErrorMessage(err) || t('LOGIN_PAGE.SEND_OTP_FAILED');
       showToastMessage(errorMsg, 'error');
     } finally {
       setIsSendingOtp(false);
     }
-  }, [mobile, resendAttempts]);
+  }, [mobile, resendAttempts, t]);
 
   /**
    * Verify OTP and Login:
@@ -213,7 +219,7 @@ export default function LoginPage() {
   const handleSignIn = async () => {
     const otpStr = otp.join('');
     if (!otpStr || otpStr.length < OTP_LEN) {
-      showToastMessage('Please enter the complete 6-digit OTP', 'warning');
+      showToastMessage(t('LOGIN_PAGE.INCOMPLETE_OTP', { digits: OTP_LEN }), 'warning');
       return;
     }
 
@@ -237,7 +243,7 @@ export default function LoginPage() {
         const errorMsg =
           verifyResp?.params?.errmsg ||
           verifyResp?.message ||
-          'Invalid OTP. Please check and try again.';
+          t('LOGIN_PAGE.INVALID_OTP');
         showToastMessage(errorMsg, 'error');
         return;
       }
@@ -294,15 +300,12 @@ export default function LoginPage() {
       // Set cookie for SSR/middleware compatibility
       document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
 
-      showToastMessage('Login successful! Redirecting...', 'success');
+      showToastMessage(t('LOGIN_PAGE.LOGIN_SUCCESS'), 'success');
       const returnUrl = (router.query.returnUrl as string) || '/dashboard';
       router.push(returnUrl);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Sign in error:', err);
-      const errorMsg =
-        err?.response?.data?.params?.errmsg ||
-        err?.response?.data?.message ||
-        'Invalid OTP or authentication failed. Please try again.';
+      const errorMsg = getApiErrorMessage(err) || t('LOGIN_PAGE.SIGN_IN_FAILED');
       showToastMessage(errorMsg, 'error');
     } finally {
       setIsSigningIn(false);
@@ -323,9 +326,9 @@ export default function LoginPage() {
     if (resendTimer > 0) {
       const mins = Math.floor(resendTimer / 60);
       const secs = String(resendTimer % 60).padStart(2, '0');
-      return `Resend in ${mins}:${secs}`;
+      return t('LOGIN_PAGE.RESEND_IN', { time: `${mins}:${secs}` });
     }
-    return 'Send/Resend OTP';
+    return t('LOGIN_PAGE.SEND_RESEND_OTP');
   };
 
   if (isCheckingAuth) {
@@ -387,7 +390,7 @@ export default function LoginPage() {
           >
             <Image
               src="/images/swadhar_logo.png"
-              alt="Swadhaar FinAccess"
+              alt={t('LAYOUT.LOGO_ALT')}
               width={76}
               height={76}
               style={{ objectFit: 'contain' }}
@@ -402,7 +405,7 @@ export default function LoginPage() {
               color: '#1A1A1A',
             }}
           >
-            Sign In
+            {t('LOGIN_PAGE.SIGN_IN')}
           </Typography>
           <Typography
             sx={{
@@ -413,7 +416,7 @@ export default function LoginPage() {
               mt: 0.5,
             }}
           >
-            Sign in to continue
+            {t('LOGIN_PAGE.SIGN_IN_TO_CONTINUE')}
           </Typography>
         </Box>
 
@@ -427,16 +430,16 @@ export default function LoginPage() {
             mb: 0.75,
           }}
         >
-          Mobile Number
+          {t('LOGIN_PAGE.MOBILE_NUMBER')}
         </Typography>
         <TextField
           id="swadhaar-mobile-input"
           fullWidth
           size="small"
-          placeholder="Enter mobile number"
+          placeholder={t('LOGIN_PAGE.MOBILE_PLACEHOLDER')}
           value={mobile}
           onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
-          inputProps={{ inputMode: 'numeric', maxLength: 10 }}
+          inputProps={{ inputMode: 'numeric', maxLength: 10, 'aria-label': t('LOGIN_PAGE.MOBILE_NUMBER') }}
           sx={{
             mb: 2.5,
             '& .MuiOutlinedInput-root': {
@@ -458,7 +461,7 @@ export default function LoginPage() {
             mb: 0.75,
           }}
         >
-          OTP
+          {t('LOGIN_PAGE.OTP')}
         </Typography>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 2.75 }}>
           {otp.map((digit, idx) => (
@@ -472,6 +475,7 @@ export default function LoginPage() {
               inputProps={{
                 maxLength: 1,
                 inputMode: 'numeric',
+                'aria-label': t('LOGIN_PAGE.OTP_DIGIT', { index: idx + 1 }),
                 style: {
                   textAlign: 'center',
                   fontSize: 16,
@@ -479,7 +483,7 @@ export default function LoginPage() {
                   fontFamily: "'Inter', 'Poppins', sans-serif",
                   padding: '10px 0',
                 },
-                onPaste: (e: any) => handleOtpPaste(idx, e),
+                onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => handleOtpPaste(idx, e),
               }}
               sx={{
                 flex: 1,
@@ -521,7 +525,7 @@ export default function LoginPage() {
           {isSigningIn ? (
             <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />
           ) : (
-            'Sign In'
+            t('LOGIN_PAGE.SIGN_IN')
           )}
         </Button>
 
@@ -555,7 +559,7 @@ export default function LoginPage() {
 export async function getStaticProps({ locale }: { locale: string }) {
   return {
     props: {
-      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as UserConfig, ['en', 'mr', 'hi'])),
     },
   };
 }

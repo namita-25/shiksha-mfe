@@ -10,20 +10,17 @@ import {
   IconButton,
   Chip,
   Radio,
-  RadioGroup,
-  FormControlLabel,
   Paper,
-  Divider,
   Alert,
-  Tooltip,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
+import { useTranslation } from 'next-i18next';
+import CommonButton from './CommonButton';
+import { BRAND, NEUTRAL } from '@/styles/customTheme';
 
 export interface PreviewContentData {
   identifier?: string;
@@ -64,12 +61,29 @@ interface ContentPreviewModalProps {
   content: PreviewContentData | null;
 }
 
+type AssessmentMode = 'review' | 'interactive';
+
+const PASS_PERCENTAGE = 70;
+const DEFAULT_YOUTUBE_EMBED = 'https://www.youtube.com/embed/EUPk_ThuWXI?autoplay=1&rel=0';
+const IFRAME_ALLOW = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+
+const absoluteFillStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  border: 0,
+};
+
+const headerIconSx = { color: 'primary.main', fontSize: 24 };
+
 // Helper to extract YouTube embed URL
 function getYouTubeEmbedUrl(url?: string): string | null {
   if (!url) return null;
   try {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
+    const match = regExp.exec(url);
     if (match && match[2].length === 11) {
       return `https://www.youtube.com/embed/${match[2]}?autoplay=1&rel=0`;
     }
@@ -79,7 +93,21 @@ function getYouTubeEmbedUrl(url?: string): string | null {
   return null;
 }
 
-// Fallback questions for Swadhaar assessments if not provided
+/** Border/background colours for an assessment option, by evaluation state. */
+function getOptionColors(showCorrect: boolean, showIncorrect: boolean, isSelected: boolean) {
+  if (showCorrect) return { borderColor: '#16A34A', backgroundColor: '#F0FDF4' };
+  if (showIncorrect) return { borderColor: '#DC2626', backgroundColor: '#FEF2F2' };
+  if (isSelected) return { borderColor: BRAND.primary, backgroundColor: BRAND.primarySoft };
+  return { borderColor: '#E5E7EB', backgroundColor: '#FFFFFF' };
+}
+
+function getSubtitleKey(isVideo: boolean, isPdf: boolean): string {
+  if (isVideo) return 'CONTENT.PREVIEW.SUBTITLE_VIDEO';
+  if (isPdf) return 'CONTENT.PREVIEW.SUBTITLE_PDF';
+  return 'CONTENT.PREVIEW.SUBTITLE_ASSESSMENT';
+}
+
+// Fallback questions for Swadhaar assessments if not provided (sample content data)
 const DEFAULT_ASSESSMENT_QUESTIONS = [
   {
     id: 'q-1',
@@ -123,7 +151,8 @@ const DEFAULT_ASSESSMENT_QUESTIONS = [
 ];
 
 export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, onClose, content }) => {
-  const [assessmentMode, setAssessmentMode] = useState<'review' | 'interactive'>('review');
+  const { t } = useTranslation();
+  const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>('review');
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
@@ -132,17 +161,21 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
   // Determine item type
   const rawType = (content.type || '').toLowerCase();
   const mime = (content.mimeType || '').toLowerCase();
+  const artifactUrl = content.artifactUrl;
   const isVideo =
     rawType === 'video' ||
     mime.includes('video') ||
     mime.includes('youtube') ||
-    Boolean(content.artifactUrl && (content.artifactUrl.includes('youtube') || content.artifactUrl.includes('youtu.be') || content.artifactUrl.endsWith('.mp4')));
+    Boolean(
+      artifactUrl &&
+        (artifactUrl.includes('youtube') || artifactUrl.includes('youtu.be') || artifactUrl.endsWith('.mp4'))
+    );
 
   const isPdf =
     rawType === 'pdf' ||
     rawType === 'document' ||
     mime === 'application/pdf' ||
-    Boolean(content.artifactUrl && content.artifactUrl.toLowerCase().endsWith('.pdf'));
+    Boolean(artifactUrl?.toLowerCase().endsWith('.pdf'));
 
   const isAssessment =
     rawType === 'assessment' ||
@@ -151,13 +184,13 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
     mime.includes('questionset') ||
     (!isVideo && !isPdf);
 
-  const displayTitle = content.name || content.title || 'Content Preview';
+  const displayTitle = content.name || content.title || t('CONTENT.PREVIEW.DEFAULT_TITLE');
   const rawUrl = content.artifactUrl || content.streamingUrl || content.downloadUrl || '';
   const youtubeEmbedUrl = getYouTubeEmbedUrl(rawUrl);
+  const isInteractive = assessmentMode === 'interactive';
 
-  const questionsList = content.questions && content.questions.length > 0
-    ? content.questions
-    : DEFAULT_ASSESSMENT_QUESTIONS;
+  const questionsList =
+    content.questions && content.questions.length > 0 ? content.questions : DEFAULT_ASSESSMENT_QUESTIONS;
 
   const handleOptionSelect = (qId: string, optId: string) => {
     if (submitted) return;
@@ -184,11 +217,39 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
     };
   };
 
+  const renderVideoPlayer = () => {
+    if (youtubeEmbedUrl) {
+      return (
+        <iframe
+          src={youtubeEmbedUrl}
+          title={displayTitle}
+          style={absoluteFillStyle}
+          allow={IFRAME_ALLOW}
+          allowFullScreen
+        />
+      );
+    }
+    if (rawUrl) {
+      return (
+        <video
+          controls
+          autoPlay
+          src={rawUrl}
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        />
+      );
+    }
+    return <iframe src={DEFAULT_YOUTUBE_EMBED} title={displayTitle} style={absoluteFillStyle} allowFullScreen />;
+  };
+
+  const scoreResult = isInteractive && submitted ? calculateScore() : null;
+  const hasPassed = scoreResult ? scoreResult.percentage >= PASS_PERCENTAGE : false;
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth={isVideo ? 'md' : isPdf ? 'lg' : 'md'}
+      maxWidth={!isVideo && isPdf ? 'lg' : 'md'}
       fullWidth
       PaperProps={{
         sx: {
@@ -201,7 +262,7 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
       {/* Header */}
       <DialogTitle
         sx={{
-          backgroundColor: '#1C2B4A',
+          backgroundColor: 'secondary.main',
           color: '#FFFFFF',
           display: 'flex',
           alignItems: 'center',
@@ -211,9 +272,9 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-          {isVideo && <PlayCircleOutlineIcon sx={{ color: '#E6873C', fontSize: 24 }} />}
-          {isPdf && <PictureAsPdfOutlinedIcon sx={{ color: '#E6873C', fontSize: 24 }} />}
-          {isAssessment && <QuizOutlinedIcon sx={{ color: '#E6873C', fontSize: 24 }} />}
+          {isVideo && <PlayCircleOutlineIcon sx={headerIconSx} />}
+          {isPdf && <PictureAsPdfOutlinedIcon sx={headerIconSx} />}
+          {isAssessment && <QuizOutlinedIcon sx={headerIconSx} />}
           <Box sx={{ minWidth: 0 }}>
             <Typography
               sx={{
@@ -228,19 +289,24 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
               {displayTitle}
             </Typography>
             <Typography sx={{ fontSize: '11px', color: '#B0B8C4' }}>
-              {isVideo ? 'Video Resource · Native Player' : isPdf ? 'PDF Document · In-App Viewer' : 'Assessment · Native Evaluator'}
+              {t(getSubtitleKey(isVideo, isPdf))}
               {content.duration ? ` · ${content.duration}` : ''}
-              {content.timeLimit ? ` · Time: ${content.timeLimit}` : ''}
+              {content.timeLimit ? ` · ${t('CONTENT.PREVIEW.TIME', { value: content.timeLimit })}` : ''}
             </Typography>
           </Box>
         </Box>
-        <IconButton size="small" onClick={onClose} sx={{ color: '#FFFFFF', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          aria-label={t('COMMON.CLOSE')}
+          sx={{ color: '#FFFFFF', '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' } }}
+        >
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
 
       {/* Content Body */}
-      <DialogContent sx={{ p: 0, backgroundColor: '#FAF9F6' }}>
+      <DialogContent sx={{ p: 0, backgroundColor: NEUTRAL.canvas }}>
         {/* 1. Video Player */}
         {isVideo && (
           <Box sx={{ p: 2.5 }}>
@@ -255,51 +321,23 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               }}
             >
-              {youtubeEmbedUrl ? (
-                <iframe
-                  src={youtubeEmbedUrl}
-                  title={displayTitle}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    border: 0,
-                  }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : rawUrl ? (
-                <video
-                  controls
-                  autoPlay
-                  src={rawUrl}
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
-              ) : (
-                <iframe
-                  src="https://www.youtube.com/embed/EUPk_ThuWXI?autoplay=1&rel=0"
-                  title={displayTitle}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    border: 0,
-                  }}
-                  allowFullScreen
-                />
-              )}
+              {renderVideoPlayer()}
             </Box>
 
             {content.description && (
-              <Box sx={{ mt: 2, p: 2, backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #ECEAE5' }}>
-                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C', mb: 0.5 }}>
-                  Description
+              <Box
+                sx={{
+                  mt: 2,
+                  p: 2,
+                  backgroundColor: 'background.paper',
+                  borderRadius: '8px',
+                  border: `1px solid ${NEUTRAL.divider}`,
+                }}
+              >
+                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: NEUTRAL.ink, mb: 0.5 }}>
+                  {t('COMMON.DESCRIPTION')}
                 </Typography>
-                <Typography sx={{ fontSize: '13px', color: '#6B6862', lineHeight: 1.5 }}>
+                <Typography sx={{ fontSize: '13px', color: NEUTRAL.muted, lineHeight: 1.5 }}>
                   {content.description}
                 </Typography>
               </Box>
@@ -317,7 +355,7 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
                   height: '620px',
                   borderRadius: '8px',
                   overflow: 'hidden',
-                  border: '1px solid #D6D3CC',
+                  border: `1px solid ${NEUTRAL.border}`,
                   backgroundColor: '#525659',
                 }}
               >
@@ -335,33 +373,25 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
                 sx={{
                   p: 6,
                   textAlign: 'center',
-                  backgroundColor: '#FFFFFF',
-                  border: '1px dashed #D6D3CC',
+                  backgroundColor: 'background.paper',
+                  border: `1px dashed ${NEUTRAL.border}`,
                   borderRadius: '8px',
                 }}
               >
-                <PictureAsPdfOutlinedIcon sx={{ fontSize: 60, color: '#E6873C', mb: 1.5 }} />
-                <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 600, color: '#1F1E1C', mb: 1 }}>
+                <PictureAsPdfOutlinedIcon sx={{ fontSize: 60, color: 'primary.main', mb: 1.5 }} />
+                <Typography variant="h6" sx={{ fontSize: '16px', fontWeight: 600, color: NEUTRAL.ink, mb: 1 }}>
                   {displayTitle}
                 </Typography>
-                <Typography sx={{ fontSize: '13px', color: '#6B6862', maxWidth: 500, mx: 'auto', mb: 3 }}>
-                  This PDF document is registered in the Swadhaar training catalog. You can download or preview it directly in your browser.
+                <Typography sx={{ fontSize: '13px', color: NEUTRAL.muted, maxWidth: 500, mx: 'auto', mb: 3 }}>
+                  {t('CONTENT.PREVIEW.PDF_REGISTERED')}
                 </Typography>
-                <Button
-                  variant="contained"
+                <CommonButton
+                  variant="primary"
                   startIcon={<OpenInNewIcon />}
-                  sx={{
-                    backgroundColor: '#E6873C',
-                    color: '#FFFFFF',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    '&:hover': { backgroundColor: '#CC722B' },
-                  }}
                   onClick={() => window.open(rawUrl || '/sample.pdf', '_blank')}
                 >
-                  Open in New Tab
-                </Button>
+                  {t('CONTENT.PREVIEW.OPEN_NEW_TAB')}
+                </CommonButton>
               </Paper>
             )}
           </Box>
@@ -376,8 +406,8 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
               sx={{
                 p: 2,
                 mb: 3,
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D6D3CC',
+                backgroundColor: 'background.paper',
+                border: `1px solid ${NEUTRAL.border}`,
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -388,17 +418,19 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <Chip
-                  label={`Questions: ${questionsList.length}`}
+                  label={t('CONTENT.PREVIEW.QUESTIONS_COUNT', { n: questionsList.length })}
                   size="small"
-                  sx={{ backgroundColor: '#F3F4F6', fontWeight: 600, color: '#1C2B4A' }}
+                  sx={{ backgroundColor: '#F3F4F6', fontWeight: 600, color: 'secondary.main' }}
                 />
                 <Chip
-                  label={`Passing Mark: ${content.passMark || '70%'}`}
+                  label={t('CONTENT.PREVIEW.PASSING_MARK', { value: content.passMark || '70%' })}
                   size="small"
-                  sx={{ backgroundColor: '#FDF3E9', fontWeight: 600, color: '#E6873C' }}
+                  sx={{ backgroundColor: BRAND.primarySoft, fontWeight: 600, color: 'primary.main' }}
                 />
                 <Chip
-                  label={`Time Limit: ${content.timeLimit || '15 min'}`}
+                  label={t('CONTENT.PREVIEW.TIME_LIMIT', {
+                    value: content.timeLimit || t('CONTENT.PREVIEW.DEFAULT_TIME_LIMIT'),
+                  })}
                   size="small"
                   sx={{ backgroundColor: '#F3F4F6', color: '#4B5563' }}
                 />
@@ -406,65 +438,39 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
 
               {/* Mode Toggle */}
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
+                <CommonButton
                   size="small"
-                  variant={assessmentMode === 'review' ? 'contained' : 'outlined'}
-                  sx={{
-                    fontSize: '12px',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    backgroundColor: assessmentMode === 'review' ? '#1C2B4A' : '#FFFFFF',
-                    borderColor: '#1C2B4A',
-                    color: assessmentMode === 'review' ? '#FFFFFF' : '#1C2B4A',
-                    '&:hover': {
-                      backgroundColor: assessmentMode === 'review' ? '#142038' : '#F9F9F8',
-                    },
-                  }}
+                  variant={assessmentMode === 'review' ? 'dark' : 'outlined'}
+                  sx={{ fontSize: '12px' }}
                   onClick={() => setAssessmentMode('review')}
                 >
-                  Answer Key Mode
-                </Button>
-                <Button
+                  {t('CONTENT.PREVIEW.ANSWER_KEY_MODE')}
+                </CommonButton>
+                <CommonButton
                   size="small"
-                  variant={assessmentMode === 'interactive' ? 'contained' : 'outlined'}
-                  sx={{
-                    fontSize: '12px',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    backgroundColor: assessmentMode === 'interactive' ? '#E6873C' : '#FFFFFF',
-                    borderColor: '#E6873C',
-                    color: assessmentMode === 'interactive' ? '#FFFFFF' : '#E6873C',
-                    '&:hover': {
-                      backgroundColor: assessmentMode === 'interactive' ? '#CC722B' : '#FDF3E9',
-                    },
-                  }}
+                  variant={isInteractive ? 'primary' : 'secondary'}
+                  sx={{ fontSize: '12px' }}
                   onClick={() => setAssessmentMode('interactive')}
                 >
-                  Interactive Test Mode
-                </Button>
+                  {t('CONTENT.PREVIEW.INTERACTIVE_MODE')}
+                </CommonButton>
               </Box>
             </Paper>
 
             {/* Interactive Mode Score Banner */}
-            {assessmentMode === 'interactive' && submitted && (
+            {scoreResult && (
               <Alert
-                severity={calculateScore().percentage >= 70 ? 'success' : 'warning'}
+                severity={hasPassed ? 'success' : 'warning'}
                 sx={{ mb: 3, borderRadius: '8px' }}
                 action={
                   <Button color="inherit" size="small" onClick={handleResetAssessment}>
-                    Try Again
+                    {t('CONTENT.PREVIEW.TRY_AGAIN')}
                   </Button>
                 }
               >
-                <strong>
-                  Score: {calculateScore().score} / {calculateScore().total} ({calculateScore().percentage}%)
-                </strong>
+                <strong>{t('CONTENT.PREVIEW.SCORE', scoreResult)}</strong>
                 {' — '}
-                {calculateScore().percentage >= 70
-                  ? 'Learner passed! Meets the Swadhaar certification threshold.'
-                  : 'Score below passing mark. Learner needs review before retaking.'}
+                {hasPassed ? t('CONTENT.PREVIEW.PASSED') : t('CONTENT.PREVIEW.BELOW_PASS')}
               </Alert>
             )}
 
@@ -472,31 +478,26 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               {questionsList.map((q, idx) => {
                 const selectedOptId = userAnswers[q.id];
-                const correctOpt = q.options.find((o) => o.isCorrect);
 
                 return (
                   <Paper
-                    key={q.id || idx}
+                    key={q.id}
                     elevation={0}
                     sx={{
                       p: 2.5,
-                      backgroundColor: '#FFFFFF',
-                      border: '1px solid #ECEAE5',
+                      backgroundColor: 'background.paper',
+                      border: `1px solid ${NEUTRAL.divider}`,
                       borderRadius: '8px',
                     }}
                   >
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1F1E1C' }}>
-                        Question {idx + 1}
+                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: NEUTRAL.ink }}>
+                        {t('CONTENT.PREVIEW.QUESTION_N', { n: idx + 1 })}
                       </Typography>
-                      {q.tags && (
-                        <Typography sx={{ fontSize: '11px', color: '#8A867F' }}>
-                          {q.tags}
-                        </Typography>
-                      )}
+                      {q.tags && <Typography sx={{ fontSize: '11px', color: NEUTRAL.subtle }}>{q.tags}</Typography>}
                     </Box>
 
-                    <Typography sx={{ fontSize: '14px', color: '#1F1E1C', mb: 2, fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: '14px', color: NEUTRAL.ink, mb: 2, fontWeight: 500 }}>
                       {q.prompt}
                     </Typography>
 
@@ -512,7 +513,7 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
                           <Box
                             key={opt.id}
                             onClick={() => {
-                              if (assessmentMode === 'interactive') {
+                              if (isInteractive) {
                                 handleOptionSelect(q.id, opt.id);
                               }
                             }}
@@ -524,45 +525,30 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
                               px: 2,
                               borderRadius: '6px',
                               border: '1px solid',
-                              borderColor: showCorrect
-                                ? '#16A34A'
-                                : showIncorrect
-                                ? '#DC2626'
-                                : isSelected
-                                ? '#E6873C'
-                                : '#E5E7EB',
-                              backgroundColor: showCorrect
-                                ? '#F0FDF4'
-                                : showIncorrect
-                                ? '#FEF2F2'
-                                : isSelected
-                                ? '#FDF3E9'
-                                : '#FFFFFF',
-                              cursor: assessmentMode === 'interactive' && !submitted ? 'pointer' : 'default',
+                              ...getOptionColors(showCorrect, showIncorrect, isSelected),
+                              cursor: isInteractive && !submitted ? 'pointer' : 'default',
                               transition: 'all 0.15s ease-in-out',
                             }}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                               <Radio
                                 checked={isSelected || (isAnswerKey && opt.isCorrect)}
-                                disabled={assessmentMode === 'review' || submitted}
+                                disabled={isAnswerKey || submitted}
                                 size="small"
                                 sx={{
                                   p: 0,
-                                  color: showCorrect ? '#16A34A' : '#D6D3CC',
+                                  color: showCorrect ? '#16A34A' : NEUTRAL.border,
                                   '&.Mui-checked': {
-                                    color: showCorrect ? '#16A34A' : '#E6873C',
+                                    color: showCorrect ? '#16A34A' : 'primary.main',
                                   },
                                 }}
                               />
-                              <Typography sx={{ fontSize: '13px', color: '#1F1E1C' }}>
-                                {opt.text}
-                              </Typography>
+                              <Typography sx={{ fontSize: '13px', color: NEUTRAL.ink }}>{opt.text}</Typography>
                             </Box>
 
                             {showCorrect && (
                               <Chip
-                                label="Correct Answer"
+                                label={t('CONTENT.PREVIEW.CORRECT_ANSWER')}
                                 size="small"
                                 sx={{
                                   backgroundColor: '#DCFCE7',
@@ -579,14 +565,21 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
                     </Box>
 
                     {/* Explanation */}
-                    {q.explanation && (assessmentMode === 'review' || (submitted && assessmentMode === 'interactive')) && (
-                      <Box sx={{ mt: 2, p: 1.5, backgroundColor: '#F8FAFC', borderRadius: '6px', borderLeft: '3px solid #1C2B4A' }}>
-                        <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#1C2B4A', mb: 0.3 }}>
-                          Explanation:
+                    {q.explanation && (assessmentMode === 'review' || (submitted && isInteractive)) && (
+                      <Box
+                        sx={{
+                          mt: 2,
+                          p: 1.5,
+                          backgroundColor: '#F8FAFC',
+                          borderRadius: '6px',
+                          borderLeft: '3px solid',
+                          borderLeftColor: 'secondary.main',
+                        }}
+                      >
+                        <Typography sx={{ fontSize: '12px', fontWeight: 600, color: 'secondary.main', mb: 0.3 }}>
+                          {t('CONTENT.PREVIEW.EXPLANATION')}
                         </Typography>
-                        <Typography sx={{ fontSize: '12px', color: '#4B5563' }}>
-                          {q.explanation}
-                        </Typography>
+                        <Typography sx={{ fontSize: '12px', color: '#4B5563' }}>{q.explanation}</Typography>
                       </Box>
                     )}
                   </Paper>
@@ -594,24 +587,16 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
               })}
             </Box>
 
-            {assessmentMode === 'interactive' && !submitted && (
+            {isInteractive && !submitted && (
               <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-                <Button
-                  variant="contained"
-                  sx={{
-                    backgroundColor: '#E6873C',
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    borderRadius: '6px',
-                    px: 3,
-                    '&:hover': { backgroundColor: '#CC722B' },
-                  }}
+                <CommonButton
+                  variant="primary"
+                  sx={{ px: 3 }}
                   onClick={() => setSubmitted(true)}
                   disabled={Object.keys(userAnswers).length === 0}
                 >
-                  Submit Assessment
-                </Button>
+                  {t('CONTENT.PREVIEW.SUBMIT_ASSESSMENT')}
+                </CommonButton>
               </Box>
             )}
           </Box>
@@ -619,44 +604,30 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
       </DialogContent>
 
       {/* Footer Actions */}
-      <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #ECEAE5', backgroundColor: '#FFFFFF', justifyContent: 'space-between' }}>
-        <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
-          Swadhaar In-App Native Viewer · No external player/workspace MFE required
-        </Typography>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+          borderTop: `1px solid ${NEUTRAL.divider}`,
+          backgroundColor: 'background.paper',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Typography sx={{ fontSize: '12px', color: NEUTRAL.muted }}>{t('CONTENT.PREVIEW.FOOTER_NOTE')}</Typography>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
           {isPdf && rawUrl && (
-            <Button
+            <CommonButton
               variant="outlined"
               size="small"
               startIcon={<OpenInNewIcon fontSize="small" />}
-              sx={{
-                borderColor: '#D6D3CC',
-                color: '#1F1E1C',
-                textTransform: 'none',
-                borderRadius: '6px',
-                '&:hover': { borderColor: '#1F1E1C', backgroundColor: '#F9F9F8' },
-              }}
               onClick={() => window.open(rawUrl, '_blank')}
             >
-              Open in New Window
-            </Button>
+              {t('CONTENT.PREVIEW.OPEN_NEW_WINDOW')}
+            </CommonButton>
           )}
-          <Button
-            variant="contained"
-            size="small"
-            sx={{
-              backgroundColor: '#1C2B4A',
-              color: '#FFFFFF',
-              fontWeight: 600,
-              textTransform: 'none',
-              borderRadius: '6px',
-              px: 2.5,
-              '&:hover': { backgroundColor: '#142038' },
-            }}
-            onClick={onClose}
-          >
-            Close
-          </Button>
+          <CommonButton variant="dark" size="small" sx={{ px: 2.5 }} onClick={onClose}>
+            {t('COMMON.CLOSE')}
+          </CommonButton>
         </Box>
       </DialogActions>
     </Dialog>

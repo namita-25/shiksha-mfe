@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
   Box,
@@ -11,9 +11,6 @@ import {
   Tab,
   TextField,
   InputAdornment,
-  MenuItem,
-  Select,
-  FormControl,
   Alert,
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
@@ -23,11 +20,16 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import Link from 'next/link';
+import { useTranslation } from 'next-i18next';
 import ContentPreviewModal, { PreviewContentData } from '@/components/common/ContentPreviewModal';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import SwadhaarDataTable, { ColumnDef } from '@/components/common/SwadhaarDataTable';
 import LifecycleChip from '@/components/common/LifecycleChip';
+import CommonButton from '@/components/common/CommonButton';
+import CommonSelect from '@/components/common/CommonSelect';
+import PageHeader from '@/components/common/PageHeader';
+import { BRAND, NEUTRAL } from '@/styles/customTheme';
 import {
   searchContentLibrary,
   fetchContentTabCounts,
@@ -36,12 +38,121 @@ import {
   ContentTabCounts,
 } from '@/services/ContentLibraryService';
 
+type AssessmentSubTab = 'assessments' | 'questions' | 'results';
+
+/** i18n keys per library tab. */
+const TAB_META: Record<
+  ContentTabType,
+  { labelKey: string; searchKey: string; hintKey: string; emptyKey: string }
+> = {
+  videos: {
+    labelKey: 'CONTENT.LIBRARY.TAB_VIDEOS',
+    searchKey: 'CONTENT.LIBRARY.SEARCH_VIDEOS',
+    hintKey: 'CONTENT.LIBRARY.SHOWING_VIDEOS',
+    emptyKey: 'CONTENT.LIBRARY.EMPTY_VIDEOS',
+  },
+  pdfs: {
+    labelKey: 'CONTENT.LIBRARY.TAB_PDFS',
+    searchKey: 'CONTENT.LIBRARY.SEARCH_PDFS',
+    hintKey: 'CONTENT.LIBRARY.SHOWING_PDFS',
+    emptyKey: 'CONTENT.LIBRARY.EMPTY_PDFS',
+  },
+  assessments: {
+    labelKey: 'CONTENT.LIBRARY.TAB_ASSESSMENTS',
+    searchKey: 'CONTENT.LIBRARY.SEARCH_ASSESSMENTS',
+    hintKey: 'CONTENT.LIBRARY.SHOWING_ASSESSMENTS',
+    emptyKey: 'CONTENT.LIBRARY.EMPTY_ASSESSMENTS',
+  },
+};
+
+const TAB_ORDER: ContentTabType[] = ['videos', 'pdfs', 'assessments'];
+
+const ASSESSMENT_SUB_TABS: { value: AssessmentSubTab; labelKey: string }[] = [
+  { value: 'assessments', labelKey: 'CONTENT.LIBRARY.TAB_ASSESSMENTS' },
+  { value: 'questions', labelKey: 'CONTENT.LIBRARY.QUESTION_BANK' },
+  { value: 'results', labelKey: 'CONTENT.LIBRARY.RESULTS' },
+];
+
+const CREATE_ACTIONS: { tab: ContentTabType; href: string; labelKey: string }[] = [
+  { tab: 'videos', href: '/content/create-video', labelKey: 'CONTENT.LIBRARY.ADD_VIDEO' },
+  { tab: 'pdfs', href: '/content/create-pdf', labelKey: 'CONTENT.LIBRARY.ADD_PDF' },
+  { tab: 'assessments', href: '/content/create-assessment', labelKey: 'CONTENT.LIBRARY.ADD_ASSESSMENT' },
+];
+
+const LOAD_ERROR_KEY = 'CONTENT.LIBRARY.LOAD_ERROR';
+
+const isContentTab = (value: unknown): value is ContentTabType =>
+  value === 'videos' || value === 'pdfs' || value === 'assessments';
+
+const getEditHref = (tab: ContentTabType, id: string) =>
+  tab === 'videos' ? `/content/create-video?id=${id}` : `/content/create-pdf?id=${id}`;
+
+const actionIconSx = {
+  color: NEUTRAL.muted,
+  border: `1px solid ${NEUTRAL.border}`,
+  borderRadius: '6px',
+  width: 32,
+  height: 32,
+  '&:hover': {
+    backgroundColor: BRAND.primarySoft,
+    borderColor: 'primary.main',
+    color: 'primary.main',
+  },
+};
+
+const deleteIconSx = {
+  ...actionIconSx,
+  '&:hover': {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#BA1A1A',
+    color: '#BA1A1A',
+  },
+};
+
+const cellTextSx = { color: NEUTRAL.ink, fontSize: '13px' };
+
+const nameLinkSx = {
+  fontSize: '14px',
+  fontWeight: 600,
+  color: NEUTRAL.ink,
+  cursor: 'pointer',
+  transition: 'color 0.2s',
+  '&:hover': {
+    color: 'primary.main',
+    textDecoration: 'underline',
+  },
+};
+
+const filterSelectSx = { minWidth: 140, fontSize: '13px', height: 38 };
+
+const countBadgeSx = (active: boolean) => ({
+  px: 1,
+  py: 0.2,
+  borderRadius: '10px',
+  fontSize: '12px',
+  fontWeight: 600,
+  backgroundColor: active ? BRAND.primarySoft : '#F3F4F6',
+  color: active ? 'primary.main' : NEUTRAL.muted,
+  transition: 'all 0.2s',
+});
+
+const subTabSx = (active: boolean) => ({
+  textTransform: 'none',
+  fontWeight: active ? 600 : 500,
+  color: active ? 'primary.main' : NEUTRAL.muted,
+  borderBottom: active ? `2px solid ${BRAND.primary}` : '2px solid transparent',
+  borderRadius: 0,
+  pb: 1,
+  '&:hover': { color: 'primary.main', backgroundColor: 'transparent' },
+});
+
 export default function ContentLibraryPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const initialTab = (router.query.tab as ContentTabType) || 'videos';
 
   const [activeTab, setActiveTab] = useState<ContentTabType>(initialTab);
-  const [assessmentSubTab, setAssessmentSubTab] = useState<'assessments' | 'questions' | 'results'>('assessments');
+  const [assessmentSubTab, setAssessmentSubTab] = useState<AssessmentSubTab>('assessments');
 
   const [tabCounts, setTabCounts] = useState<ContentTabCounts>({
     videos: 15,
@@ -50,27 +161,28 @@ export default function ContentLibraryPage() {
   });
 
   const [contentList, setContentList] = useState<ContentItem[]>([]);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  /** Holds an i18n key so the message re-renders in the active language. */
   const [error, setError] = useState<string | null>(null);
 
   // Search & Filters
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
-  const [courseFilter, setCourseFilter] = useState<string>('all');
-  const [languageFilter, setLanguageFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [languageFilter, setLanguageFilter] = useState('all');
 
   // Preview Modal state (Native in-app viewer, no external player/workspace MFE)
   const [previewContent, setPreviewContent] = useState<PreviewContentData | null>(null);
 
   // Pagination
-  const [page, setPage] = useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Sync tab with router query
   useEffect(() => {
-    if (router.query.tab && (router.query.tab === 'videos' || router.query.tab === 'pdfs' || router.query.tab === 'assessments')) {
-      setActiveTab(router.query.tab as ContentTabType);
+    if (isContentTab(router.query.tab)) {
+      setActiveTab(router.query.tab);
     }
   }, [router.query.tab]);
 
@@ -110,11 +222,11 @@ export default function ContentLibraryPage() {
       // Update current tab count
       setTabCounts((prev) => ({
         ...prev,
-        [activeTab]: response.count !== undefined ? response.count : prev[activeTab],
+        [activeTab]: response.count === undefined ? prev[activeTab] : response.count,
       }));
     } catch (err) {
       console.error('Failed to fetch content library items:', err);
-      setError('Unable to load items from Sunbird server. Please retry.');
+      setError(LOAD_ERROR_KEY);
     } finally {
       setLoading(false);
     }
@@ -134,503 +246,345 @@ export default function ContentLibraryPage() {
     setContentList((prev) => prev.filter((item) => item.identifier !== id));
   };
 
-  // Columns for Videos and PDFs matching Prototype Image 1 with Swadhaar Theme
-  const videoPdfColumns: ColumnDef<ContentItem>[] = [
-    {
-      id: 'name',
-      label: activeTab === 'videos' ? 'Video' : 'Document',
-      sortable: true,
-      minWidth: 320,
-      render: (row) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 58,
-              height: 34,
-              borderRadius: '4px',
-              backgroundColor: '#FDF3E9',
-              border: '1px solid #FBE3CD',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '10px',
-              fontWeight: 700,
-              color: '#E6873C',
-              letterSpacing: '0.5px',
-              flexShrink: 0,
-            }}
-          >
-            {activeTab === 'videos' ? 'VIDEO' : 'PDF'}
-          </Box>
-          <Link
-            href={
-              activeTab === 'videos'
-                ? `/content/create-video?id=${row.identifier}`
-                : `/content/create-pdf?id=${row.identifier}`
-            }
-            style={{ textDecoration: 'none' }}
-          >
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#1F1E1C',
-                lineHeight: 1.35,
-                cursor: 'pointer',
-                transition: 'color 0.2s',
-                '&:hover': {
-                  color: '#E6873C',
-                  textDecoration: 'underline',
-                },
-              }}
-            >
-              {row.name}
-            </Typography>
-          </Link>
-        </Box>
-      ),
-    },
-    {
-      id: 'duration',
-      label: activeTab === 'videos' ? 'Duration' : 'Reading time',
-      minWidth: 100,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.formattedDuration || '—'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'source',
-      label: 'Source',
-      minWidth: 120,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.source || 'YouTube'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'usedIn',
-      label: 'Used in',
-      minWidth: 140,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.usedIn || 'Course 0 · 0.1'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'language',
-      label: 'Language',
-      minWidth: 110,
-      render: (row) => (
-        <Chip
-          label={row.detectedLanguage || 'English'}
-          size="small"
-          sx={{
-            fontWeight: 500,
-            fontSize: '11px',
-            backgroundColor: '#F3F4F6',
-            color: '#374151',
-            borderRadius: '4px',
-            height: 22,
-          }}
-        />
-      ),
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      minWidth: 110,
-      render: (row) => <LifecycleChip state={row.status || 'Live'} />,
-    },
-    {
-      id: 'actions',
-      label: 'Actions',
-      align: 'right',
-      minWidth: 110,
-      render: (row) => (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
-          <Tooltip title={`View ${activeTab === 'videos' ? 'video' : 'PDF'}`}>
-            <IconButton
-              size="small"
-              onClick={() => {
-                setPreviewContent({
-                  ...row,
-                  type: activeTab === 'videos' ? 'video' : 'pdf',
-                });
-              }}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FDF3E9',
-                  borderColor: '#E6873C',
-                  color: '#E6873C',
-                },
-              }}
-            >
-              <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Edit content">
-            <IconButton
-              size="small"
-              onClick={() => {
-                if (activeTab === 'videos') {
-                  router.push(`/content/create-video?id=${row.identifier}`);
-                } else {
-                  router.push(`/content/create-pdf?id=${row.identifier}`);
-                }
-              }}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FDF3E9',
-                  borderColor: '#E6873C',
-                  color: '#E6873C',
-                },
-              }}
-            >
-              <EditOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton
-              size="small"
-              onClick={() => handleDeleteItem(row.identifier)}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FEE2E2',
-                  borderColor: '#BA1A1A',
-                  color: '#BA1A1A',
-                },
-              }}
-            >
-              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
+  const isVideoTab = activeTab === 'videos';
+  const courseLabel = (n: number) => t('CONTENT.LIBRARY.COURSE_N', { n });
+
+  const courseOptions = [
+    { value: 'all', label: t('CONTENT.LIBRARY.ALL_COURSES') },
+    { value: 'course 0', label: courseLabel(0) },
+    { value: 'course 1', label: courseLabel(1) },
   ];
+
+  const languageOptions = [
+    { value: 'all', label: t('CONTENT.LIBRARY.ALL_LANGUAGES') },
+    { value: 'english', label: t('CONTENT.LANGUAGES.ENGLISH') },
+    { value: 'hindi', label: t('CONTENT.LANGUAGES.HINDI') },
+  ];
+
+  // Columns for Videos and PDFs matching Prototype Image 1 with Swadhaar Theme
+  const videoPdfColumns: ColumnDef<ContentItem>[] = useMemo(
+    () => [
+      {
+        id: 'name',
+        label: isVideoTab ? t('CONTENT.LIBRARY.COL_VIDEO') : t('CONTENT.LIBRARY.COL_DOCUMENT'),
+        labelKey: isVideoTab ? 'CONTENT.LIBRARY.COL_VIDEO' : 'CONTENT.LIBRARY.COL_DOCUMENT',
+        sortable: true,
+        minWidth: 320,
+        render: (row) => (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 58,
+                height: 34,
+                borderRadius: '4px',
+                backgroundColor: BRAND.primarySoft,
+                border: '1px solid #FBE3CD',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '10px',
+                fontWeight: 700,
+                color: 'primary.main',
+                letterSpacing: '0.5px',
+                flexShrink: 0,
+              }}
+            >
+              {isVideoTab ? t('CONTENT.LIBRARY.BADGE_VIDEO') : 'PDF'}
+            </Box>
+            <Link href={getEditHref(activeTab, row.identifier)} style={{ textDecoration: 'none' }}>
+              <Typography sx={{ ...nameLinkSx, lineHeight: 1.35 }}>{row.name}</Typography>
+            </Link>
+          </Box>
+        ),
+      },
+      {
+        id: 'duration',
+        label: isVideoTab ? t('CONTENT.LIBRARY.COL_DURATION') : t('CONTENT.LIBRARY.COL_READING_TIME'),
+        labelKey: isVideoTab ? 'CONTENT.LIBRARY.COL_DURATION' : 'CONTENT.LIBRARY.COL_READING_TIME',
+        minWidth: 100,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.formattedDuration || '—'}
+          </Typography>
+        ),
+      },
+      {
+        id: 'source',
+        label: t('CONTENT.LIBRARY.COL_SOURCE'),
+        labelKey: 'CONTENT.LIBRARY.COL_SOURCE',
+        minWidth: 120,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.source || 'YouTube'}
+          </Typography>
+        ),
+      },
+      {
+        id: 'usedIn',
+        label: t('CONTENT.LIBRARY.COL_USED_IN'),
+        labelKey: 'CONTENT.LIBRARY.COL_USED_IN',
+        minWidth: 140,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.usedIn || `${courseLabel(0)} · 0.1`}
+          </Typography>
+        ),
+      },
+      {
+        id: 'language',
+        label: t('COMMON.LANGUAGE'),
+        labelKey: 'COMMON.LANGUAGE',
+        minWidth: 110,
+        render: (row) => (
+          <Chip
+            label={row.detectedLanguage || t('CONTENT.LANGUAGES.ENGLISH')}
+            size="small"
+            sx={{
+              fontWeight: 500,
+              fontSize: '11px',
+              backgroundColor: '#F3F4F6',
+              color: '#374151',
+              borderRadius: '4px',
+              height: 22,
+            }}
+          />
+        ),
+      },
+      {
+        id: 'status',
+        label: t('COMMON.STATUS'),
+        labelKey: 'COMMON.STATUS',
+        minWidth: 110,
+        render: (row) => <LifecycleChip state={row.status || 'Live'} />,
+      },
+      {
+        id: 'actions',
+        label: t('COMMON.ACTIONS'),
+        labelKey: 'COMMON.ACTIONS',
+        align: 'right',
+        minWidth: 110,
+        render: (row) => (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
+            <Tooltip title={isVideoTab ? t('CONTENT.LIBRARY.VIEW_VIDEO') : t('CONTENT.LIBRARY.VIEW_PDF')}>
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setPreviewContent({
+                    ...row,
+                    type: isVideoTab ? 'video' : 'pdf',
+                  });
+                }}
+                sx={actionIconSx}
+              >
+                <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('CONTENT.LIBRARY.EDIT_CONTENT')}>
+              <IconButton
+                size="small"
+                onClick={() => router.push(getEditHref(activeTab, row.identifier))}
+                sx={actionIconSx}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('COMMON.DELETE')}>
+              <IconButton size="small" onClick={() => handleDeleteItem(row.identifier)} sx={deleteIconSx}>
+                <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [isVideoTab, activeTab, t, router.locale]
+  );
 
   // Columns for Assessments matching Prototype Image 5 with Swadhaar Theme
-  const assessmentColumns: ColumnDef<ContentItem>[] = [
-    {
-      id: 'name',
-      label: 'Assessment',
-      sortable: true,
-      minWidth: 320,
-      render: (row) => (
-        <Link
-          href={`/content/assessments/${row.identifier}`}
-          style={{ textDecoration: 'none' }}
-        >
-          <Typography
-            sx={{
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#1F1E1C',
-              cursor: 'pointer',
-              transition: 'color 0.2s',
-              '&:hover': {
-                color: '#E6873C',
-                textDecoration: 'underline',
-              },
-            }}
-          >
-            {row.name}
+  const assessmentColumns: ColumnDef<ContentItem>[] = useMemo(
+    () => [
+      {
+        id: 'name',
+        label: t('CONTENT.LIBRARY.COL_ASSESSMENT'),
+        labelKey: 'CONTENT.LIBRARY.COL_ASSESSMENT',
+        sortable: true,
+        minWidth: 320,
+        render: (row) => (
+          <Link href={`/content/assessments/${row.identifier}`} style={{ textDecoration: 'none' }}>
+            <Typography sx={nameLinkSx}>{row.name}</Typography>
+          </Link>
+        ),
+      },
+      {
+        id: 'linkedTo',
+        label: t('CONTENT.LIBRARY.COL_LINKED_TO'),
+        labelKey: 'CONTENT.LIBRARY.COL_LINKED_TO',
+        minWidth: 130,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.linkedTo || courseLabel(1)}
           </Typography>
-        </Link>
-      ),
-    },
-    {
-      id: 'linkedTo',
-      label: 'Linked to',
-      minWidth: 130,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.linkedTo || 'Course 1'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'questions',
-      label: 'Questions',
-      minWidth: 90,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px', fontWeight: 600 }}>
-          {row.questionsCount || 10}
-        </Typography>
-      ),
-    },
-    {
-      id: 'passMark',
-      label: 'Pass mark',
-      minWidth: 100,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.passMark || '70%'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'attempts',
-      label: 'Attempts',
-      minWidth: 90,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.attempts || 'Unlimited'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'timeLimit',
-      label: 'Time limit',
-      minWidth: 100,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.timeLimit || '—'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'assignedTo',
-      label: 'Assigned to',
-      minWidth: 130,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px' }}>
-          {row.assignedTo || '[N] groups'}
-        </Typography>
-      ),
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      minWidth: 110,
-      render: (row) => <LifecycleChip state={row.status || 'Live'} />,
-    },
-    {
-      id: 'actions',
-      label: 'Actions',
-      align: 'right',
-      minWidth: 110,
-      render: (row) => (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
-          <Tooltip title="Preview Assessment">
-            <IconButton
-              size="small"
-              onClick={() => {
-                setPreviewContent({
-                  ...row,
-                  type: 'assessment',
-                });
-              }}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FDF3E9',
-                  borderColor: '#E6873C',
-                  color: '#E6873C',
-                },
-              }}
-            >
-              <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Edit assessment">
-            <IconButton
-              size="small"
-              onClick={() => router.push(`/content/assessments/${row.identifier}`)}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FDF3E9',
-                  borderColor: '#E6873C',
-                  color: '#E6873C',
-                },
-              }}
-            >
-              <EditOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Results & Analytics">
-            <IconButton
-              size="small"
-              onClick={() => alert(`Results for: ${row.name}`)}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FDF3E9',
-                  borderColor: '#E6873C',
-                  color: '#E6873C',
-                },
-              }}
-            >
-              <BarChartOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
-  ];
+        ),
+      },
+      {
+        id: 'questions',
+        label: t('CONTENT.LIBRARY.COL_QUESTIONS'),
+        labelKey: 'CONTENT.LIBRARY.COL_QUESTIONS',
+        minWidth: 90,
+        render: (row) => (
+          <Typography variant="body2" sx={{ ...cellTextSx, fontWeight: 600 }}>
+            {row.questionsCount || 10}
+          </Typography>
+        ),
+      },
+      {
+        id: 'passMark',
+        label: t('CONTENT.LIBRARY.COL_PASS_MARK'),
+        labelKey: 'CONTENT.LIBRARY.COL_PASS_MARK',
+        minWidth: 100,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.passMark || '70%'}
+          </Typography>
+        ),
+      },
+      {
+        id: 'attempts',
+        label: t('CONTENT.LIBRARY.COL_ATTEMPTS'),
+        labelKey: 'CONTENT.LIBRARY.COL_ATTEMPTS',
+        minWidth: 90,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.attempts || t('CONTENT.LIBRARY.UNLIMITED')}
+          </Typography>
+        ),
+      },
+      {
+        id: 'timeLimit',
+        label: t('CONTENT.LIBRARY.COL_TIME_LIMIT'),
+        labelKey: 'CONTENT.LIBRARY.COL_TIME_LIMIT',
+        minWidth: 100,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.timeLimit || '—'}
+          </Typography>
+        ),
+      },
+      {
+        id: 'assignedTo',
+        label: t('CONTENT.LIBRARY.COL_ASSIGNED_TO'),
+        labelKey: 'CONTENT.LIBRARY.COL_ASSIGNED_TO',
+        minWidth: 130,
+        render: (row) => (
+          <Typography variant="body2" sx={cellTextSx}>
+            {row.assignedTo || t('CONTENT.LIBRARY.N_GROUPS')}
+          </Typography>
+        ),
+      },
+      {
+        id: 'status',
+        label: t('COMMON.STATUS'),
+        labelKey: 'COMMON.STATUS',
+        minWidth: 110,
+        render: (row) => <LifecycleChip state={row.status || 'Live'} />,
+      },
+      {
+        id: 'actions',
+        label: t('COMMON.ACTIONS'),
+        labelKey: 'COMMON.ACTIONS',
+        align: 'right',
+        minWidth: 110,
+        render: (row) => (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
+            <Tooltip title={t('CONTENT.LIBRARY.PREVIEW_ASSESSMENT')}>
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setPreviewContent({
+                    ...row,
+                    type: 'assessment',
+                  });
+                }}
+                sx={actionIconSx}
+              >
+                <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('CONTENT.LIBRARY.EDIT_ASSESSMENT')}>
+              <IconButton
+                size="small"
+                onClick={() => router.push(`/content/assessments/${row.identifier}`)}
+                sx={actionIconSx}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('CONTENT.LIBRARY.RESULTS_ANALYTICS')}>
+              <IconButton
+                size="small"
+                onClick={() => alert(t('CONTENT.LIBRARY.RESULTS_FOR', { name: row.name }))}
+                sx={actionIconSx}
+              >
+                <BarChartOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [t, router.locale]
+  );
 
+  const tabMeta = TAB_META[activeTab];
   const currentColumns = activeTab === 'assessments' ? assessmentColumns : videoPdfColumns;
-  const searchPlaceholder =
-    activeTab === 'videos'
-      ? 'Search videos'
-      : activeTab === 'pdfs'
-        ? 'Search PDFs'
-        : 'Search assessments';
 
   return (
     <Box sx={{ py: 1 }}>
       {/* Breadcrumb Navigation */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '13px' }}>
-          Learning
+        <Typography variant="body2" sx={{ color: NEUTRAL.muted, fontSize: '13px' }}>
+          {t('CONTENT.LEARNING')}
         </Typography>
-        <Typography variant="body2" sx={{ color: '#8A867F', fontSize: '13px' }}>
+        <Typography variant="body2" sx={{ color: NEUTRAL.subtle, fontSize: '13px' }}>
           /
         </Typography>
-        <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '13px' }}>
-          Content library
+        <Typography variant="body2" sx={{ color: NEUTRAL.muted, fontSize: '13px' }}>
+          {t('CONTENT.LIBRARY.TITLE')}
         </Typography>
-        <Typography variant="body2" sx={{ color: '#8A867F', fontSize: '13px' }}>
+        <Typography variant="body2" sx={{ color: NEUTRAL.subtle, fontSize: '13px' }}>
           /
         </Typography>
-        <Typography variant="body2" sx={{ color: '#1F1E1C', fontSize: '13px', fontWeight: 600 }}>
-          {activeTab === 'videos' ? 'Videos' : activeTab === 'pdfs' ? 'PDFs' : 'Assessments'}
+        <Typography variant="body2" sx={{ color: NEUTRAL.ink, fontSize: '13px', fontWeight: 600 }}>
+          {t(tabMeta.labelKey)}
         </Typography>
       </Box>
 
-      {/* Header & Create CTAs with Swadhaar Theme */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          mb: 2.5,
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 0.5 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
-              Content library
+      {/* Header & Create CTAs routing to full pages */}
+      <PageHeader
+        title={t('CONTENT.LIBRARY.TITLE')}
+        subtitle={t('CONTENT.LIBRARY.SUBTITLE')}
+        actions={
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
+            <Typography variant="body2" sx={{ color: NEUTRAL.muted, fontSize: '13px', mr: 0.5 }}>
+              {t('COMMON.CREATE')}
             </Typography>
+            {CREATE_ACTIONS.map((action) => (
+              <CommonButton
+                key={action.tab}
+                variant={activeTab === action.tab ? 'primary' : 'secondary'}
+                onClick={() => router.push(action.href)}
+                sx={{ height: 38 }}
+              >
+                {t(action.labelKey)}
+              </CommonButton>
+            ))}
           </Box>
-          <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '14px' }}>
-            Reusable content. Add items to course sections from here or from the section editor.
-          </Typography>
-        </Box>
-
-        {/* Create Options Group routing to Full Pages with Swadhaar Theme */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
-          <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '13px', mr: 0.5 }}>
-            Create
-          </Typography>
-          <Button
-            variant={activeTab === 'videos' ? 'contained' : 'outlined'}
-            onClick={() => router.push('/content/create-video')}
-            sx={{
-              backgroundColor: activeTab === 'videos' ? '#E6873C' : '#FFFFFF',
-              color: activeTab === 'videos' ? '#FFFFFF' : '#E6873C',
-              borderColor: '#E6873C',
-              fontWeight: 600,
-              fontSize: '13px',
-              textTransform: 'none',
-              borderRadius: '6px',
-              height: 38,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: activeTab === 'videos' ? '#C66C23' : '#FDF3E9',
-                borderColor: '#C66C23',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            + Video
-          </Button>
-
-          <Button
-            variant={activeTab === 'pdfs' ? 'contained' : 'outlined'}
-            onClick={() => router.push('/content/create-pdf')}
-            sx={{
-              backgroundColor: activeTab === 'pdfs' ? '#E6873C' : '#FFFFFF',
-              color: activeTab === 'pdfs' ? '#FFFFFF' : '#E6873C',
-              borderColor: '#E6873C',
-              fontWeight: 600,
-              fontSize: '13px',
-              textTransform: 'none',
-              borderRadius: '6px',
-              height: 38,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: activeTab === 'pdfs' ? '#C66C23' : '#FDF3E9',
-                borderColor: '#C66C23',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            + PDF
-          </Button>
-
-          <Button
-            variant={activeTab === 'assessments' ? 'contained' : 'outlined'}
-            onClick={() => router.push('/content/create-assessment')}
-            sx={{
-              backgroundColor: activeTab === 'assessments' ? '#E6873C' : '#FFFFFF',
-              color: activeTab === 'assessments' ? '#FFFFFF' : '#E6873C',
-              borderColor: '#E6873C',
-              fontWeight: 600,
-              fontSize: '13px',
-              textTransform: 'none',
-              borderRadius: '6px',
-              height: 38,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: activeTab === 'assessments' ? '#C66C23' : '#FDF3E9',
-                borderColor: '#C66C23',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            + Assessment
-          </Button>
-        </Box>
-      </Box>
+        }
+      />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+          {t(error)}
         </Alert>
       )}
 
@@ -641,10 +595,10 @@ export default function ContentLibraryPage() {
         textColor="inherit"
         sx={{
           minHeight: 44,
-          borderBottom: '1px solid #D6D3CC',
+          borderBottom: `1px solid ${NEUTRAL.border}`,
           mb: activeTab === 'assessments' ? 1.5 : 2,
           '& .MuiTabs-indicator': {
-            backgroundColor: '#E6873C',
+            backgroundColor: 'primary.main',
             height: 3,
             borderRadius: '3px 3px 0 0',
           },
@@ -653,134 +607,45 @@ export default function ContentLibraryPage() {
             textTransform: 'none',
             fontWeight: 500,
             fontSize: '14px',
-            color: '#6B6862',
+            color: NEUTRAL.muted,
             px: 2,
             '&.Mui-selected': {
-              color: '#E6873C',
+              color: 'primary.main',
               fontWeight: 600,
             },
             '&:hover': {
-              color: '#E6873C',
+              color: 'primary.main',
             },
           },
         }}
       >
-        <Tab
-          value="videos"
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <span>Videos</span>
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.2,
-                  borderRadius: '10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  backgroundColor: activeTab === 'videos' ? '#FDF3E9' : '#F3F4F6',
-                  color: activeTab === 'videos' ? '#E6873C' : '#6B6862',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {tabCounts.videos}
+        {TAB_ORDER.map((tab) => (
+          <Tab
+            key={tab}
+            value={tab}
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <span>{t(TAB_META[tab].labelKey)}</span>
+                <Box sx={countBadgeSx(activeTab === tab)}>{tabCounts[tab]}</Box>
               </Box>
-            </Box>
-          }
-        />
-        <Tab
-          value="pdfs"
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <span>PDFs</span>
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.2,
-                  borderRadius: '10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  backgroundColor: activeTab === 'pdfs' ? '#FDF3E9' : '#F3F4F6',
-                  color: activeTab === 'pdfs' ? '#E6873C' : '#6B6862',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {tabCounts.pdfs}
-              </Box>
-            </Box>
-          }
-        />
-        <Tab
-          value="assessments"
-          label={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <span>Assessments</span>
-              <Box
-                sx={{
-                  px: 1,
-                  py: 0.2,
-                  borderRadius: '10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  backgroundColor: activeTab === 'assessments' ? '#FDF3E9' : '#F3F4F6',
-                  color: activeTab === 'assessments' ? '#E6873C' : '#6B6862',
-                  transition: 'all 0.2s',
-                }}
-              >
-                {tabCounts.assessments}
-              </Box>
-            </Box>
-          }
-        />
+            }
+          />
+        ))}
       </Tabs>
 
       {/* Sub-tabs if Assessments is active (matching Image 5 with Swadhaar Theme) */}
       {activeTab === 'assessments' && (
-        <Box sx={{ display: 'flex', gap: 1, borderBottom: '1px solid #ECEAE5', mb: 2 }}>
-          <Button
-            size="small"
-            onClick={() => setAssessmentSubTab('assessments')}
-            sx={{
-              textTransform: 'none',
-              fontWeight: assessmentSubTab === 'assessments' ? 600 : 500,
-              color: assessmentSubTab === 'assessments' ? '#E6873C' : '#6B6862',
-              borderBottom: assessmentSubTab === 'assessments' ? '2px solid #E6873C' : '2px solid transparent',
-              borderRadius: 0,
-              pb: 1,
-              '&:hover': { color: '#E6873C', backgroundColor: 'transparent' },
-            }}
-          >
-            Assessments
-          </Button>
-          <Button
-            size="small"
-            onClick={() => setAssessmentSubTab('questions')}
-            sx={{
-              textTransform: 'none',
-              fontWeight: assessmentSubTab === 'questions' ? 600 : 500,
-              color: assessmentSubTab === 'questions' ? '#E6873C' : '#6B6862',
-              borderBottom: assessmentSubTab === 'questions' ? '2px solid #E6873C' : '2px solid transparent',
-              borderRadius: 0,
-              pb: 1,
-              '&:hover': { color: '#E6873C', backgroundColor: 'transparent' },
-            }}
-          >
-            Question bank
-          </Button>
-          <Button
-            size="small"
-            onClick={() => setAssessmentSubTab('results')}
-            sx={{
-              textTransform: 'none',
-              fontWeight: assessmentSubTab === 'results' ? 600 : 500,
-              color: assessmentSubTab === 'results' ? '#E6873C' : '#6B6862',
-              borderBottom: assessmentSubTab === 'results' ? '2px solid #E6873C' : '2px solid transparent',
-              borderRadius: 0,
-              pb: 1,
-              '&:hover': { color: '#E6873C', backgroundColor: 'transparent' },
-            }}
-          >
-            Results
-          </Button>
+        <Box sx={{ display: 'flex', gap: 1, borderBottom: `1px solid ${NEUTRAL.divider}`, mb: 2 }}>
+          {ASSESSMENT_SUB_TABS.map((sub) => (
+            <Button
+              key={sub.value}
+              size="small"
+              onClick={() => setAssessmentSubTab(sub.value)}
+              sx={subTabSx(assessmentSubTab === sub.value)}
+            >
+              {t(sub.labelKey)}
+            </Button>
+          ))}
         </Box>
       )}
 
@@ -799,18 +664,18 @@ export default function ContentLibraryPage() {
           {/* Search Box */}
           <TextField
             size="small"
-            placeholder={searchPlaceholder}
+            placeholder={t(tabMeta.searchKey)}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: '#8A867F', fontSize: 18 }} />
+                  <SearchIcon sx={{ color: NEUTRAL.subtle, fontSize: 18 }} />
                 </InputAdornment>
               ),
               endAdornment: searchQuery ? (
                 <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSearchQuery('')}>
+                  <IconButton size="small" aria-label={t('COMMON.CLEAR')} onClick={() => setSearchQuery('')}>
                     <ClearIcon fontSize="small" sx={{ fontSize: 16 }} />
                   </IconButton>
                 </InputAdornment>
@@ -818,76 +683,46 @@ export default function ContentLibraryPage() {
             }}
             sx={{
               width: 260,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'background.paper',
               '& .MuiOutlinedInput-root': {
                 height: 38,
                 borderRadius: '6px',
                 fontSize: '13px',
-                '& fieldset': { borderColor: '#D6D3CC' },
-                '&:hover fieldset': { borderColor: '#E6873C' },
-                '&.Mui-focused fieldset': { borderColor: '#E6873C' },
+                '& fieldset': { borderColor: NEUTRAL.border },
+                '&:hover fieldset': { borderColor: 'primary.main' },
+                '&.Mui-focused fieldset': { borderColor: 'primary.main' },
               },
             }}
           />
 
           {/* Filter 1: All Courses */}
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <Select
-              value={courseFilter}
-              onChange={(e) => {
-                setCourseFilter(e.target.value);
-                setPage(0);
-              }}
-              displayEmpty
-              sx={{
-                fontSize: '13px',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '6px',
-                height: 38,
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D6D3CC' },
-                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
-              }}
-            >
-              <MenuItem value="all">All courses</MenuItem>
-              <MenuItem value="course 0">Course 0</MenuItem>
-              <MenuItem value="course 1">Course 1</MenuItem>
-            </Select>
-          </FormControl>
+          <CommonSelect
+            value={courseFilter}
+            onChange={(value) => {
+              setCourseFilter(value);
+              setPage(0);
+            }}
+            options={courseOptions}
+            fullWidth={false}
+            sx={filterSelectSx}
+          />
 
           {/* Filter 2: All Languages */}
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <Select
-              value={languageFilter}
-              onChange={(e) => {
-                setLanguageFilter(e.target.value);
-                setPage(0);
-              }}
-              displayEmpty
-              sx={{
-                fontSize: '13px',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '6px',
-                height: 38,
-                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#D6D3CC' },
-                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
-                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
-              }}
-            >
-              <MenuItem value="all">All languages</MenuItem>
-              <MenuItem value="english">English</MenuItem>
-              <MenuItem value="hindi">Hindi</MenuItem>
-            </Select>
-          </FormControl>
+          <CommonSelect
+            value={languageFilter}
+            onChange={(value) => {
+              setLanguageFilter(value);
+              setPage(0);
+            }}
+            options={languageOptions}
+            fullWidth={false}
+            sx={filterSelectSx}
+          />
         </Box>
 
         {/* Counter Hint (matching Prototype Image 1) */}
-        <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '13px' }}>
-          {activeTab === 'videos'
-            ? `Showing ${contentList.length} of ${totalCount} · videos from Courses 0–1 of the course document`
-            : activeTab === 'pdfs'
-              ? `Showing ${contentList.length} of ${totalCount} · PDFs`
-              : `Showing ${contentList.length} of ${totalCount} · assessments from Courses 0–1`}
+        <Typography variant="body2" sx={{ color: NEUTRAL.muted, fontSize: '13px' }}>
+          {t(tabMeta.hintKey, { shown: contentList.length, total: totalCount })}
         </Typography>
       </Box>
 
@@ -898,7 +733,7 @@ export default function ContentLibraryPage() {
         keyExtractor={(item) => item.identifier}
         loading={loading}
         hideToolbar={true}
-        emptyMessage={`No ${activeTab} found matching criteria`}
+        emptyMessage={t(tabMeta.emptyKey)}
         page={page}
         rowsPerPage={rowsPerPage}
         totalCount={totalCount}
@@ -911,10 +746,10 @@ export default function ContentLibraryPage() {
 
       {/* Prototype Footer Note (matching Image 5) */}
       <Box sx={{ mt: 1.5, px: 0.5 }}>
-        <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '11px' }}>
+        <Typography variant="caption" sx={{ color: NEUTRAL.subtle, fontSize: '11px' }}>
           {activeTab === 'assessments'
-            ? 'Live practice question sets from Sunbird composite search API (primaryCategory: Practice Question Set).'
-            : 'Titles, section counts and durations from the course document table of contents.'}
+            ? t('CONTENT.LIBRARY.FOOTER_ASSESSMENTS')
+            : t('CONTENT.LIBRARY.FOOTER_DEFAULT')}
         </Typography>
       </Box>
 
@@ -931,7 +766,7 @@ export default function ContentLibraryPage() {
 export const getStaticProps = async ({ locale }: { locale: string }) => {
   return {
     props: {
-      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any, ['en', 'mr', 'hi'])),
     },
   };
 };

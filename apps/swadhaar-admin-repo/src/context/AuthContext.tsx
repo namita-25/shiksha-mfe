@@ -12,8 +12,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  loginFun: async () => {},
-  logoutFun: async () => {},
+  // Default no-op implementations used outside of AuthProvider
+  loginFun: () => Promise.resolve(undefined),
+  logoutFun: () => Promise.resolve(),
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {

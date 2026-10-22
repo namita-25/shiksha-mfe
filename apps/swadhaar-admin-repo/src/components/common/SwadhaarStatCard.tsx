@@ -12,6 +12,12 @@ export interface SwadhaarStatCardProps {
   onClick?: () => void;
 }
 
+const TREND_COLORS: Record<NonNullable<SwadhaarStatCardProps['trend']>, string> = {
+  up: 'success.main',
+  down: 'error.main',
+  neutral: 'text.secondary',
+};
+
 export const SwadhaarStatCard: React.FC<SwadhaarStatCardProps> = ({
   label,
   value,
@@ -54,7 +60,7 @@ export const SwadhaarStatCard: React.FC<SwadhaarStatCardProps> = ({
               <Typography
                 variant="body2"
                 sx={{
-                  color: trend === 'down' ? 'error.main' : trend === 'up' ? 'success.main' : 'text.secondary',
+                  color: TREND_COLORS[trend ?? 'neutral'],
                   fontSize: '11px',
                   fontWeight: 500,
                 }}

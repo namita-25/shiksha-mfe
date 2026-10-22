@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   Box,
   Typography,
-  Button,
   Paper,
   Grid,
   Table,
@@ -15,15 +14,21 @@ import {
   CircularProgress,
   LinearProgress,
   Alert,
+  Button,
 } from '@mui/material';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import CheckIcon from '@mui/icons-material/Check';
 import Papa from 'papaparse';
+import { TFunction } from 'i18next';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import { createUserAccount, CreateUserPayload } from '@/services/UserService';
 import TenantService from '@/services/TenantService';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
+import CommonButton from '@/components/common/CommonButton';
+import PageHeader from '@/components/common/PageHeader';
+import { BRAND, NEUTRAL } from '@/styles/customTheme';
 
 interface ParsedUserRow {
   full_name?: string;
@@ -59,8 +64,181 @@ const MANDATORY_COLUMNS = [
   'role',
 ];
 
+const EMPTY_VALUE = '-';
+const WHITE = '#FFFFFF';
+const CARD_BORDER = `1px solid ${NEUTRAL.border}`;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^\d{10}$/;
+
+interface RowFields {
+  fullName: string;
+  email: string;
+  phone: string;
+  employeeId: string;
+  state: string;
+  district: string;
+  branch: string;
+  program: string;
+  role: string;
+  gender: string;
+}
+
+interface SeenKeys {
+  employeeIds: Set<string>;
+  emails: Set<string>;
+  phones: Set<string>;
+}
+
+const trimField = (value?: string) => (value || '').trim();
+
+const toRowFields = (row: ParsedUserRow): RowFields => ({
+  fullName: trimField(row.full_name),
+  email: trimField(row.email),
+  phone: trimField(row.phone),
+  employeeId: trimField(row.employee_id),
+  state: trimField(row.state),
+  district: trimField(row.district),
+  branch: trimField(row.branch),
+  program: trimField(row.program),
+  role: trimField(row.role),
+  gender: trimField(row.gender),
+});
+
+/** Returns the (translated) failure reason for a row, or an empty string when the row is valid. */
+const getValidationError = (fields: RowFields, seen: SeenKeys, t: TFunction): string => {
+  const missing = (fieldKey: string) =>
+    t('BULK_UPLOAD.ERRORS.MANDATORY_MISSING', { field: t(`BULK_UPLOAD.FIELDS.${fieldKey}`) });
+
+  if (!fields.fullName) return missing('FULL_NAME');
+  if (!fields.employeeId) return missing('EMPLOYEE_ID');
+  if (seen.employeeIds.has(fields.employeeId.toLowerCase())) return t('BULK_UPLOAD.ERRORS.DUPLICATE_EMPLOYEE_ID');
+  if (!fields.email) return missing('EMAIL');
+  if (!EMAIL_REGEX.test(fields.email)) return t('BULK_UPLOAD.ERRORS.INVALID_EMAIL');
+  if (seen.emails.has(fields.email.toLowerCase())) return t('BULK_UPLOAD.ERRORS.DUPLICATE_EMAIL');
+  if (!fields.phone) return missing('PHONE');
+  if (!PHONE_REGEX.test(fields.phone)) return t('BULK_UPLOAD.ERRORS.INVALID_PHONE');
+  if (seen.phones.has(fields.phone)) return t('BULK_UPLOAD.ERRORS.DUPLICATE_PHONE');
+  if (!fields.state) return missing('STATE');
+  if (!fields.district) return missing('DISTRICT');
+  if (!fields.branch) return missing('BRANCH');
+  if (!fields.program) return missing('PROGRAM');
+  if (!fields.role) return missing('ROLE');
+  return '';
+};
+
+const buildCreateUserPayload = (fields: RowFields, tenantId: string): CreateUserPayload => {
+  const { fullName, phone, email, gender, state } = fields;
+  const nameParts = fullName.split(/\s+/);
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || '';
+
+  return {
+    name: fullName,
+    username: phone || email,
+    password: 'Password@123',
+    firstName: firstName,
+    lastName: lastName,
+    gender: gender ? gender.toLowerCase() : 'male',
+    email: email,
+    mobile: phone,
+    tenantCohortRoleMapping: [
+      {
+        tenantId: tenantId,
+        roleId: '57bc16f8-f446-4e5d-b595-c908a229e776',
+      },
+    ],
+    customFields: [
+      {
+        fieldId: '800265b1-9058-482a-94f4-726197e1dfe4',
+        value: [String(state || '4')],
+      },
+    ],
+  };
+};
+
+/** Creates the user account; returns a failure reason, or null on success. */
+const createUserFromRow = async (fields: RowFields, tenantId: string, t: TFunction): Promise<string | null> => {
+  try {
+    const resp = await createUserAccount(buildCreateUserPayload(fields, tenantId));
+    if (resp?.responseCode === 'OK' || resp?.result || resp?.params?.status === 'successful') {
+      return null;
+    }
+    return resp?.params?.errmsg || resp?.message || t('BULK_UPLOAD.ERRORS.CREATE_FAILED');
+  } catch (apiErr: any) {
+    return (
+      apiErr?.response?.data?.params?.errmsg ||
+      apiErr?.response?.data?.message ||
+      apiErr?.message ||
+      t('BULK_UPLOAD.ERRORS.SERVER_ERROR')
+    );
+  }
+};
+
+const downloadCsv = (csvContent: string, fileName: string) => {
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', fileName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+interface StepConfig {
+  label: string;
+  content: React.ReactNode;
+  filled: boolean;
+  fillColor: string;
+  active: boolean;
+  activeColor: string;
+}
+
+const renderStep = ({ label, content, filled, fillColor, active, activeColor }: StepConfig) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box
+      sx={{
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '12px',
+        fontWeight: 600,
+        backgroundColor: filled ? fillColor : WHITE,
+        color: filled ? WHITE : NEUTRAL.muted,
+        border: filled ? 'none' : `1.5px solid ${NEUTRAL.borderStrong}`,
+      }}
+    >
+      {content}
+    </Box>
+    <Typography
+      sx={{
+        fontSize: '14px',
+        fontWeight: active ? 600 : 500,
+        color: active ? activeColor : NEUTRAL.muted,
+      }}
+    >
+      {label}
+    </Typography>
+  </Box>
+);
+
+const renderStepDivider = (filled: boolean) => (
+  <Box
+    sx={{
+      width: 36,
+      height: '1px',
+      backgroundColor: filled ? NEUTRAL.ink : NEUTRAL.borderStrong,
+    }}
+  />
+);
+
 export default function BulkUploadUsersPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Stepper state: 1: Upload file, 2: Validate & Process, 3: Summary
@@ -84,15 +262,7 @@ export default function BulkUploadUsersPage() {
       'Priya Patel,priya.patel@example.com,9876543211,EMP1002,Female,Gujarat,Ahmedabad,City,Women Empowerment,ARM\n' +
       'Rohan Deshmukh,rohan.deshmukh@example.com,9876543212,EMP1003,Male,Maharashtra,Nagpur,Nagpur Rural,Digital Banking,DI\n';
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'swadhaar_users_bulk_template.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCsv(csvContent, 'swadhaar_users_bulk_template.csv');
   };
 
   // 2. File Selection & Parsing Handler
@@ -112,7 +282,7 @@ export default function BulkUploadUsersPage() {
       },
       error: (err) => {
         console.error('CSV parse error:', err);
-        setErrorMsg('Failed to read CSV file. Please ensure it is a valid CSV document.');
+        setErrorMsg(t('BULK_UPLOAD.ERRORS.PARSE_FAILED'));
       },
     });
   };
@@ -155,7 +325,7 @@ export default function BulkUploadUsersPage() {
   // 3. Validation and User Creation Workflow
   const handleValidateAndCreate = async () => {
     if (!selectedFile || parsedRows.length === 0) {
-      setErrorMsg('Please upload a CSV file with at least one user record.');
+      setErrorMsg(t('BULK_UPLOAD.ERRORS.NO_RECORDS'));
       return;
     }
 
@@ -167,135 +337,41 @@ export default function BulkUploadUsersPage() {
     const failures: FailedRowItem[] = [];
     let successCount = 0;
 
-    const seenEmployeeIds = new Set<string>();
-    const seenEmails = new Set<string>();
-    const seenPhones = new Set<string>();
+    const seen: SeenKeys = {
+      employeeIds: new Set<string>(),
+      emails: new Set<string>(),
+      phones: new Set<string>(),
+    };
 
     const total = parsedRows.length;
     const tenantId = TenantService.getTenantId() || SWADHAAR_TENANT_ID;
 
     for (let i = 0; i < total; i++) {
-      const row = parsedRows[i];
+      const fields = toRowFields(parsedRows[i]);
       const rowNum = i + 2; // Row 1 is header, so data starts at row 2
 
-      const fullName = (row.full_name || '').trim();
-      const email = (row.email || '').trim();
-      const phone = (row.phone || '').trim();
-      const employeeId = (row.employee_id || '').trim();
-      const state = (row.state || '').trim();
-      const district = (row.district || '').trim();
-      const branch = (row.branch || '').trim();
-      const program = (row.program || '').trim();
-      const role = (row.role || '').trim();
-      const gender = (row.gender || '').trim();
-
       // Field Validations
-      let failureReason = '';
+      let failureReason: string | null = getValidationError(fields, seen, t);
 
-      if (!fullName) {
-        failureReason = 'Mandatory field missing: Full name';
-      } else if (!employeeId) {
-        failureReason = 'Mandatory field missing: Employee ID';
-      } else if (seenEmployeeIds.has(employeeId.toLowerCase())) {
-        failureReason = 'Employee ID already exists in file';
-      } else if (!email) {
-        failureReason = 'Mandatory field missing: Email';
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        failureReason = 'Invalid email address format';
-      } else if (seenEmails.has(email.toLowerCase())) {
-        failureReason = 'Email already exists in file';
-      } else if (!phone) {
-        failureReason = 'Mandatory field missing: Phone number';
-      } else if (!/^\d{10}$/.test(phone)) {
-        failureReason = 'Invalid phone: must be a 10-digit number';
-      } else if (seenPhones.has(phone)) {
-        failureReason = 'Phone number already exists in file';
-      } else if (!state) {
-        failureReason = 'Mandatory field missing: State';
-      } else if (!district) {
-        failureReason = 'Mandatory field missing: District';
-      } else if (!branch) {
-        failureReason = 'Mandatory field missing: Branch';
-      } else if (!program) {
-        failureReason = 'Mandatory field missing: Program';
-      } else if (!role) {
-        failureReason = 'Mandatory field missing: Role';
+      if (!failureReason) {
+        // Track unique keys
+        seen.employeeIds.add(fields.employeeId.toLowerCase());
+        seen.emails.add(fields.email.toLowerCase());
+        seen.phones.add(fields.phone);
+
+        failureReason = await createUserFromRow(fields, tenantId, t);
+        if (!failureReason) {
+          successCount++;
+        }
       }
 
       if (failureReason) {
         failures.push({
           rowNum,
-          employeeId: employeeId || '-',
-          email: email || '-',
+          employeeId: fields.employeeId || EMPTY_VALUE,
+          email: fields.email || EMPTY_VALUE,
           reason: failureReason,
         });
-      } else {
-        // Track unique keys
-        seenEmployeeIds.add(employeeId.toLowerCase());
-        seenEmails.add(email.toLowerCase());
-        seenPhones.add(phone);
-
-        // Prepare user creation payload
-        const nameParts = fullName.split(/\s+/);
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || '';
-
-        const payload: CreateUserPayload = {
-          name: fullName,
-          username: phone || email,
-          password: 'Password@123',
-          firstName: firstName,
-          lastName: lastName,
-          gender: gender ? gender.toLowerCase() : 'male',
-          email: email,
-          mobile: phone,
-          tenantCohortRoleMapping: [
-            {
-              tenantId: tenantId,
-              roleId: '57bc16f8-f446-4e5d-b595-c908a229e776',
-            },
-          ],
-          customFields: [
-            {
-              fieldId: '800265b1-9058-482a-94f4-726197e1dfe4',
-              value: [String(state || '4')],
-            },
-          ],
-        };
-
-        try {
-          const resp = await createUserAccount(payload);
-          if (
-            resp?.responseCode === 'OK' ||
-            resp?.result ||
-            resp?.params?.status === 'successful'
-          ) {
-            successCount++;
-          } else {
-            const apiError =
-              resp?.params?.errmsg ||
-              resp?.message ||
-              'User account creation failed on server';
-            failures.push({
-              rowNum,
-              employeeId: employeeId || '-',
-              email: email || '-',
-              reason: apiError,
-            });
-          }
-        } catch (apiErr: any) {
-          const errDetail =
-            apiErr?.response?.data?.params?.errmsg ||
-            apiErr?.response?.data?.message ||
-            apiErr?.message ||
-            'Server error during user creation';
-          failures.push({
-            rowNum,
-            employeeId: employeeId || '-',
-            email: email || '-',
-            reason: errDetail,
-          });
-        }
       }
 
       // Update progress bar percentage
@@ -319,15 +395,7 @@ export default function BulkUploadUsersPage() {
       csvContent += `"${item.rowNum}","${item.employeeId}","${item.email}","${item.reason.replace(/"/g, '""')}"\n`;
     });
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `failed_users_${Date.now()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCsv(csvContent, `failed_users_${Date.now()}.csv`);
   };
 
   // 5. Reset to Step 1 for corrected file upload
@@ -388,13 +456,13 @@ export default function BulkUploadUsersPage() {
         <Box sx={{ maxWidth: '640px' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8, flexWrap: 'wrap' }}>
             <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
-              {step === 3 ? 'Upload summary' : 'Bulk upload users'}
+              {step === 3 ? t('BULK_UPLOAD.UPLOAD_SUMMARY') : t('BULK_UPLOAD.TITLE')}
             </Typography>
           </Box>
           <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '14px', lineHeight: 1.5 }}>
             {step === 3
-              ? `${selectedFile?.name || 'users_file.csv'} · validated and processed`
-              : 'Upload a CSV or Excel file to create many users at once. Each created user receives a welcome message.'}
+              ? `${selectedFile?.name || 'users_file.csv'} · ${t('BULK_UPLOAD.PROCESSED_SUFFIX')}`
+              : t('BULK_UPLOAD.SUBTITLE')}
           </Typography>
         </Box>
 
@@ -426,7 +494,7 @@ export default function BulkUploadUsersPage() {
                 color: step === 1 ? '#1F1E1C' : '#6B6862',
               }}
             >
-              Upload file
+              {t('BULK_UPLOAD.STEPPER.UPLOAD_FILE')}
             </Typography>
           </Box>
 
@@ -465,7 +533,7 @@ export default function BulkUploadUsersPage() {
                 color: step === 2 ? '#E6873C' : '#6B6862',
               }}
             >
-              Validate
+              {t('BULK_UPLOAD.STEPPER.VALIDATE')}
             </Typography>
           </Box>
 
@@ -504,7 +572,7 @@ export default function BulkUploadUsersPage() {
                 color: step === 3 ? '#1F1E1C' : '#6B6862',
               }}
             >
-              Summary
+              {t('BULK_UPLOAD.STEPPER.SUMMARY')}
             </Typography>
           </Box>
         </Box>
@@ -551,10 +619,10 @@ export default function BulkUploadUsersPage() {
             >
               <CloudUploadOutlinedIcon sx={{ fontSize: 44, color: isDragging ? '#E6873C' : '#3D3B37' }} />
               <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#1F1E1C' }}>
-                Drop a file here or browse
+                {t('BULK_UPLOAD.DROP_PROMPT')}
               </Typography>
               <Typography sx={{ fontSize: '13px', color: '#6B6862' }}>
-                CSV or Excel
+                {t('BULK_UPLOAD.FILE_TYPES')}
               </Typography>
               <input
                 ref={fileInputRef}
@@ -910,7 +978,7 @@ export default function BulkUploadUsersPage() {
                       },
                     }}
                   >
-                    Upload corrected file
+                    {t('BULK_UPLOAD.COLUMNS.UPLOAD_CORRECTED_FILE')}
                   </Button>
                 </Box>
               </Box>
@@ -929,16 +997,16 @@ export default function BulkUploadUsersPage() {
                   <TableHead sx={{ backgroundColor: '#F9FAFB' }}>
                     <TableRow>
                       <TableCell sx={{ width: '80px', fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
-                        Row
+                        {t('BULK_UPLOAD.COLUMNS.ROW')}
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
-                        Employee ID
+                        {t('BULK_UPLOAD.COLUMNS.EMPLOYEE_ID')}
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
-                        Email
+                        {t('BULK_UPLOAD.COLUMNS.EMAIL')}
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600, fontSize: '12px', color: '#6B7280' }}>
-                        Reason for failure
+                        {t('BULK_UPLOAD.COLUMNS.FAILURE_REASON')}
                       </TableCell>
                     </TableRow>
                   </TableHead>
@@ -1092,7 +1160,7 @@ export default function BulkUploadUsersPage() {
 export const getStaticProps = async ({ locale }: { locale: string }) => {
   return {
     props: {
-      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any, ['en', 'mr', 'hi'])),
     },
   };
 };

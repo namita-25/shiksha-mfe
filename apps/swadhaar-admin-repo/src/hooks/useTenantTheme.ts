@@ -20,7 +20,7 @@ export const useTenantTheme = () => {
         setBranding(data);
 
         const primaryColor = data.primaryColor || '#E6873C';
-        const secondaryColor = data.secondaryColor || '#1C2B4A';
+        const secondaryColor = data.secondaryColor || '#1A1A1A';
         const backgroundColor = '#F5F5F5';
         const surfaceColor = '#FFFFFF';
 

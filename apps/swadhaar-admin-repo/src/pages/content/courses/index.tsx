@@ -3,32 +3,29 @@ import { useRouter } from 'next/router';
 import {
   Box,
   Typography,
-  Button,
   Chip,
   IconButton,
   Tooltip,
-  Paper,
   Tabs,
   Tab,
   TextField,
   InputAdornment,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
   Alert,
 } from '@mui/material';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
-import FilterListIcon from '@mui/icons-material/FilterList';
 import Link from 'next/link';
+import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../../next-i18next.config.js';
 import SwadhaarDataTable, { ColumnDef } from '@/components/common/SwadhaarDataTable';
 import LifecycleChip from '@/components/common/LifecycleChip';
+import PageHeader from '@/components/common/PageHeader';
+import CommonButton from '@/components/common/CommonButton';
+import CommonSelect from '@/components/common/CommonSelect';
+import { BRAND, NEUTRAL } from '@/styles/customTheme';
 import {
   getCourseList,
   CourseItem,
@@ -37,8 +34,55 @@ import {
   fetchCourseTabCounts,
 } from '@/services/CourseService';
 
+type StatusTab = 'all' | 'published' | 'draft';
+
+const STATUS_TABS: { value: StatusTab; labelKey: string }[] = [
+  { value: 'all', labelKey: 'COMMON.ALL' },
+  { value: 'published', labelKey: 'COMMON.PUBLISHED' },
+  { value: 'draft', labelKey: 'COURSES.LIST.DRAFTS' },
+];
+
+const LANGUAGE_FILTER_OPTIONS = [
+  { value: 'all', labelKey: 'COURSES.LIST.ALL_LANGUAGES' },
+  { value: 'english', labelKey: 'COURSES.LANGUAGE_ENGLISH' },
+  { value: 'hindi', labelKey: 'COURSES.LANGUAGE_HINDI' },
+];
+
+const COUNT_CHIP_SX = {
+  height: 20,
+  fontSize: '11px',
+  fontWeight: 600,
+  backgroundColor: '#F3F4F6',
+  color: '#374151',
+  borderRadius: '10px',
+};
+
+const ROW_ICON_BUTTON_SX = {
+  border: `1px solid ${NEUTRAL.border}`,
+  borderRadius: '6px',
+  width: 32,
+  height: 32,
+};
+
+// Format date helper
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch (err) {
+    console.error('Failed to format date:', err);
+    return dateStr;
+  }
+};
+
 export default function CoursesPage() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [courses, setCourses] = useState<CourseItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -48,10 +92,11 @@ export default function CoursesPage() {
     draft: 46,
   });
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  // Stores an i18n key so the message re-renders in the active language
+  const [errorKey, setErrorKey] = useState<string | null>(null);
 
   // Status Tab Filter ('all' | 'published' | 'draft')
-  const [statusTab, setStatusTab] = useState<'all' | 'published' | 'draft'>('all');
+  const [statusTab, setStatusTab] = useState<StatusTab>('all');
 
   // Search & Language filter
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -81,10 +126,10 @@ export default function CoursesPage() {
   // Fetch courses from Aspire LMS search API
   const fetchCourses = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setErrorKey(null);
     try {
       // Determine status filter based on active tab
-      let statusParam: string | undefined = undefined;
+      let statusParam: string | undefined;
       if (statusTab === 'published') {
         statusParam = 'published';
       } else if (statusTab === 'draft') {
@@ -115,9 +160,9 @@ export default function CoursesPage() {
         ...prev,
         [statusTab]: activeCount,
       }));
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching courses:', err);
-      setError('Failed to fetch courses from LMS server. Please try again.');
+      setErrorKey('COURSES.LIST.FETCH_ERROR');
     } finally {
       setLoading(false);
     }
@@ -127,235 +172,201 @@ export default function CoursesPage() {
     fetchCourses();
   }, [fetchCourses]);
 
-  const handleStatusTabChange = (_: React.SyntheticEvent, newValue: 'all' | 'published' | 'draft') => {
+  const handleStatusTabChange = (_: React.SyntheticEvent, newValue: StatusTab) => {
     setStatusTab(newValue);
     setPage(0);
   };
 
-  // Format date helper
-  const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '—';
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
+  const getSectionsLabel = (row: CourseItem): string | number => {
+    if (row.moduleCount !== undefined) {
+      return t('COURSES.MODULES_COUNT', { count: row.moduleCount });
     }
+    if (row.leafNodesCount !== undefined) {
+      return row.leafNodesCount;
+    }
+    return row.childNodes?.length || '—';
+  };
+
+  const openCourse = (row: CourseItem) => {
+    router.push(`/content/courses/${row.courseId || row.identifier}`);
   };
 
   // Table Columns matching Swadhaar_Admin_Prototype (2).html:
   // Course | Sections | Duration | Language | Status | Updated | Actions
-  const columns: ColumnDef<CourseItem>[] = [
-    {
-      id: 'name',
-      label: 'Course',
-      sortable: true,
-      minWidth: 320,
-      render: (row) => (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
-          {row.courseCode && (
-            <Typography
-              variant="caption"
-              sx={{ color: '#6B6862', fontSize: '12px', fontWeight: 500 }}
+  const columns: ColumnDef<CourseItem>[] = useMemo(
+    () => [
+      {
+        id: 'name',
+        label: t('COURSES.LIST.COLUMN_COURSE'),
+        labelKey: 'COURSES.LIST.COLUMN_COURSE',
+        sortable: true,
+        minWidth: 320,
+        render: (row) => (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.4 }}>
+            {row.courseCode && (
+              <Typography
+                variant="caption"
+                sx={{ color: NEUTRAL.muted, fontSize: '12px', fontWeight: 500 }}
+              >
+                {row.courseCode}
+              </Typography>
+            )}
+            <Link
+              href={`/content/courses/${row.courseId || row.identifier}`}
+              style={{ textDecoration: 'none' }}
             >
-              {row.courseCode}
-            </Typography>
-          )}
-          <Link
-            href={`/content/courses/${row.courseId || row.identifier}`}
-            style={{ textDecoration: 'none' }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                fontWeight: 600,
-                color: '#1F1E1C',
-                fontSize: '14px',
-                cursor: 'pointer',
-                transition: 'color 0.2s',
-                '&:hover': {
-                  color: '#E6873C',
-                  textDecoration: 'underline',
-                },
-              }}
-            >
-              {row.cleanTitle || row.title || row.name}
-            </Typography>
-          </Link>
-        </Box>
-      ),
-    },
-    {
-      id: 'sections',
-      label: 'Sections',
-      sortable: true,
-      minWidth: 100,
-      render: (row) => {
-        const count =
-          row.moduleCount !== undefined
-            ? `${row.moduleCount} modules`
-            : (row.leafNodesCount !== undefined ? row.leafNodesCount : (row.childNodes?.length || '—'));
-        return (
-          <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F1E1C', fontSize: '13px' }}>
-            {count}
-          </Typography>
-        );
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: NEUTRAL.ink,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  transition: 'color 0.2s',
+                  '&:hover': {
+                    color: 'primary.main',
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                {row.cleanTitle || row.title || row.name}
+              </Typography>
+            </Link>
+          </Box>
+        ),
       },
-    },
-    {
-      id: 'duration',
-      label: 'Duration',
-      minWidth: 130,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '13px' }}>
-          {row.enrolledUsersCount !== undefined ? `${row.enrolledUsersCount.toLocaleString()} enrolled` : (row.formattedDuration || '—')}
-        </Typography>
-      ),
-    },
-    {
-      id: 'language',
-      label: 'Language',
-      minWidth: 110,
-      render: (row) => (
-        <Chip
-          label={row.detectedLanguage || 'English'}
-          size="small"
-          sx={{
-            fontWeight: 500,
-            fontSize: '11px',
-            backgroundColor: '#F3F4F6',
-            color: '#374151',
-            borderRadius: '4px',
-            height: 22,
-          }}
-        />
-      ),
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      sortable: true,
-      minWidth: 120,
-      render: (row) => <LifecycleChip state={row.status || 'Live'} />,
-    },
-    {
-      id: 'lastUpdatedOn',
-      label: 'Updated',
-      sortable: true,
-      minWidth: 120,
-      render: (row) => (
-        <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '12px' }}>
-          {formatDate(row.lastUpdatedOn || row.createdOn)}
-        </Typography>
-      ),
-    },
-    {
-      id: 'actions',
-      label: 'Actions',
-      align: 'right',
-      minWidth: 140,
-      render: (row) => (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
-          <Tooltip title="Open Course Structure">
-            <IconButton
-              size="small"
-              onClick={() => router.push(`/content/courses/${row.courseId || row.identifier}`)}
-              sx={{
-                color: '#1F1E1C',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#FDF3E9',
-                  borderColor: '#E6873C',
-                  color: '#E6873C',
-                },
-              }}
-            >
-              <ArrowForwardIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
+      {
+        id: 'sections',
+        label: t('COURSES.LIST.COLUMN_SECTIONS'),
+        labelKey: 'COURSES.LIST.COLUMN_SECTIONS',
+        sortable: true,
+        minWidth: 100,
+        render: (row) => (
+          <Typography variant="body2" sx={{ fontWeight: 600, color: NEUTRAL.ink, fontSize: '13px' }}>
+            {getSectionsLabel(row)}
+          </Typography>
+        ),
+      },
+      {
+        id: 'duration',
+        label: t('COURSES.LIST.COLUMN_DURATION'),
+        labelKey: 'COURSES.LIST.COLUMN_DURATION',
+        minWidth: 130,
+        render: (row) => (
+          <Typography variant="body2" sx={{ color: NEUTRAL.muted, fontSize: '13px' }}>
+            {row.enrolledUsersCount !== undefined
+              ? t('COURSES.LIST.ENROLLED_COUNT', { count: Number(row.enrolledUsersCount) || 0 })
+              : (row.formattedDuration || '—')}
+          </Typography>
+        ),
+      },
+      {
+        id: 'language',
+        label: t('COMMON.LANGUAGE'),
+        labelKey: 'COMMON.LANGUAGE',
+        minWidth: 110,
+        render: (row) => (
+          <Chip
+            label={row.detectedLanguage || t('COURSES.LANGUAGE_ENGLISH')}
+            size="small"
+            sx={{
+              fontWeight: 500,
+              fontSize: '11px',
+              backgroundColor: '#F3F4F6',
+              color: '#374151',
+              borderRadius: '4px',
+              height: 22,
+            }}
+          />
+        ),
+      },
+      {
+        id: 'status',
+        label: t('COMMON.STATUS'),
+        labelKey: 'COMMON.STATUS',
+        sortable: true,
+        minWidth: 120,
+        render: (row) => <LifecycleChip state={row.status || 'Live'} />,
+      },
+      {
+        id: 'lastUpdatedOn',
+        label: t('COURSES.LIST.COLUMN_UPDATED'),
+        labelKey: 'COURSES.LIST.COLUMN_UPDATED',
+        sortable: true,
+        minWidth: 120,
+        render: (row) => (
+          <Typography variant="body2" sx={{ color: NEUTRAL.muted, fontSize: '12px' }}>
+            {formatDate(row.lastUpdatedOn || row.createdOn)}
+          </Typography>
+        ),
+      },
+      {
+        id: 'actions',
+        label: t('COMMON.ACTIONS'),
+        labelKey: 'COMMON.ACTIONS',
+        align: 'right',
+        minWidth: 140,
+        render: (row) => (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.8 }}>
+            <Tooltip title={t('COURSES.LIST.OPEN_STRUCTURE')}>
+              <IconButton
+                size="small"
+                aria-label={t('COURSES.LIST.OPEN_STRUCTURE')}
+                onClick={() => openCourse(row)}
+                sx={{
+                  ...ROW_ICON_BUTTON_SX,
+                  color: NEUTRAL.ink,
+                  '&:hover': {
+                    backgroundColor: BRAND.primarySoft,
+                    borderColor: 'primary.main',
+                    color: 'primary.main',
+                  },
+                }}
+              >
+                <ArrowForwardIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
 
-          <Tooltip title="Edit details">
-            <IconButton
-              size="small"
-              onClick={() => router.push(`/content/courses/${row.courseId || row.identifier}`)}
-              sx={{
-                color: '#6B6862',
-                border: '1px solid #D6D3CC',
-                borderRadius: '6px',
-                width: 32,
-                height: 32,
-                '&:hover': {
-                  backgroundColor: '#F3F4F6',
-                  color: '#1F1E1C',
-                },
-              }}
-            >
-              <EditOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-      ),
-    },
-  ];
+            <Tooltip title={t('COURSES.EDIT_DETAILS')}>
+              <IconButton
+                size="small"
+                aria-label={t('COURSES.EDIT_DETAILS')}
+                onClick={() => openCourse(row)}
+                sx={{
+                  ...ROW_ICON_BUTTON_SX,
+                  color: NEUTRAL.muted,
+                  '&:hover': {
+                    backgroundColor: '#F3F4F6',
+                    color: NEUTRAL.ink,
+                  },
+                }}
+              >
+                <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        ),
+      },
+    ],
+    [t, router.locale]
+  );
 
   return (
     <Box sx={{ py: 1 }}>
       {/* Page Title & Action Bar */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          mb: 2.5,
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, mb: 0.5 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
-              Courses
-            </Typography>
+      <PageHeader
+        title={t('COURSES.LIST.TITLE')}
+        subtitle={t('COURSES.LIST.SUBTITLE')}
+        actions={
+          <CommonButton variant="primary" onClick={() => router.push('/content/courses/create')}>
+            {t('COURSES.LIST.CREATE_COURSE')}
+          </CommonButton>
+        }
+      />
 
-          </Box>
-          <Typography variant="body2" sx={{ color: '#6B6862', fontSize: '14px' }}>
-            Courses from the Financial Inclusion Training Programme.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="contained"
-          // startIcon={<AddCircleOutlineIcon />}
-          onClick={() => router.push('/content/courses/create')}
-          sx={{
-            backgroundColor: '#E6873C',
-            color: '#FFFFFF',
-            fontWeight: 600,
-            fontSize: '13px',
-            textTransform: 'none',
-            borderRadius: '6px',
-            height: 38,
-            boxShadow: 'none',
-            '&:hover': {
-              backgroundColor: '#C66C23',
-              boxShadow: 'none',
-            },
-          }}
-        >
-          + Create course
-        </Button>
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
+      {errorKey && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setErrorKey(null)}>
+          {t(errorKey)}
         </Alert>
       )}
 
@@ -365,7 +376,7 @@ export default function CoursesPage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-end',
-          borderBottom: '1px solid #D6D3CC',
+          borderBottom: `1px solid ${NEUTRAL.border}`,
           mb: 2,
           flexWrap: 'wrap',
           gap: 2,
@@ -379,7 +390,7 @@ export default function CoursesPage() {
           sx={{
             minHeight: 44,
             '& .MuiTabs-indicator': {
-              backgroundColor: '#1F1E1C',
+              backgroundColor: NEUTRAL.ink,
               height: 2,
             },
             '& .MuiTab-root': {
@@ -387,119 +398,65 @@ export default function CoursesPage() {
               textTransform: 'none',
               fontWeight: 500,
               fontSize: '14px',
-              color: '#6B6862',
+              color: NEUTRAL.muted,
               px: 2,
               '&.Mui-selected': {
-                color: '#1F1E1C',
+                color: NEUTRAL.ink,
                 fontWeight: 600,
               },
             },
           }}
         >
-          <Tab
-            value="all"
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <span>All</span>
-                <Chip
-                  label={tabCounts.all}
-                  size="small"
-                  sx={{
-                    height: 20,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    backgroundColor: '#F3F4F6',
-                    color: '#374151',
-                    borderRadius: '10px',
-                  }}
-                />
-              </Box>
-            }
-          />
-          <Tab
-            value="published"
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <span>Published</span>
-                <Chip
-                  label={tabCounts.published}
-                  size="small"
-                  sx={{
-                    height: 20,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    backgroundColor: '#F3F4F6',
-                    color: '#374151',
-                    borderRadius: '10px',
-                  }}
-                />
-              </Box>
-            }
-          />
-          <Tab
-            value="draft"
-            label={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <span>Drafts</span>
-                <Chip
-                  label={tabCounts.draft}
-                  size="small"
-                  sx={{
-                    height: 20,
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    backgroundColor: '#F3F4F6',
-                    color: '#374151',
-                    borderRadius: '10px',
-                  }}
-                />
-              </Box>
-            }
-          />
+          {STATUS_TABS.map((tab) => (
+            <Tab
+              key={tab.value}
+              value={tab.value}
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>{t(tab.labelKey)}</span>
+                  <Chip label={tabCounts[tab.value]} size="small" sx={COUNT_CHIP_SX} />
+                </Box>
+              }
+            />
+          ))}
         </Tabs>
 
         {/* Search & Language Filters */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
           {/* Language Filter */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <Select
-              value={languageFilter}
-              onChange={(e) => {
-                setLanguageFilter(e.target.value);
-                setPage(0);
-              }}
-              displayEmpty
-              sx={{
-                fontSize: '13px',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '6px',
-                height: 36,
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: '#D6D3CC',
-                },
-              }}
-            >
-              <MenuItem value="all">All Languages</MenuItem>
-              <MenuItem value="english">English</MenuItem>
-              <MenuItem value="hindi">Hindi</MenuItem>
-            </Select>
-          </FormControl>
+          <CommonSelect
+            value={languageFilter}
+            onChange={(value) => {
+              setLanguageFilter(value);
+              setPage(0);
+            }}
+            options={LANGUAGE_FILTER_OPTIONS.map((option) => ({
+              value: option.value,
+              label: t(option.labelKey),
+            }))}
+            fullWidth={false}
+            sx={{ minWidth: 120, fontSize: '13px', borderRadius: '6px' }}
+          />
 
           {/* Search Input */}
           <TextField
             size="small"
-            placeholder="Search"
+            placeholder={t('COMMON.SEARCH')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: '#8A867F', fontSize: 18 }} />
+                  <SearchIcon sx={{ color: NEUTRAL.subtle, fontSize: 18 }} />
                 </InputAdornment>
               ),
               endAdornment: searchQuery ? (
                 <InputAdornment position="end">
-                  <IconButton size="small" onClick={() => setSearchQuery('')}>
+                  <IconButton
+                    size="small"
+                    aria-label={t('COMMON.CLEAR')}
+                    onClick={() => setSearchQuery('')}
+                  >
                     <ClearIcon fontSize="small" sx={{ fontSize: 16 }} />
                   </IconButton>
                 </InputAdornment>
@@ -507,19 +464,19 @@ export default function CoursesPage() {
             }}
             sx={{
               width: 260,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'background.paper',
               '& .MuiOutlinedInput-root': {
                 height: 36,
                 borderRadius: '6px',
                 fontSize: '13px',
                 '& fieldset': {
-                  borderColor: '#D6D3CC',
+                  borderColor: NEUTRAL.border,
                 },
                 '&:hover fieldset': {
-                  borderColor: '#1F1E1C',
+                  borderColor: NEUTRAL.ink,
                 },
                 '&.Mui-focused fieldset': {
-                  borderColor: '#E6873C',
+                  borderColor: 'primary.main',
                 },
               },
             }}
@@ -534,7 +491,7 @@ export default function CoursesPage() {
         keyExtractor={(item) => item.identifier}
         loading={loading}
         hideToolbar={true}
-        emptyMessage="No courses found matching criteria"
+        emptyMessage={t('COURSES.LIST.EMPTY')}
         page={page}
         rowsPerPage={rowsPerPage}
         totalCount={totalCount}
@@ -547,8 +504,8 @@ export default function CoursesPage() {
 
       {/* Prototype Footer Note */}
       <Box sx={{ mt: 1.5, px: 0.5 }}>
-        <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '11px' }}>
-          Titles, section counts and durations from the course document table of contents. Statuses are illustrative (Course 0 has sections “to be designed later”).
+        <Typography variant="caption" sx={{ color: NEUTRAL.subtle, fontSize: '11px' }}>
+          {t('COURSES.LIST.FOOTER_NOTE')}
         </Typography>
       </Box>
     </Box>
@@ -558,7 +515,7 @@ export default function CoursesPage() {
 export const getStaticProps = async ({ locale }: { locale: string }) => {
   return {
     props: {
-      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any)),
+      ...(await serverSideTranslations(locale || 'en', ['common'], nextI18NextConfig as any, ['en', 'mr', 'hi'])),
     },
   };
 };

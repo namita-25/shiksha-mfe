@@ -1,21 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Box,
-  Typography,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-  Grid,
-  IconButton,
-  CircularProgress,
-  FormHelperText,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Box, Typography, Grid } from '@mui/material';
+import { useTranslation } from 'next-i18next';
 import MasterDataService, { LocationOption } from '@/services/MasterDataService';
 import TenantService from '@/services/TenantService';
 import {
@@ -27,6 +12,11 @@ import {
 } from '@/services/UserService';
 import { showToastMessage } from '@/components/Toastify';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
+import { NEUTRAL } from '@/styles/customTheme';
+import CommonButton from './CommonButton';
+import CommonDialog from './CommonDialog';
+import CommonSelect from './CommonSelect';
+import CommonTextField from './CommonTextField';
 
 export interface CreateUserModalProps {
   open: boolean;
@@ -50,18 +40,54 @@ interface FormState {
   role: string;
 }
 
+/** Sentinel gender value meaning "not selected" (kept as-is for the submit logic). */
+const GENDER_NOT_SELECTED = 'Select';
+const STATE_FIELD_ID = '800265b1-9058-482a-94f4-726197e1dfe4';
+const PHONE_REGEX = /^\d{10}$/;
+
+const GENDER_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: GENDER_NOT_SELECTED, labelKey: 'COMMON.SELECT' },
+  { value: 'Male', labelKey: 'USERS.FORM.GENDER_MALE' },
+  { value: 'Female', labelKey: 'USERS.FORM.GENDER_FEMALE' },
+  { value: 'Other', labelKey: 'COMMON.OTHER' },
+];
+
 const initialFormState: FormState = {
   fullName: '',
   employeeId: '',
   email: '',
   phone: '',
-  gender: 'Select',
+  gender: GENDER_NOT_SELECTED,
   state: '',
   district: '',
   branch: '',
   program: '',
   role: '',
 };
+
+const toStr = (val: any): string => (val !== null && val !== undefined ? String(val) : '');
+
+const formatGender = (gender?: any) => {
+  if (!gender) return GENDER_NOT_SELECTED;
+  const g = toStr(gender).trim().toLowerCase();
+  if (g === 'male') return 'Male';
+  if (g === 'female') return 'Female';
+  if (g === 'other') return 'Other';
+  return GENDER_NOT_SELECTED;
+};
+
+/** Payload gender: lower-cased selection, defaulting to 'male' when nothing is selected. */
+const toPayloadGender = (gender: string) =>
+  gender && gender !== GENDER_NOT_SELECTED ? gender.toLowerCase() : 'male';
+
+const SECTION_TITLE_SX = {
+  fontSize: '11px',
+  fontWeight: 700,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: NEUTRAL.muted,
+  mb: 1.4,
+} as const;
 
 export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   open,
@@ -71,6 +97,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   initialData,
   isEdit = false,
 }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [loading, setLoading] = useState<boolean>(false);
@@ -118,17 +145,6 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     }
   }, [formData.district]);
 
-const toStr = (val: any): string => (val !== null && val !== undefined ? String(val) : '');
-
-const formatGender = (gender?: any) => {
-  if (!gender) return 'Select';
-  const g = toStr(gender).trim().toLowerCase();
-  if (g === 'male') return 'Male';
-  if (g === 'female') return 'Female';
-  if (g === 'other') return 'Other';
-  return 'Select';
-};
-
   // Reset or initialize on open
   useEffect(() => {
     if (open) {
@@ -138,10 +154,10 @@ const formatGender = (gender?: any) => {
         const rawPhone = toStr(initialData.phone || initialData.mobile);
         const rawUsername = toStr(initialData.username);
         const cleanPhone =
-          rawPhone || (/^\d{10}$/.test(rawUsername) ? rawUsername : '');
+          rawPhone || (PHONE_REGEX.test(rawUsername) ? rawUsername : '');
         const rawEmpId = toStr(initialData.employeeId);
         const cleanEmpId =
-          rawEmpId || (!/^\d{10}$/.test(rawUsername) && rawUsername ? rawUsername : '');
+          rawEmpId || (!PHONE_REGEX.test(rawUsername) && rawUsername ? rawUsername : '');
         const cleanBranch =
           initialData.branch && initialData.branch !== '[Branch]'
             ? toStr(initialData.branch)
@@ -184,11 +200,11 @@ const formatGender = (gender?: any) => {
                   const uPhone = toStr(user.mobile || user.phone);
                   const uUsername = toStr(user.username);
                   const computedPhone =
-                    uPhone || (/^\d{10}$/.test(uUsername) ? uUsername : prev.phone);
+                    uPhone || (PHONE_REGEX.test(uUsername) ? uUsername : prev.phone);
                   const uEmpId = toStr(user.employeeId);
                   const computedEmpId =
                     uEmpId ||
-                    (!/^\d{10}$/.test(uUsername) && uUsername
+                    (!PHONE_REGEX.test(uUsername) && uUsername
                       ? uUsername
                       : prev.employeeId);
                   const computedGender = formatGender(user.gender);
@@ -202,7 +218,7 @@ const formatGender = (gender?: any) => {
                   if (Array.isArray(user.customFields)) {
                     const sField = user.customFields.find(
                       (cf: any) =>
-                        cf.fieldId === '800265b1-9058-482a-94f4-726197e1dfe4' ||
+                        cf.fieldId === STATE_FIELD_ID ||
                         cf.label?.toLowerCase() === 'state' ||
                         cf.name?.toLowerCase() === 'state'
                     );
@@ -234,8 +250,7 @@ const formatGender = (gender?: any) => {
                     employeeId: computedEmpId || prev.employeeId,
                     email: computedEmail,
                     phone: computedPhone || prev.phone,
-                    gender:
-                      computedGender !== 'Select' ? computedGender : prev.gender,
+                    gender: computedGender === GENDER_NOT_SELECTED ? prev.gender : computedGender,
                     state: sVal || prev.state,
                     district: dVal || prev.district,
                     branch: bVal || prev.branch,
@@ -340,37 +355,37 @@ const formatGender = (gender?: any) => {
     const role = toStr(formData.role).trim();
 
     if (!fullName) {
-      newErrors.fullName = 'Full name is required';
+      newErrors.fullName = 'USERS.FORM.ERROR_FULL_NAME_REQUIRED';
     } else if (fullName.length < 2) {
-      newErrors.fullName = 'Full name must be at least 2 characters';
+      newErrors.fullName = 'USERS.FORM.ERROR_FULL_NAME_MIN';
     }
 
     if (!isEdit && !employeeId) {
-      newErrors.employeeId = 'Employee ID is required';
+      newErrors.employeeId = 'USERS.FORM.ERROR_EMPLOYEE_ID_REQUIRED';
     }
 
     if (!isEdit && !email) {
-      newErrors.email = 'Email address is required';
+      newErrors.email = 'USERS.FORM.ERROR_EMAIL_REQUIRED';
     } else if (
       email &&
       email !== '-' &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
     ) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'USERS.FORM.ERROR_EMAIL_INVALID';
     }
 
     if (!phone) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(phone)) {
-      newErrors.phone = 'Phone number must be a valid 10-digit number';
+      newErrors.phone = 'USERS.FORM.ERROR_PHONE_REQUIRED';
+    } else if (!PHONE_REGEX.test(phone)) {
+      newErrors.phone = 'USERS.FORM.ERROR_PHONE_INVALID';
     }
 
     if (!state) {
-      newErrors.state = 'State is required';
+      newErrors.state = 'USERS.FORM.ERROR_STATE_REQUIRED';
     }
 
     if (!role) {
-      newErrors.role = 'Role is required';
+      newErrors.role = 'USERS.FORM.ERROR_ROLE_REQUIRED';
     }
 
     setErrors(newErrors);
@@ -404,7 +419,7 @@ const formatGender = (gender?: any) => {
       if (isEdit) {
         const targetUserId = toStr(initialData?.userId || initialData?.id);
         if (!targetUserId) {
-          showToastMessage('User ID is missing.', 'error');
+          showToastMessage(t('USERS.FORM.USER_ID_MISSING'), 'error');
           setLoading(false);
           return;
         }
@@ -413,10 +428,7 @@ const formatGender = (gender?: any) => {
           firstName,
           lastName,
           middleName,
-          gender:
-            formData.gender && formData.gender !== 'Select'
-              ? formData.gender.toLowerCase()
-              : 'male',
+          gender: toPayloadGender(formData.gender),
           mobile,
         };
 
@@ -435,7 +447,7 @@ const formatGender = (gender?: any) => {
         if (formData.state) {
           updatePayload.customFields = [
             {
-              fieldId: '800265b1-9058-482a-94f4-726197e1dfe4',
+              fieldId: STATE_FIELD_ID,
               value: [String(formData.state)],
             },
           ];
@@ -450,7 +462,7 @@ const formatGender = (gender?: any) => {
           response?.params?.status === 'successful'
         ) {
           showToastMessage(
-            response?.params?.successmessage || 'User updated successfully.',
+            response?.params?.successmessage || t('USERS.FORM.UPDATE_SUCCESS'),
             'success'
           );
           onSuccess?.();
@@ -459,7 +471,7 @@ const formatGender = (gender?: any) => {
           const errorMsg =
             response?.params?.errmsg ||
             response?.message ||
-            'Failed to update user.';
+            t('USERS.FORM.UPDATE_FAILED');
           showToastMessage(errorMsg, 'error');
         }
         return;
@@ -474,10 +486,7 @@ const formatGender = (gender?: any) => {
         password: 'Password@123',
         firstName: firstName,
         lastName: lastName,
-        gender:
-          formData.gender && formData.gender !== 'Select'
-            ? formData.gender.toLowerCase()
-            : 'male',
+        gender: toPayloadGender(formData.gender),
         email: email,
         mobile: mobile,
         tenantCohortRoleMapping: [
@@ -488,7 +497,7 @@ const formatGender = (gender?: any) => {
         ],
         customFields: [
           {
-            fieldId: '800265b1-9058-482a-94f4-726197e1dfe4',
+            fieldId: STATE_FIELD_ID,
             value: [String(formData.state || '4')],
           },
         ],
@@ -501,7 +510,7 @@ const formatGender = (gender?: any) => {
         response?.result ||
         response?.params?.status === 'successful'
       ) {
-        showToastMessage('User created successfully!', 'success');
+        showToastMessage(t('USERS.FORM.CREATE_SUCCESS'), 'success');
         onSuccess?.();
         onClose();
         setFormData(initialFormState);
@@ -509,7 +518,7 @@ const formatGender = (gender?: any) => {
         const errorMsg =
           response?.params?.errmsg ||
           response?.message ||
-          'Failed to create user.';
+          t('USERS.FORM.CREATE_FAILED');
         showToastMessage(errorMsg, 'error');
       }
     } catch (err: any) {
@@ -518,515 +527,191 @@ const formatGender = (gender?: any) => {
         err?.response?.data?.params?.errmsg ||
         err?.response?.data?.message ||
         err?.message ||
-        (isEdit
-          ? 'Error occurred while updating user.'
-          : 'Error occurred while creating user.');
+        t(isEdit ? 'USERS.FORM.UPDATE_ERROR' : 'USERS.FORM.CREATE_ERROR');
       showToastMessage(errMsg, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // Swadhaar UI theme styling matching cswadhaar / prototype
-  const inputSx = {
-    '& .MuiOutlinedInput-root': {
-      borderRadius: '6px',
-      backgroundColor: '#FFFFFF',
-      fontSize: '14px',
-      color: '#1F1E1C',
-      fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-      '& fieldset': {
-        borderColor: '#BDB9B1',
-      },
-      '&:hover fieldset': {
-        borderColor: '#8A867F',
-      },
-      '&.Mui-focused fieldset': {
-        borderColor: '#E6873C',
-        borderWidth: '1.5px',
-      },
-    },
-    '& .MuiInputBase-input': {
-      padding: '9.5px 12px',
-      height: 'auto',
-    },
-  };
+  /** Translated error message for a field (errors hold i18n keys). */
+  const errorText = (field: keyof FormState) => (errors[field] ? t(errors[field] as string) : undefined);
 
-  const selectSx = {
-    borderRadius: '6px',
-    backgroundColor: '#FFFFFF',
-    fontSize: '14px',
-    color: '#1F1E1C',
-    fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-    '& .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#BDB9B1',
-    },
-    '&:hover .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#8A867F',
-    },
-    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: '#E6873C',
-      borderWidth: '1.5px',
-    },
-    '& .MuiSelect-select': {
-      padding: '9.5px 12px',
-    },
-  };
+  const districtPlaceholder = formData.state
+    ? t('USERS.FORM.SELECT_DISTRICT')
+    : t('USERS.FORM.SELECT_STATE_FIRST');
+  const branchPlaceholder = formData.district
+    ? t('USERS.FORM.SELECT_BRANCH')
+    : t('USERS.FORM.SELECT_DISTRICT_FIRST');
 
   return (
-    <Dialog
+    <CommonDialog
       open={open}
-      disableEscapeKeyDown
-      onClose={(_event, reason) => {
-        if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-          return;
-        }
-      }}
+      onClose={onClose}
+      disableBackdropClose
+      showCloseIcon
+      dividers
+      loading={loading}
       maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: '10px',
-          boxShadow: '0 20px 48px rgba(31,30,28,0.25)',
-          maxWidth: '740px',
-          fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-          color: '#1F1E1C',
-        },
-      }}
+      paperMaxWidth="740px"
+      title={isEdit ? t('USERS.FORM.EDIT_TITLE') : t('USERS.FORM.CREATE_TITLE')}
+      subtitle={t('COMMON.FIELDS_MANDATORY')}
+      actions={
+        <>
+          <CommonButton variant="outlined" onClick={onClose} disabled={loading}>
+            {t('COMMON.CANCEL')}
+          </CommonButton>
+          <CommonButton variant="dark" onClick={handleSubmit} loading={loading}>
+            {isEdit ? t('COMMON.SAVE_CHANGES') : t('USERS.FORM.CREATE_USER')}
+          </CommonButton>
+        </>
+      }
     >
-      {/* Dialog Header */}
-      <DialogTitle
-        sx={{
-          padding: '22px 28px 14px',
-          borderBottom: '1px solid #ECEAE5',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-        }}
-      >
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.6 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
-            <Typography
-              component="h2"
-              sx={{
-                margin: 0,
-                fontSize: '20px',
-                fontWeight: 600,
-                color: '#1F1E1C',
-                fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-              }}
-            >
-              {isEdit ? 'Edit user' : 'Create user'}
-            </Typography>
-          </Box>
-          <Typography
-            sx={{
-              margin: 0,
-              fontSize: '13px',
-              color: '#6B6862',
-              fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            }}
-          >
-            Fields marked * are mandatory.
-          </Typography>
-        </Box>
-
-        <IconButton
-          onClick={onClose}
-          aria-label="Close"
-          disabled={loading}
-          sx={{
-            width: 32,
-            height: 32,
-            color: '#3D3B37',
-            '&:hover': { backgroundColor: '#F4F3EF' },
-          }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </DialogTitle>
-
-      {/* Dialog Content */}
-      <DialogContent
-        sx={{
-          padding: '18px 28px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 2.2,
-        }}
-      >
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.2 }}>
         {/* 1. PERSONAL DETAILS */}
         <Box>
-          <Typography
-            sx={{
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: '#6B6862',
-              mb: 1.4,
-              fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            }}
-          >
-            Personal details
-          </Typography>
+          <Typography sx={SECTION_TITLE_SX}>{t('USERS.FORM.SECTION_PERSONAL')}</Typography>
 
           <Grid container spacing={2}>
             {/* Full name */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Full name *
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
+              <CommonTextField
+                label={t('USERS.FORM.FULL_NAME')}
+                required
                 value={formData.fullName}
                 onChange={(e) => handleChange('fullName', e.target.value)}
                 error={Boolean(errors.fullName)}
-                helperText={errors.fullName}
-                sx={inputSx}
+                helperText={errorText('fullName')}
               />
             </Grid>
 
             {/* Employee ID */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Employee ID *
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
+              <CommonTextField
+                label={t('USERS.FORM.EMPLOYEE_ID')}
+                required
                 value={formData.employeeId}
                 onChange={(e) => handleChange('employeeId', e.target.value)}
                 error={Boolean(errors.employeeId)}
-                helperText={errors.employeeId}
-                sx={inputSx}
+                helperText={errorText('employeeId')}
+                hint={t('USERS.FORM.EMPLOYEE_ID_HINT')}
               />
-              <Typography sx={{ fontSize: '12px', color: '#6B6862', mt: 0.5 }}>
-                Must be unique
-              </Typography>
             </Grid>
 
             {/* Email address */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Email address *
-              </Typography>
-              <TextField
-                fullWidth
+              <CommonTextField
+                label={t('USERS.FORM.EMAIL')}
+                required
                 type="email"
-                size="small"
                 value={formData.email}
                 onChange={(e) => handleChange('email', e.target.value)}
                 error={Boolean(errors.email)}
-                helperText={errors.email}
-                sx={inputSx}
+                helperText={errorText('email')}
+                hint={t('USERS.FORM.EMAIL_HINT')}
               />
-              <Typography sx={{ fontSize: '12px', color: '#6B6862', mt: 0.5 }}>
-                Used as login ID
-              </Typography>
             </Grid>
 
             {/* Phone number */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Phone number *
-              </Typography>
-              <TextField
-                fullWidth
+              <CommonTextField
+                label={t('USERS.FORM.PHONE')}
+                required
                 type="tel"
-                size="small"
                 value={formData.phone}
                 onChange={(e) => handleChange('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                 error={Boolean(errors.phone)}
-                helperText={errors.phone}
-                sx={inputSx}
+                helperText={errorText('phone')}
+                hint={t('USERS.FORM.PHONE_HINT')}
               />
-              <Typography sx={{ fontSize: '12px', color: '#6B6862', mt: 0.5 }}>
-                Used for SMS
-              </Typography>
             </Grid>
 
             {/* Gender */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Gender
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
+              <CommonSelect
+                label={t('USERS.FORM.GENDER')}
                 value={formData.gender}
-                onChange={(e) => handleChange('gender', e.target.value)}
-                sx={selectSx}
-              >
-                <MenuItem value="Select">Select</MenuItem>
-                <MenuItem value="Male">Male</MenuItem>
-                <MenuItem value="Female">Female</MenuItem>
-                <MenuItem value="Other">Other</MenuItem>
-              </Select>
+                onChange={(value) => handleChange('gender', value)}
+                options={GENDER_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) }))}
+              />
             </Grid>
           </Grid>
         </Box>
 
         {/* 2. LOCATION AND PROGRAM */}
         <Box>
-          <Typography
-            sx={{
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: '#6B6862',
-              mb: 1.4,
-              fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            }}
-          >
-            Location and program
-          </Typography>
+          <Typography sx={SECTION_TITLE_SX}>{t('USERS.FORM.SECTION_LOCATION')}</Typography>
 
           <Grid container spacing={2}>
             {/* State */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                State *
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
+              <CommonSelect
+                label={t('USERS.FORM.STATE')}
+                required
                 value={formData.state}
-                displayEmpty
+                placeholder={t('USERS.FORM.SELECT_STATE')}
                 error={Boolean(errors.state)}
-                onChange={(e) => handleChange('state', e.target.value)}
-                sx={selectSx}
-              >
-                <MenuItem value="" disabled>
-                  <em>Select state</em>
-                </MenuItem>
-                {states.map((s) => (
-                  <MenuItem key={s.value} value={s.value}>
-                    {s.label}
-                  </MenuItem>
-                ))}
-              </Select>
-              {errors.state && (
-                <FormHelperText error sx={{ mx: 0.5, fontSize: '11px' }}>
-                  {errors.state}
-                </FormHelperText>
-              )}
+                helperText={errorText('state')}
+                onChange={(value) => handleChange('state', value)}
+                options={states.map((s) => ({ value: s.value, label: s.label }))}
+              />
             </Grid>
 
             {/* District */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                District
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
+              <CommonSelect
+                label={t('USERS.FORM.DISTRICT')}
                 value={formData.district}
-                displayEmpty
+                placeholder={districtPlaceholder}
                 disabled={!formData.state}
-                onChange={(e) => handleChange('district', e.target.value)}
-                sx={selectSx}
-              >
-                <MenuItem value="" disabled>
-                  <em>{!formData.state ? 'Select state first' : 'Select district'}</em>
-                </MenuItem>
-                {districts.map((d) => (
-                  <MenuItem key={d.value} value={d.value}>
-                    {d.label}
-                  </MenuItem>
-                ))}
-              </Select>
+                onChange={(value) => handleChange('district', value)}
+                options={districts.map((d) => ({ value: d.value, label: d.label }))}
+              />
             </Grid>
 
             {/* Branch (Block) */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Branch
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
+              <CommonSelect
+                label={t('USERS.FORM.BRANCH')}
                 value={formData.branch}
-                displayEmpty
+                placeholder={branchPlaceholder}
                 disabled={!formData.district}
-                onChange={(e) => handleChange('branch', e.target.value)}
-                sx={selectSx}
-              >
-                <MenuItem value="" disabled>
-                  <em>{!formData.district ? 'Select district first' : 'Select branch'}</em>
-                </MenuItem>
-                {branches.map((b) => (
-                  <MenuItem key={b.value} value={b.value}>
-                    {b.label}
-                  </MenuItem>
-                ))}
-              </Select>
+                onChange={(value) => handleChange('branch', value)}
+                options={branches.map((b) => ({ value: b.value, label: b.label }))}
+              />
             </Grid>
 
             {/* Program */}
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Program
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
+              <CommonSelect
+                label={t('USERS.FORM.PROGRAM')}
                 value={formData.program}
-                displayEmpty
-                onChange={(e) => handleChange('program', e.target.value)}
-                sx={selectSx}
-              >
-                <MenuItem value="" disabled>
-                  <em>Select program</em>
-                </MenuItem>
-                {programs.map((p) => (
-                  <MenuItem key={p.value} value={p.value}>
-                    {p.label}
-                  </MenuItem>
-                ))}
-              </Select>
+                placeholder={t('USERS.FORM.SELECT_PROGRAM')}
+                onChange={(value) => handleChange('program', value)}
+                options={programs.map((p) => ({ value: p.value, label: p.label }))}
+              />
             </Grid>
           </Grid>
         </Box>
 
         {/* 3. ROLE */}
         <Box>
-          <Typography
-            sx={{
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: '#6B6862',
-              mb: 1.4,
-              fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            }}
-          >
-            Role
-          </Typography>
+          <Typography sx={SECTION_TITLE_SX}>{t('USERS.FORM.SECTION_ROLE')}</Typography>
 
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
-              <Typography
-                component="label"
-                sx={{
-                  display: 'block',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: '#1F1E1C',
-                  mb: 0.6,
-                }}
-              >
-                Role *
-              </Typography>
-              <Select
-                fullWidth
-                size="small"
+              <CommonSelect
+                label={t('USERS.FORM.ROLE')}
+                required
                 value={formData.role}
-                displayEmpty
+                placeholder={t('USERS.FORM.SELECT_ROLE')}
                 error={Boolean(errors.role)}
-                onChange={(e) => handleChange('role', e.target.value)}
-                sx={selectSx}
-              >
-                <MenuItem value="" disabled>
-                  <em>Select role</em>
-                </MenuItem>
-                {roleOptions.map((r) => (
-                  <MenuItem key={r} value={r}>
-                    {r}
-                  </MenuItem>
-                ))}
-              </Select>
-              {errors.role && (
-                <FormHelperText error sx={{ mx: 0.5, fontSize: '11px' }}>
-                  {errors.role}
-                </FormHelperText>
-              )}
-              <Typography sx={{ fontSize: '12px', color: '#6B6862', mt: 0.5, lineHeight: 1.4 }}>
-                Company role. Learner and Reviewer are assigned later, when the user is added to a group.
+                helperText={errorText('role')}
+                onChange={(value) => handleChange('role', value)}
+                options={roleOptions.map((r) => ({ value: r, label: r }))}
+              />
+              <Typography sx={{ fontSize: '12px', color: NEUTRAL.muted, mt: 0.5, lineHeight: 1.4 }}>
+                {t('USERS.FORM.ROLE_HINT')}
               </Typography>
             </Grid>
           </Grid>
@@ -1038,85 +723,17 @@ const formatGender = (gender?: any) => {
             display: 'flex',
             gap: 1.5,
             padding: '12px 16px',
-            backgroundColor: '#F4F3EF',
+            backgroundColor: NEUTRAL.hover,
             borderRadius: '8px',
             mt: 0.5,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: '13px',
-              lineHeight: 1.5,
-              color: '#1F1E1C',
-              fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            }}
-          >
-            On save, credentials are generated and a welcome email and/or SMS is sent, asking the user to change their password on first login.
+          <Typography sx={{ fontSize: '13px', lineHeight: 1.5, color: NEUTRAL.ink }}>
+            {t('USERS.FORM.CREDENTIALS_INFO')}
           </Typography>
         </Box>
-      </DialogContent>
-
-      {/* Dialog Actions */}
-      <DialogActions
-        sx={{
-          padding: '14px 28px',
-          borderTop: '1px solid #ECEAE5',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 1.5,
-        }}
-      >
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          disabled={loading}
-          sx={{
-            backgroundColor: '#FFFFFF',
-            color: '#1F1E1C',
-            borderColor: '#BDB9B1',
-            borderRadius: '6px',
-            textTransform: 'none',
-            fontWeight: 500,
-            fontSize: '14px',
-            px: 2.2,
-            py: 0.9,
-            fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            '&:hover': {
-              backgroundColor: '#F4F3EF',
-              borderColor: '#8A867F',
-            },
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
-          disabled={loading}
-          sx={{
-            backgroundColor: '#1F1E1C',
-            color: '#FFFFFF',
-            borderRadius: '6px',
-            textTransform: 'none',
-            fontWeight: 500,
-            fontSize: '14px',
-            px: 2.5,
-            py: 0.9,
-            fontFamily: "'IBM Plex Sans', 'Inter', sans-serif",
-            boxShadow: 'none',
-            '&:hover': {
-              backgroundColor: '#D4752A',
-              boxShadow: 'none',
-            },
-          }}
-        >
-          {loading ? (
-            <CircularProgress size={18} sx={{ color: '#FFFFFF', mr: 1 }} />
-          ) : null}
-          {isEdit ? 'Save changes' : 'Create user'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </CommonDialog>
   );
 };
 

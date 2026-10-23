@@ -370,7 +370,9 @@ const SwadhaarDesktopLevelAccordion: React.FC<SwadhaarDesktopLevelAccordionProps
                   fontWeight: isCompletedLevel ? 700 : 400,
                 }}
               >
-                {/* {t('LEARNER_APP.LEARN.COMPLETED_MODULES', { completed: completedModules, total: totalModules })} */}
+                {isCompletedLevel
+                  ? t('LEARNER_APP.HOME.COMPLETED', { defaultValue: 'Completed' })
+                  : t('LEARNER_APP.LEARN.COMPLETED_MODULES', { completed: completedModules, total: totalModules, defaultValue: `Completed ${completedModules}/${totalModules} Modules` })}
               </Typography>
             )}
             {showDescriptions && levelDescription && (

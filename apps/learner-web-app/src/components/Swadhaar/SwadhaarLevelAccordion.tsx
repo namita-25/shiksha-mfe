@@ -157,10 +157,6 @@ const ModuleNode: React.FC<{
     return children.filter((c: any) => (completionCache.get(c.identifier || c.id) ?? 0) >= 70).length;
   }, [children, completionCache]);
 
-  if (isLeaf) {
-    return <LessonNode lesson={node} perc={completionCache.get(nodeId) ?? 0} onClick={() => onNavigate(parentId, parentId, node.identifier)} isLocked={isLocked} showDescriptions={showDescriptions} />;
-  }
-
   const handleModuleClick = () => {
     if (isLocked) return;
     if (isCompleted && children.length > 0) {
@@ -172,9 +168,11 @@ const ModuleNode: React.FC<{
   };
 
   const subtopicLabel = t('LEARNER_APP.LEARN.COMPLETED_SUBTOPICS', { completed: completedChildCount, total: children.length });
-  const subtopicText = subtopicLabel !== 'LEARNER_APP.LEARN.COMPLETED_SUBTOPICS'
-    ? subtopicLabel
-    : `Completed ${completedChildCount}/${children.length} Subtopics`;
+  const subtopicText = children.length > 0
+    ? (subtopicLabel !== 'LEARNER_APP.LEARN.COMPLETED_SUBTOPICS'
+        ? subtopicLabel
+        : `Completed ${completedChildCount}/${children.length} Subtopics`)
+    : (isCompleted ? (t('LEARNER_APP.LEARN.COMPLETED') !== 'LEARNER_APP.LEARN.COMPLETED' ? t('LEARNER_APP.LEARN.COMPLETED') : 'Completed') : `${Math.round(perc)}% Complete`);
 
   return (
     <Box sx={{ mb: 1 }}>
@@ -203,13 +201,12 @@ const ModuleNode: React.FC<{
         >
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              {/* <NoteOutlinedIcon sx={{ fontSize: 20, color: isLocked ? '#9CA3AF' : '#1A1A1A' }} /> */}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy, #9E9E9E)" strokeWidth="1.8">
                 <path d="M6 3h9l4 4v14H6z" />
                 <path d="M15 3v4h4" />
               </svg>
               <Typography sx={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 15, color: isLocked ? '#9CA3AF' : '#1A1A1A' }}>
-                {node.name.toLowerCase().includes('module') ? node.name : `Module: ${node.name}`}
+                {node.name}
               </Typography>
             </Box>
             {showDescriptions && node.description && (

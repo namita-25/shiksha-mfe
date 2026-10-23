@@ -104,7 +104,9 @@ export const VideoBlob: React.FC<VideoBlobProps> = ({
         const id = parsed.searchParams.get('v');
         return id ? `https://www.youtube.com/embed/${id}` : '';
       }
-    } catch { }
+    } catch {
+      // ignore invalid URLs
+    }
     const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{6,})/);
     if (match?.[1]) return `https://www.youtube.com/embed/${match[1]}`;
     return '';
@@ -118,7 +120,7 @@ export const VideoBlob: React.FC<VideoBlobProps> = ({
     }
   };
 
-  const updateProgress = (currentTime: number, isSeek: boolean = false) => {
+  const updateProgress = (currentTime: number, isSeek = false) => {
     if (!durationRef.current || completed || completionTriggeredRef.current) return;
     
     // Track forward progress (both playback and seeks)
@@ -483,12 +485,6 @@ export const VideoBlob: React.FC<VideoBlobProps> = ({
           <Typography sx={{ fontSize: 11, color: '#6B7280', mt: 0.5, textAlign: 'center' }}>
             {Math.round(progress)}% watched
           </Typography>
-        </Box>
-      )}
-      
-      {!isDesktop && (
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Typography sx={{ fontSize: 12, color: '#6B7280' }}>{name}</Typography>
         </Box>
       )}
     </Box>

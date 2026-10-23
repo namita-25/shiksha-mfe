@@ -408,11 +408,15 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
     const activeSubtopicId = lesson.parentSubtopicId || subtopicId;
 
     const modules = ch.children || [];
-    const currentModIdx = modules.findIndex((m: any) => (m.identifier || m.id) === activeModuleId);
+    const currentModIdx = modules.findIndex((m: any) =>
+      (m.identifier || m.id) === activeModuleId || m._aliasIdentifiers?.includes(activeModuleId)
+    );
     const currentMod = currentModIdx !== -1 ? modules[currentModIdx] : null;
 
     const subtopics = currentMod?.children || [];
-    const currentSubIdx = subtopics.findIndex((s: any) => (s.identifier || s.id) === activeSubtopicId);
+    const currentSubIdx = subtopics.findIndex((s: any) =>
+      (s.identifier || s.id) === activeSubtopicId || s._aliasIdentifiers?.includes(activeSubtopicId)
+    );
     const currentSub = currentSubIdx !== -1 ? subtopics[currentSubIdx] : null;
 
     const smap = buildStatusMap(statusRef.current);
@@ -610,7 +614,11 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
 
   const handleNext = () => evaluateCompletionBoundaries(false);
 
-  const currentModule = (courseHierarchy?.children || []).find((m: any) => m.identifier === moduleId);
+  const currentModule = (courseHierarchy?.children || []).find((m: any) =>
+    (m.identifier || m.id) === moduleId ||
+    m._aliasIdentifiers?.includes(moduleId) ||
+    (m.children || []).some((c: any) => (c.identifier || c.id) === moduleId || c._aliasIdentifiers?.includes(moduleId))
+  );
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: '#F4F6FA', overflow: 'hidden' }}>

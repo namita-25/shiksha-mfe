@@ -59,6 +59,7 @@ export default function LessonViewerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [subtopicName, setSubtopicName] = useState('');
   const [subtopicDescription, setSubtopicDescription] = useState('');
+  const [moduleDescription, setModuleDescription] = useState('');
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [allLessons, setAllLessons] = useState<any[]>([]);
   const [statusData, setStatusData] = useState<any[]>([]);
@@ -162,6 +163,7 @@ export default function LessonViewerPage() {
           const currentSubtopic = subtopics.find((s: any) => s.identifier === subtopicId || s._aliasIdentifiers?.includes(subtopicId)) || await getCourseHierarchy(subtopicId);
           setSubtopicName(prev => prev === currentSubtopic?.name ? prev : (currentSubtopic?.name || 'Lesson Detail'));
           setSubtopicDescription(prev => prev === currentSubtopic?.description ? prev : (currentSubtopic?.description || ''));
+          setModuleDescription(prev => prev === moduleHierarchy?.description ? prev : (moduleHierarchy?.description || ''));
 
           setAllLessons(flatLessons);
           const activeLesson = flatLessons.find((l: any) => l.identifier === lessonId || l._aliasIdentifiers?.includes(lessonId))
@@ -388,46 +390,76 @@ export default function LessonViewerPage() {
             </Box>
 
             {currentLesson && (() => {
-              const subtopicLessons = allLessons.filter(l => l.parentSubtopicId === subtopicId);
-              const isFirstLesson = subtopicLessons[0]?.identifier === currentLesson.identifier;
-              
-              const trimmedDesc = (subtopicDescription || '').trim();
-              if (!isFirstLesson || !trimmedDesc || trimmedDesc === '-' || trimmedDesc === '.' || trimmedDesc === '·') {
-                return null;
+              const isMeaningful = (text?: string): boolean => {
+                if (!text) return false;
+                const trimmed = text.trim();
+                return trimmed.length > 0 && trimmed !== '.' && trimmed !== '-' && trimmed !== '·';
+              };
+
+              const subtopicLessons = allLessons.filter(l => l.parentSubtopicId === subtopicId || l.parentSubtopicId === currentLesson.parentSubtopicId);
+              const firstSubLessonId = subtopicLessons[0]?.identifier;
+              const isFirstInSubtopic = firstSubLessonId === currentLesson.identifier || currentLesson._aliasIdentifiers?.includes(firstSubLessonId);
+
+              const modLessons = allLessons.filter(l => l.parentModuleId === moduleId);
+              const firstModLessonId = modLessons[0]?.identifier;
+              const isFirstInModule = firstModLessonId === currentLesson.identifier || currentLesson._aliasIdentifiers?.includes(firstModLessonId);
+
+              let activeOverview: { title: string; description: string } | null = null;
+              if (isFirstInSubtopic && isMeaningful(subtopicDescription)) {
+                activeOverview = {
+                  title: currentTopicTitle || 'Description',
+                  description: subtopicDescription.trim(),
+                };
+              } else if (isFirstInModule && isMeaningful(moduleDescription)) {
+                activeOverview = {
+                  title: 'Overview',
+                  description: moduleDescription.trim(),
+                };
               }
 
-              const subtopicNameDisplay = currentTopicTitle || 'Description';
+              const isTextOrQuiz =
+                currentLesson?.mimeType === 'application/vnd.ekstep.html-archive' ||
+                currentLesson?.mimeType?.startsWith('text/') ||
+                currentLesson?.contentType === 'html' ||
+                currentLesson?.mimeType === 'application/vnd.sunbird.questionset' ||
+                currentLesson?.contentType === 'questionset';
+
+              let videoIntroText: string | null = null;
+              if (!isTextOrQuiz && isMeaningful(currentLesson?.description)) {
+                const trimmed = currentLesson.description.trim();
+                if (!activeOverview || activeOverview.description !== trimmed) {
+                  videoIntroText = trimmed;
+                }
+              }
 
               return (
-                <Box sx={{
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: `1px solid #E5E7EB`,
-                  mb: 3,
-                  boxShadow: '0px 2px 4px rgba(0,0,0,0.02)'
-                }}>
-                  <Box sx={{ bgcolor: '#1C2B4A', px: 2, py: 1.5 }}>
-                    <Typography sx={{ color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'Inter', textTransform: 'uppercase' }}>
-                      {subtopicNameDisplay}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ bgcolor: '#fff', pt: 2, pb: 1, px: 2 }}>
-                    <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A' }}>
-                      {trimmedDesc}
-                    </Typography>
-                  </Box>
-                </Box>
-              );
-            })()}
+                <>
+                  {activeOverview && (
+                    <Box sx={{
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      border: `1px solid #E5E7EB`,
+                      bgcolor: '#fff',
+                      mb: 2.5,
+                      boxShadow: '0px 2px 4px rgba(0,0,0,0.02)'
+                    }}>
+                      <Box sx={{ bgcolor: '#1C2B4A', px: 2, py: 1.25 }}>
+                        <Typography sx={{ color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: 'Open Sans', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                          {activeOverview.title}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ bgcolor: '#fff', p: 2 }}>
+                        <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1F2937', lineHeight: 1.6 }}>
+                          {activeOverview.description}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
 
-
-            {currentLesson && (
-              isSwadhaarTenant ? (
-                (() => {
-                  return (
+                  {isSwadhaarTenant ? (
                     <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.75 }}>
-                        <Typography sx={{ color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'Open Sans', lineHeight: 1.3, flex: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 1 }}>
+                        <Typography sx={{ color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'Open Sans', lineHeight: 1.3, flex: 1 }}>
                           {currentLesson.name}
                         </Typography>
                         {allowFullscreen && (
@@ -436,6 +468,13 @@ export default function LessonViewerPage() {
                           </IconButton>
                         )}
                       </Box>
+                      {videoIntroText && !isFullscreen && (
+                        <Box sx={{ px: 2, py: 1.5, bgcolor: '#FEF9F4', borderBottom: '1px solid #FDE6D2' }}>
+                          <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1F2937', lineHeight: 1.6 }}>
+                            {videoIntroText}
+                          </Typography>
+                        </Box>
+                      )}
                       <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <SwadhaarContentPlayer
                           key={currentLesson.identifier} identifier={currentLesson.identifier} courseId={courseId} unitId={subtopicId} mimeType={currentLesson.mimeType} contentType={currentLesson.contentType}
@@ -450,12 +489,12 @@ export default function LessonViewerPage() {
                         />
                       </Box>
                     </Box>
-                  );
-                })()
-              ) : (
-                <DefaultPlayer key={currentLesson.identifier} identifier={currentLesson.identifier} courseId={courseId} unitId={subtopicId} isEmbedded={true} />
-              )
-            )}
+                  ) : (
+                    <DefaultPlayer key={currentLesson.identifier} identifier={currentLesson.identifier} courseId={courseId} unitId={subtopicId} isEmbedded={true} />
+                  )}
+                </>
+              );
+            })()}
           </Box>
 
           <Box sx={{ position: 'fixed', bottom: 65, left: 0, right: 0, bgcolor: '#fff', borderTop: '1px solid #F3F4F6', px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>

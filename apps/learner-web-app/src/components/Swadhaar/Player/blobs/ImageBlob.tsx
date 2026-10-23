@@ -101,11 +101,13 @@ export const ImageBlob: React.FC<ImageBlobProps> = ({ name, contentUrl, descript
       </Dialog>
 
       {/* Caption */}
-      <Box sx={{ px: 2, py: 1.5 }}>
-        <Typography sx={{ fontSize: 12, color: '#6B7280', fontFamily: 'Inter, sans-serif' }}>
-          {description || name}
-        </Typography>
-      </Box>
+      {description && description.trim() !== '.' && description.trim() !== '-' && description.trim() !== name.trim() && (
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Typography sx={{ fontSize: 13, color: '#374151', fontFamily: 'Open Sans, sans-serif' }}>
+            {description}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };

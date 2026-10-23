@@ -58,12 +58,18 @@ export function normalizeCourseHierarchy(hierarchy: any): any {
         const grandchildrenHaveChildren = singleChild.children.some(
           (c: any) => Array.isArray(c.children) && c.children.length > 0
         );
+        const hasSubCollections = singleChild.children.some((c: any) => isCollection(c));
         const isDuplicateNameWrapper =
           singleChild.name &&
           node.name &&
           singleChild.name.trim().toLowerCase() === node.name.trim().toLowerCase();
+        const isNameSubset =
+          singleChild.name &&
+          node.name &&
+          (node.name.toLowerCase().includes(singleChild.name.trim().toLowerCase()) ||
+            singleChild.name.toLowerCase().includes(node.name.trim().toLowerCase()));
 
-        if (grandchildrenHaveChildren || isDuplicateNameWrapper) {
+        if (grandchildrenHaveChildren || hasSubCollections || isDuplicateNameWrapper || isNameSubset) {
           if (isMeaningful(singleChild.description) && !isMeaningful(node.description)) {
             node.description = singleChild.description;
           }

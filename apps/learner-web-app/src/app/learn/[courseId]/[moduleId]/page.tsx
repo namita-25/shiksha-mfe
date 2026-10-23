@@ -34,6 +34,12 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 const PRIMARY = '#E6873C';
 const SUCCESS = '#4CAF50';
 
+function isMeaningful(text?: string): boolean {
+  if (!text) return false;
+  const trimmed = text.trim();
+  return trimmed.length > 0 && trimmed !== '.' && trimmed !== '-' && trimmed !== '·';
+}
+
 export default function SubtopicDetailsPage() {
   const router = useRouter();
   const { courseId, moduleId } = useParams() as { courseId: string; moduleId: string };
@@ -82,7 +88,7 @@ export default function SubtopicDetailsPage() {
 
       const findNode = (nodes: any[], id: string): any => {
         for (const n of nodes) {
-          if (n.identifier === id) return n;
+          if (n.identifier === id || n._aliasIdentifiers?.includes(id)) return n;
           if (n.children && n.children.length > 0) {
             const found = findNode(n.children, id);
             if (found) return found;
@@ -244,7 +250,7 @@ export default function SubtopicDetailsPage() {
       ) : (
         <Box sx={{ bgcolor: 'background.paper', px: 1, py: 1.5, borderBottom: (theme) => `1px solid ${theme.palette.divider}`, display: 'flex', alignItems: 'center', gap: 1, position: 'sticky', top: 0, zIndex: 100 }}>
           <IconButton onClick={() => router.push('/learn')}><ArrowBackIcon sx={{ color: '#1A1A1A', fontSize: 20 }} /></IconButton>
-          <Typography variant="h1" sx={{ fontWeight: 700, color: 'text.primary', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{moduleName}</Typography>
+          <Typography sx={{ fontWeight: 700, fontSize: 16, fontFamily: 'Open Sans', color: 'text.primary', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{moduleName}</Typography>
         </Box>
       )}
 
@@ -354,6 +360,24 @@ export default function SubtopicDetailsPage() {
               {/* ── Current Module: render subtopics directly (no module accordion wrapper) ── */}
               {effectiveView !== 'course_completion' && effectiveView !== 'module_completion' && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {moduleDescription && isMeaningful(moduleDescription) && (
+                    <Box sx={{
+                      borderRadius: '16px',
+                      overflow: 'hidden',
+                      border: '1px solid #E5E7EB',
+                      bgcolor: '#fff',
+                      p: 2.5,
+                      mb: 2.5,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                    }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: 12, color: '#1C2B4A', fontFamily: 'Open Sans', textTransform: 'uppercase', letterSpacing: 0.5, mb: 1 }}>
+                        {t('LEARNER_APP.LEARN.ABOUT_MODULE', { defaultValue: 'About this Module' })}
+                      </Typography>
+                      <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: 14, color: '#1F2937', lineHeight: 1.6 }}>
+                        {moduleDescription}
+                      </Typography>
+                    </Box>
+                  )}
                   {subtopics.map((sub: any, sIdx: number) => (
                     <HierarchyNode
                       key={sub.identifier || sub.id}
@@ -575,7 +599,7 @@ export function HierarchyNode({ node, courseId, moduleId, parentId, statusData, 
                   total: (node.children || []).length,
                 })}
             </Typography>
-            {isExpanded && !isCFL && node.description && (
+            {isExpanded && !isCFL && isMeaningful(node.description) && (
               <Typography sx={{ fontSize: 10, color: '#999999', fontFamily: 'Inter', fontWeight: 400, mt: 0.5, lineHeight: 1.3 }}>
                 {node.description}
               </Typography>

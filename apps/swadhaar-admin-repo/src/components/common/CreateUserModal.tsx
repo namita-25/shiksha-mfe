@@ -17,6 +17,11 @@ import CommonButton from './CommonButton';
 import CommonDialog from './CommonDialog';
 import CommonSelect from './CommonSelect';
 import CommonTextField from './CommonTextField';
+import {
+  buildCreateUserPayload,
+  buildUpdateUserPayload,
+  UserInputFields,
+} from '@/utils/userPayloadBuilder';
 
 export interface CreateUserModalProps {
   open: boolean;
@@ -399,22 +404,18 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
     setLoading(true);
     try {
-      const nameTrimmed = toStr(formData.fullName).trim();
-      const nameParts = nameTrimmed.split(/\s+/);
-      const firstName = nameParts[0] || '';
-      let middleName = '';
-      let lastName = '';
-      if (nameParts.length === 2) {
-        lastName = nameParts[1];
-      } else if (nameParts.length > 2) {
-        middleName = nameParts.slice(1, -1).join(' ');
-        lastName = nameParts[nameParts.length - 1];
-      } else {
-        lastName = nameParts[0] || '';
-      }
-      const mobile = toStr(formData.phone).trim();
-      const email = toStr(formData.email).trim();
-      const employeeId = toStr(formData.employeeId).trim();
+      const inputFields: UserInputFields = {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        employeeId: formData.employeeId,
+        gender: formData.gender === GENDER_NOT_SELECTED ? undefined : formData.gender,
+        role: formData.role,
+        state: formData.state,
+        district: formData.district,
+        branch: formData.branch,
+        program: formData.program,
+      };
 
       if (isEdit) {
         const targetUserId = toStr(initialData?.userId || initialData?.id);
@@ -424,35 +425,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           return;
         }
 
-        const userData: any = {
-          firstName,
-          lastName,
-          middleName,
-          gender: toPayloadGender(formData.gender),
-          mobile,
-        };
-
-        if (email && email !== '-') {
-          userData.email = email;
-        }
-
-        if (employeeId) {
-          userData.employeeId = employeeId;
-        }
-
-        const updatePayload: UpdateUserPayload = {
-          userData,
-        };
-
-        if (formData.state) {
-          updatePayload.customFields = [
-            {
-              fieldId: STATE_FIELD_ID,
-              value: [String(formData.state)],
-            },
-          ];
-        }
-
+        const updatePayload = buildUpdateUserPayload(inputFields);
         const response = await updateUserAccount(targetUserId, updatePayload);
 
         if (
@@ -479,30 +452,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
       // Create flow
       const tenantId = TenantService.getTenantId() || SWADHAAR_TENANT_ID;
-
-      const payload: CreateUserPayload = {
-        name: nameTrimmed,
-        username: mobile || email,
-        password: 'Password@123',
-        firstName: firstName,
-        lastName: lastName,
-        gender: toPayloadGender(formData.gender),
-        email: email,
-        mobile: mobile,
-        tenantCohortRoleMapping: [
-          {
-            tenantId: tenantId,
-            roleId: '57bc16f8-f446-4e5d-b595-c908a229e776',
-          },
-        ],
-        customFields: [
-          {
-            fieldId: STATE_FIELD_ID,
-            value: [String(formData.state || '4')],
-          },
-        ],
-      };
-
+      const payload = buildCreateUserPayload(inputFields, tenantId);
       const response = await createUserAccount(payload);
 
       if (

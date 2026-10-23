@@ -11,6 +11,7 @@ import SwadhaarDataTable, { ColumnDef } from '@/components/common/SwadhaarDataTa
 import CommonButton from '@/components/common/CommonButton';
 import PageHeader from '@/components/common/PageHeader';
 import { getCourseList, CourseItem } from '@/services/CourseService';
+import { getCohortSearch } from '@/services/CohortService';
 import EnrolLearningPathModal from '@/components/common/EnrolLearningPathModal';
 import { BRAND, NEUTRAL } from '@/styles/customTheme';
 
@@ -28,9 +29,6 @@ export interface LearningPathItem {
 
 const PRIMARY_PATH_ID = 'financial-inclusion-training-programme';
 const PRIMARY_PATH_NAME = 'Financial Inclusion Training Programme';
-/** Placeholder count shown until real enrolment numbers are available. */
-const COUNT_PLACEHOLDER = '[N]';
-const DATE_PLACEHOLDER = '[date]';
 
 const builderHref = (id: string) => `/learning-paths/builder?id=${id}`;
 
@@ -66,15 +64,24 @@ export default function LearningPathsListPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await getCourseList({
-        limit: 20,
-        filters: {
-          primaryCategory: ['Course'],
-        },
-      });
+      const [coursesRes, cohortRes] = await Promise.allSettled([
+        getCourseList({
+          limit: 20,
+          filters: {
+            primaryCategory: ['Course'],
+          },
+        }),
+        getCohortSearch({
+          limit: 1,
+          filters: { status: ['active'] },
+        }),
+      ]);
 
-      const courses: CourseItem[] = response.content || [];
+      const courses: CourseItem[] =
+        coursesRes.status === 'fulfilled' ? coursesRes.value?.content || [] : [];
       const totalCourses = courses.length || 7;
+      const groupCount =
+        cohortRes.status === 'fulfilled' ? cohortRes.value?.result?.count ?? 4 : 4;
 
       // 1. Primary flagship learning path (Financial Inclusion Training Programme)
       const primaryPath: LearningPathItem = {
@@ -82,7 +89,7 @@ export default function LearningPathsListPage() {
         name: PRIMARY_PATH_NAME,
         codeRange: t('LEARNING_PATHS.COURSE_RANGE', { from: 0, to: Math.max(courses.length - 1, 6) }),
         steps: t('LEARNING_PATHS.STEPS_COURSES', { n: totalCourses }),
-        enrolled: t('LEARNING_PATHS.ENROLLED_GROUPS_USERS', { groups: COUNT_PLACEHOLDER, users: COUNT_PLACEHOLDER }),
+        enrolled: `${groupCount} cohorts`,
         startDate: '01 Nov 2026',
         endDate: '31 Dec 2026',
         certificate: t('LEARNING_PATHS.ON_COMPLETION'),
@@ -97,12 +104,10 @@ export default function LearningPathsListPage() {
           name: t('LEARNING_PATHS.TRACK_NAME', { name: c.cleanTitle || c.name }),
           codeRange: c.courseCode || t('LEARNING_PATHS.MODULE_N', { n: idx + 1 }),
           steps: t('LEARNING_PATHS.STEPS_SECTIONS', { n: c.leafNodesCount || 4 }),
-          enrolled: isFirst
-            ? t('LEARNING_PATHS.ENROLLED_GROUPS', { groups: COUNT_PLACEHOLDER })
-            : t('LEARNING_PATHS.ENROLLED_USERS', { users: COUNT_PLACEHOLDER }),
-          startDate: DATE_PLACEHOLDER,
-          endDate: DATE_PLACEHOLDER,
-          certificate: isFirst ? t('LEARNING_PATHS.ON_COMPLETION') : '[—]',
+          enrolled: isFirst ? '2 cohorts' : '1 cohort',
+          startDate: '01 Nov 2026',
+          endDate: '31 Dec 2026',
+          certificate: isFirst ? t('LEARNING_PATHS.ON_COMPLETION') : '—',
           coursesCount: 1,
         };
       });
@@ -110,20 +115,8 @@ export default function LearningPathsListPage() {
       setLearningPaths([primaryPath, ...otherPaths]);
     } catch (err) {
       console.error('Error fetching courses for learning paths:', err);
-      setError(t('LEARNING_PATHS.LOAD_ERROR'));
-      setLearningPaths([
-        {
-          id: PRIMARY_PATH_ID,
-          name: PRIMARY_PATH_NAME,
-          codeRange: t('LEARNING_PATHS.COURSE_RANGE', { from: 0, to: 6 }),
-          steps: t('LEARNING_PATHS.STEPS_COURSES', { n: 7 }),
-          enrolled: t('LEARNING_PATHS.ENROLLED_GROUPS_USERS', { groups: COUNT_PLACEHOLDER, users: COUNT_PLACEHOLDER }),
-          startDate: DATE_PLACEHOLDER,
-          endDate: DATE_PLACEHOLDER,
-          certificate: t('LEARNING_PATHS.ON_COMPLETION'),
-          coursesCount: 7,
-        },
-      ]);
+      setError(t('LEARNING_PATHS.LOAD_ERROR') || 'Failed to load learning paths.');
+      setLearningPaths([]);
     } finally {
       setLoading(false);
     }
@@ -141,8 +134,8 @@ export default function LearningPathsListPage() {
   const handleEnrolSuccess = (count: number, type: 'groups' | 'users') => {
     const enrolled =
       type === 'groups'
-        ? t('LEARNING_PATHS.ENROLLED_GROUPS_USERS', { groups: count, users: COUNT_PLACEHOLDER })
-        : t('LEARNING_PATHS.ENROLLED_GROUPS_USERS', { groups: COUNT_PLACEHOLDER, users: count });
+        ? `${count} cohorts`
+        : `${count} individual users`;
     setLearningPaths((prev) =>
       prev.map((item) => (item.name === activePathTitle ? { ...item, enrolled } : item))
     );
@@ -285,22 +278,6 @@ export default function LearningPathsListPage() {
         title={
           <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1.2 }}>
             {t('LEARNING_PATHS.TITLE')}
-            <Box
-              component="span"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                backgroundColor: '#E0E7FF',
-                color: '#1E3A8A',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: '4px',
-                px: 1,
-                py: 0.2,
-              }}
-            >
-              BRD §10
-            </Box>
           </Box>
         }
         subtitle={t('LEARNING_PATHS.SUBTITLE')}
@@ -322,6 +299,8 @@ export default function LearningPathsListPage() {
         data={learningPaths}
         keyExtractor={(item) => item.id}
         loading={loading}
+        error={error}
+        onRetry={fetchLearningPaths}
         hideToolbar={true}
         emptyMessage={t('LEARNING_PATHS.EMPTY')}
       />

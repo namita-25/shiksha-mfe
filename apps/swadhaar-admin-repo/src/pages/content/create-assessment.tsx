@@ -25,6 +25,9 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
+import { createContent } from '@/services/ContentLibraryService';
+import { getCourseList } from '@/services/CourseService';
+import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
 
 interface QuestionOption {
   id: string;
@@ -45,7 +48,8 @@ export default function CreateAssessmentPage() {
   const router = useRouter();
 
   const [name, setName] = useState('');
-  const [linkedContent, setLinkedContent] = useState('Course 1 · Introduction to Saving');
+  const [linkedContent, setLinkedContent] = useState('None');
+  const [linkedOptions, setLinkedOptions] = useState<string[]>(['None']);
   const [timeLimit, setTimeLimit] = useState('15');
   const [description, setDescription] = useState(
     'Let us now test your understanding of the concepts covered in this course.'
@@ -56,6 +60,32 @@ export default function CreateAssessmentPage() {
   const [attempts, setAttempts] = useState('Unlimited');
   const [shuffle, setShuffle] = useState(true);
   const [showExplanations, setShowExplanations] = useState(true);
+
+  // Loading & feedback
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Navigation guard against unsaved changes
+  const isDirty = Boolean(name.trim() && !successMsg && !loading);
+  useUnsavedChangesGuard(
+    isDirty,
+    'You have unsaved changes to this assessment. Are you sure you want to leave this page?'
+  );
+
+  // Load actual courses for linkedContent dropdown
+  useEffect(() => {
+    getCourseList({ limit: 50 })
+      .then((res) => {
+        if (Array.isArray(res?.courses) && res.courses.length > 0) {
+          const names = res.courses.map((c) => c.name).filter(Boolean);
+          setLinkedOptions(['None', ...names]);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load courses for assessment:', err);
+      });
+  }, []);
 
   // Questions List
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([
@@ -71,9 +101,6 @@ export default function CreateAssessmentPage() {
       ],
     },
   ]);
-
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Question actions
   const handleMoveQuestion = (index: number, direction: 'up' | 'down') => {
@@ -144,16 +171,38 @@ export default function CreateAssessmentPage() {
     setQuestions(updated);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       setError('Assessment name is required.');
       return;
     }
     setError(null);
-    setSuccessMsg(`Assessment "${name}" created successfully.`);
-    setTimeout(() => {
-      router.push('/content?tab=assessments');
-    }, 1000);
+    setLoading(true);
+    try {
+      await createContent({
+        name: name.trim(),
+        description: description.trim(),
+        mimeType: 'application/vnd.sunbird.questionset',
+        primaryCategory: 'Practice Question Set',
+        duration: timeLimit ? Number(timeLimit) : undefined,
+        passMark,
+        attempts,
+        shuffle,
+        showExplanations,
+        linkedTo: linkedContent !== 'None' ? linkedContent : undefined,
+        questionsCount: questions.length,
+      });
+
+      setSuccessMsg(`Assessment "${name}" created successfully.`);
+      setTimeout(() => {
+        router.push('/content?tab=assessments');
+      }, 900);
+    } catch (err: any) {
+      console.error('Failed to save assessment:', err);
+      setError(err?.response?.data?.message || err?.message || 'Failed to create assessment.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -350,9 +399,11 @@ export default function CreateAssessmentPage() {
                           '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
                         }}
                       >
-                        <MenuItem value="Course 0 · Introduction to Swadhaar FinAccess">Course 0 · Introduction to Swadhaar FinAccess</MenuItem>
-                        <MenuItem value="Course 1 · Introduction to Saving">Course 1 · Introduction to Saving</MenuItem>
-                        <MenuItem value="None">None (Standalone assessment)</MenuItem>
+                        {linkedOptions.map((opt) => (
+                          <MenuItem key={opt} value={opt}>
+                            {opt === 'None' ? 'None (Standalone assessment)' : opt}
+                          </MenuItem>
+                        ))}
                       </Select>
                     </FormControl>
                   </Box>

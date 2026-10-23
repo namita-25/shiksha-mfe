@@ -1,10 +1,15 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { get, post, put, patch } from './RestClient';
+import { get, post, patch } from './RestClient';
+import { getAspireHeaders } from '@/utils/API/aspireHeaders';
 
-export const getUserDetailsInfo = async (userId: string): Promise<any> => {
+export const getUserDetailsInfo = async (
+  userId: string,
+  customHeaders: Record<string, string> = {}
+): Promise<any> => {
   try {
     const apiUrl = API_ENDPOINTS.userRead(userId, true);
-    const response = await get(apiUrl);
+    const headers = getAspireHeaders(customHeaders);
+    const response = await get(apiUrl, headers);
     return response?.data;
   } catch (error) {
     console.error('Error in getUserDetailsInfo:', error);
@@ -12,10 +17,14 @@ export const getUserDetailsInfo = async (userId: string): Promise<any> => {
   }
 };
 
-export const getUserList = async (payload: any): Promise<any> => {
+export const getUserList = async (
+  payload: any,
+  customHeaders: Record<string, string> = {}
+): Promise<any> => {
   try {
     const apiUrl = API_ENDPOINTS.userList;
-    const response = await post(apiUrl, payload);
+    const headers = getAspireHeaders(customHeaders);
+    const response = await post(apiUrl, payload, headers);
     return response?.data;
   } catch (error) {
     console.error('Error in getUserList:', error);
@@ -74,6 +83,7 @@ export interface UpdateUserPayload {
     email?: string;
     employeeId?: string;
     username?: string;
+    status?: string;
     [key: string]: any;
   };
   customFields?: Array<{
@@ -96,3 +106,17 @@ export const updateUserAccount = async (
   }
 };
 
+export const updateUserStatus = async (
+  userId: string,
+  status: 'active' | 'blocked' | 'archived' | 'deleted' | string
+): Promise<any> => {
+  return updateUserAccount(userId, {
+    userData: {
+      status,
+    },
+  });
+};
+
+export const deleteUserAccount = async (userId: string): Promise<any> => {
+  return updateUserStatus(userId, 'deleted');
+};

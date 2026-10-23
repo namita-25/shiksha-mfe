@@ -16,29 +16,72 @@ import {
   FormControlLabel,
   Tooltip,
   Alert,
+  Chip,
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
-import { getContentRead } from '@/services/ContentLibraryService';
+import {
+  getContentRead,
+  createContent,
+  updateContent,
+  inferCourseUsage,
+  formatDurationString,
+} from '@/services/ContentLibraryService';
+import { detectLanguage } from '@/services/CourseService';
+import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
 
 export default function CreateVideoPage() {
   const router = useRouter();
   const { id } = router.query;
   const isEditing = Boolean(id);
 
-  const [title, setTitle] = useState('Life Cycle Needs | Episode 3 | Budgeting – Anita Ki Diary Ka Raaz');
+  const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [duration, setDuration] = useState('1:43');
+  const [duration, setDuration] = useState('');
   const [language, setLanguage] = useState('Hindi');
   const [sourceType, setSourceType] = useState<'link' | 'upload'>('link');
-  const [videoUrl, setVideoUrl] = useState('https://www.youtube.com/watch?v=EUPk_ThuWXI');
+  const [videoUrl, setVideoUrl] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
+  const [usedIn, setUsedIn] = useState<string>((router.query.usedIn as string) || '');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [initialData, setInitialData] = useState<{
+    title: string;
+    description: string;
+    duration: string;
+    language: string;
+    videoUrl: string;
+    sourceType: string;
+  } | null>(null);
+
+  // Navigation guard against unsaved changes
+  const isDirty = Boolean(
+    !successMsg &&
+    !loading &&
+    (isEditing && initialData
+      ? title !== initialData.title ||
+        description !== initialData.description ||
+        duration !== initialData.duration ||
+        language !== initialData.language ||
+        videoUrl !== initialData.videoUrl ||
+        sourceType !== initialData.sourceType
+      : title.trim() || videoUrl.trim())
+  );
+  useUnsavedChangesGuard(
+    isDirty,
+    'You have unsaved changes to this video. Are you sure you want to leave this page?'
+  );
+
+  useEffect(() => {
+    if (router.query.usedIn && typeof router.query.usedIn === 'string') {
+      setUsedIn(router.query.usedIn);
+    }
+  }, [router.query.usedIn]);
 
   // Load existing video details if editing
   useEffect(() => {
@@ -48,36 +91,99 @@ export default function CreateVideoPage() {
         .then((res: any) => {
           const content = res?.content || res;
           if (content) {
-            if (content.name) setTitle(content.name);
-            if (content.description) setDescription(content.description);
-            if (content.artifactUrl) setVideoUrl(content.artifactUrl);
-            if (content.duration) setDuration(String(content.duration));
-            if (content.language && content.language.length > 0) {
-              setLanguage(content.language[0]);
-            }
+            const loadedTitle = content.name || content.title || '';
+            const loadedDesc = content.description || '';
+            const loadedUrl = content.artifactUrl || content.downloadUrl || content.previewUrl || '';
+            const loadedDur = content.duration
+              ? (String(content.duration).includes(':') || String(content.duration).includes('min')
+                  ? String(content.duration)
+                  : formatDurationString(content) !== '—'
+                  ? formatDurationString(content)
+                  : String(content.duration))
+              : formatDurationString(content) !== '—'
+              ? formatDurationString(content)
+              : '';
+            const loadedLang = detectLanguage(loadedTitle, content.language || content.languageCode);
+            const loadedSrc =
+              loadedUrl.includes('youtube') || loadedUrl.includes('youtu.be') || loadedUrl.startsWith('http')
+                ? 'link'
+                : 'upload';
+            const courseUsage = (router.query.usedIn as string) || inferCourseUsage(content);
+
+            setTitle(loadedTitle);
+            setDescription(loadedDesc);
+            setVideoUrl(loadedUrl);
+            setDuration(loadedDur);
+            setLanguage(loadedLang === 'Hindi' ? 'Hindi' : 'English');
+            setSourceType(loadedSrc);
+            setUsedIn(courseUsage);
+
+            setInitialData({
+              title: loadedTitle,
+              description: loadedDesc,
+              duration: loadedDur,
+              language: loadedLang === 'Hindi' ? 'Hindi' : 'English',
+              videoUrl: loadedUrl,
+              sourceType: loadedSrc,
+            });
           }
         })
         .catch((err) => {
           console.error('Failed to load video details:', err);
+          setError('Failed to load video details.');
         })
         .finally(() => setLoading(false));
     }
-  }, [id]);
+  }, [id, router.query.usedIn]);
 
-  const handleSave = (isDraft = false) => {
+  const handleSave = async (isDraft = false) => {
     if (!title.trim()) {
       setError('Video title is required.');
       return;
     }
+    if (sourceType === 'link' && !videoUrl.trim()) {
+      setError('Video URL is required.');
+      return;
+    }
     setError(null);
-    setSuccessMsg(
-      isDraft
-        ? `Video "${title}" saved as draft.`
-        : `Video "${title}" saved successfully.`
-    );
-    setTimeout(() => {
-      router.push('/content?tab=videos');
-    }, 1000);
+    setLoading(true);
+    try {
+      const mimeType = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')
+        ? 'video/x-youtube'
+        : 'video/mp4';
+
+      if (isEditing && typeof id === 'string') {
+        await updateContent(id, {
+          name: title.trim(),
+          description: description.trim(),
+          artifactUrl: videoUrl.trim(),
+          duration: duration.trim() || undefined,
+          language: [language],
+          status: isDraft ? 'Draft' : 'Live',
+        });
+        setSuccessMsg('Video updated successfully.');
+      } else {
+        await createContent({
+          name: title.trim(),
+          description: description.trim(),
+          mimeType,
+          primaryCategory: 'Learning Resource',
+          artifactUrl: videoUrl.trim(),
+          duration: duration.trim() || undefined,
+          language: [language],
+          status: isDraft ? 'Draft' : 'Live',
+        });
+        setSuccessMsg(isDraft ? `Video saved as draft.` : `Video created successfully.`);
+      }
+      setTimeout(() => {
+        router.push('/content?tab=videos');
+      }, 900);
+    } catch (err: any) {
+      console.error('Failed to save video:', err);
+      setError(err?.response?.data?.message || err?.message || 'Failed to save video.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Convert youtube watch url to embed if possible
@@ -613,13 +719,54 @@ export default function CreateVideoPage() {
                 </Typography>
               </Box>
 
-              <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography sx={{ fontSize: '14px', color: '#6B6862' }}>
-                  Not used in any course yet.
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '12px' }}>
-                  Add it to a section from the section editor (+ Video).
-                </Typography>
+              <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                {usedIn && usedIn !== 'Not used in any course yet' ? (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip
+                        label="In course"
+                        size="small"
+                        sx={{
+                          backgroundColor: '#E8F5E9',
+                          color: '#2E7D32',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          borderRadius: '4px',
+                          height: 22,
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>
+                        {usedIn}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#6B6862', fontSize: '12px' }}>
+                      This video is linked and used in the course curriculum.
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip
+                        label="Not in course"
+                        size="small"
+                        sx={{
+                          backgroundColor: '#F3F4F6',
+                          color: '#6B7280',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          borderRadius: '4px',
+                          height: 22,
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '14px', color: '#6B6862' }}>
+                        Not used in any course yet.
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '12px' }}>
+                      Add it to a section from the section editor (+ Video).
+                    </Typography>
+                  </>
+                )}
               </Box>
             </Paper>
           </Box>

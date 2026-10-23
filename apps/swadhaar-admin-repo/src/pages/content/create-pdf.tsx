@@ -15,12 +15,21 @@ import {
   Checkbox,
   Tooltip,
   Alert,
+  Chip,
 } from '@mui/material';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
-import { getContentRead } from '@/services/ContentLibraryService';
+import {
+  getContentRead,
+  createContent,
+  updateContent,
+  inferCourseUsage,
+  formatDurationString,
+} from '@/services/ContentLibraryService';
+import { detectLanguage } from '@/services/CourseService';
+import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
 
 export default function CreatePdfPage() {
   const router = useRouter();
@@ -33,10 +42,42 @@ export default function CreatePdfPage() {
   const [language, setLanguage] = useState('Hindi');
   const [fileName, setFileName] = useState<string | null>(null);
   const [allowDownload, setAllowDownload] = useState(true);
+  const [usedIn, setUsedIn] = useState<string>((router.query.usedIn as string) || '');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [initialData, setInitialData] = useState<{
+    title: string;
+    description: string;
+    readingTime: string;
+    language: string;
+    fileName: string | null;
+  } | null>(null);
+
+  // Navigation guard against unsaved changes
+  const isDirty = Boolean(
+    !successMsg &&
+    !loading &&
+    (isEditing && initialData
+      ? title !== initialData.title ||
+        description !== initialData.description ||
+        readingTime !== initialData.readingTime ||
+        language !== initialData.language ||
+        fileName !== initialData.fileName
+      : title.trim() || fileName)
+  );
+  useUnsavedChangesGuard(
+    isDirty,
+    'You have unsaved changes to this document. Are you sure you want to leave this page?'
+  );
+
+  useEffect(() => {
+    if (router.query.usedIn && typeof router.query.usedIn === 'string') {
+      setUsedIn(router.query.usedIn);
+    }
+  }, [router.query.usedIn]);
 
   // Load existing PDF details if editing
   useEffect(() => {
@@ -46,36 +87,86 @@ export default function CreatePdfPage() {
         .then((res: any) => {
           const content = res?.content || res;
           if (content) {
-            if (content.name) setTitle(content.name);
-            if (content.description) setDescription(content.description);
-            if (content.duration) setReadingTime(String(content.duration));
-            if (content.artifactUrl) setFileName(content.artifactUrl.split('/').pop() || 'document.pdf');
-            if (content.language && content.language.length > 0) {
-              setLanguage(content.language[0]);
-            }
+            const loadedTitle = content.name || content.title || '';
+            const loadedDesc = content.description || '';
+            const loadedDur = content.duration
+              ? (String(content.duration).includes(':') || String(content.duration).includes('min')
+                  ? String(content.duration)
+                  : formatDurationString(content) !== '—'
+                  ? formatDurationString(content)
+                  : String(content.duration))
+              : formatDurationString(content) !== '—'
+              ? formatDurationString(content)
+              : '';
+            const loadedLang = detectLanguage(loadedTitle, content.language || content.languageCode);
+            const loadedFile =
+              content.artifactUrl?.split('/').pop() ||
+              content.downloadUrl?.split('/').pop() ||
+              'document.pdf';
+            const courseUsage = (router.query.usedIn as string) || inferCourseUsage(content);
+
+            setTitle(loadedTitle);
+            setDescription(loadedDesc);
+            setReadingTime(loadedDur);
+            setFileName(loadedFile);
+            setLanguage(loadedLang === 'Hindi' ? 'Hindi' : 'English');
+            setUsedIn(courseUsage);
+
+            setInitialData({
+              title: loadedTitle,
+              description: loadedDesc,
+              readingTime: loadedDur,
+              language: loadedLang === 'Hindi' ? 'Hindi' : 'English',
+              fileName: loadedFile,
+            });
           }
         })
         .catch((err) => {
           console.error('Failed to load PDF details:', err);
+          setError('Failed to load PDF details.');
         })
         .finally(() => setLoading(false));
     }
-  }, [id]);
+  }, [id, router.query.usedIn]);
 
-  const handleSave = (isDraft = false) => {
+  const handleSave = async (isDraft = false) => {
     if (!title.trim()) {
       setError('PDF title is required.');
       return;
     }
     setError(null);
-    setSuccessMsg(
-      isDraft
-        ? `PDF "${title}" saved as draft.`
-        : `PDF "${title}" saved successfully.`
-    );
-    setTimeout(() => {
-      router.push('/content?tab=pdfs');
-    }, 1000);
+    setLoading(true);
+    try {
+      if (isEditing && typeof id === 'string') {
+        await updateContent(id, {
+          name: title.trim(),
+          description: description.trim(),
+          duration: readingTime.trim() || undefined,
+          language: [language],
+          status: isDraft ? 'Draft' : 'Live',
+        });
+        setSuccessMsg('PDF updated successfully.');
+      } else {
+        await createContent({
+          name: title.trim(),
+          description: description.trim(),
+          mimeType: 'application/pdf',
+          primaryCategory: 'Learning Resource',
+          duration: readingTime.trim() || undefined,
+          language: [language],
+          status: isDraft ? 'Draft' : 'Live',
+        });
+        setSuccessMsg(isDraft ? `PDF saved as draft.` : `PDF created successfully.`);
+      }
+      setTimeout(() => {
+        router.push('/content?tab=pdfs');
+      }, 900);
+    } catch (err: any) {
+      console.error('Failed to save PDF:', err);
+      setError(err?.response?.data?.message || err?.message || 'Failed to save PDF.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -554,13 +645,54 @@ export default function CreatePdfPage() {
                 </Typography>
               </Box>
 
-              <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography sx={{ fontSize: '14px', color: '#6B6862' }}>
-                  Not used in any course yet.
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '12px' }}>
-                  Add it to a section from the section editor (+ PDF).
-                </Typography>
+              <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                {usedIn && usedIn !== 'Not used in any course yet' ? (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip
+                        label="In course"
+                        size="small"
+                        sx={{
+                          backgroundColor: '#E8F5E9',
+                          color: '#2E7D32',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          borderRadius: '4px',
+                          height: 22,
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>
+                        {usedIn}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#6B6862', fontSize: '12px' }}>
+                      This document is linked and used in the course curriculum.
+                    </Typography>
+                  </>
+                ) : (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip
+                        label="Not in course"
+                        size="small"
+                        sx={{
+                          backgroundColor: '#F3F4F6',
+                          color: '#6B7280',
+                          fontWeight: 600,
+                          fontSize: '11px',
+                          borderRadius: '4px',
+                          height: 22,
+                        }}
+                      />
+                      <Typography sx={{ fontSize: '14px', color: '#6B6862' }}>
+                        Not used in any course yet.
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '12px' }}>
+                      Add it to a section from the section editor (+ PDF).
+                    </Typography>
+                  </>
+                )}
               </Box>
             </Paper>
           </Box>

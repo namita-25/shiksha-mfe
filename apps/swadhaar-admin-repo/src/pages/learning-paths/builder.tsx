@@ -31,6 +31,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import { getCourseList, CourseItem } from '@/services/CourseService';
 import EnrolLearningPathModal from '@/components/common/EnrolLearningPathModal';
+import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
 
 interface SequenceItem {
   id: string;
@@ -55,12 +56,12 @@ export default function LearningPathBuilderPage() {
   const [endDate, setEndDate] = useState('2026-12-31');
   const [deadline, setDeadline] = useState('2026-12-31');
   const [generateCertificate, setGenerateCertificate] = useState(true);
-  const [certificateTemplate, setCertificateTemplate] = useState('[Template]');
+  const [certificateTemplate, setCertificateTemplate] = useState('Financial Inclusion Certificate');
 
   // Enrolled status state
   const [enrolledSummary, setEnrolledSummary] = useState({
-    groups: '[Group A] · [N] members',
-    users: '[N] individual users',
+    groups: 'No groups enrolled yet',
+    users: 'No individual users enrolled yet',
   });
 
   // Modals
@@ -68,6 +69,13 @@ export default function LearningPathBuilderPage() {
   const [isAddCourseModalOpen, setIsAddCourseModalOpen] = useState(false);
   const [selectedCourseToAdd, setSelectedCourseToAdd] = useState<string>('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Navigation guard against unsaved changes
+  useUnsavedChangesGuard(
+    isDirty && !saveSuccess,
+    'You have unsaved changes in the Learning Path Builder. Are you sure you want to leave this page?'
+  );
 
   // Fetch Sunbird courses using search API
   const fetchCourses = useCallback(async () => {
@@ -183,6 +191,7 @@ export default function LearningPathBuilderPage() {
       unlockCondition: idx === 0 ? 'Open from start' : 'Unlocks after previous',
     }));
     setSequence(updated);
+    setIsDirty(true);
   };
 
   const handleMoveDown = (index: number) => {
@@ -198,6 +207,7 @@ export default function LearningPathBuilderPage() {
       unlockCondition: idx === 0 ? 'Open from start' : 'Unlocks after previous',
     }));
     setSequence(updated);
+    setIsDirty(true);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -208,6 +218,7 @@ export default function LearningPathBuilderPage() {
       unlockCondition: idx === 0 ? 'Open from start' : 'Unlocks after previous',
     }));
     setSequence(updated);
+    setIsDirty(true);
   };
 
   const handleAddCourseToSequence = () => {
@@ -227,9 +238,11 @@ export default function LearningPathBuilderPage() {
     setSequence([...sequence, newItem]);
     setIsAddCourseModalOpen(false);
     setSelectedCourseToAdd('');
+    setIsDirty(true);
   };
 
   const handleSave = () => {
+    setIsDirty(false);
     setSaveSuccess(true);
     setTimeout(() => {
       router.push('/learning-paths');
@@ -684,14 +697,16 @@ export default function LearningPathBuilderPage() {
                   <FormControl fullWidth size="small">
                     <Select
                       value={certificateTemplate}
-                      onChange={(e) => setCertificateTemplate(e.target.value)}
+                      onChange={(e) => {
+                        setCertificateTemplate(e.target.value);
+                        setIsDirty(true);
+                      }}
                       sx={{
                         borderRadius: '6px',
                         '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
                       }}
                     >
-                      <MenuItem value="[Template]">[Template]</MenuItem>
                       <MenuItem value="Financial Inclusion Certificate">Financial Inclusion Certificate</MenuItem>
                       <MenuItem value="Field Trainer Completion Certificate">Field Trainer Completion Certificate</MenuItem>
                     </Select>

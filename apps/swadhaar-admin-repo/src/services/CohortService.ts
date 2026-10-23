@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { post } from './RestClient';
+import { post, put, patch } from './RestClient';
 
 export interface CohortCustomField {
   fieldId: string;
@@ -57,16 +57,54 @@ export interface CohortSearchResponse {
     };
   };
 }
+import { getAspireHeaders } from '@/utils/API/aspireHeaders';
+
+
 
 export const getCohortSearch = async (
-  payload: CohortSearchParams
+  payload: CohortSearchParams,
+  customHeaders: Record<string, string> = {}
 ): Promise<CohortSearchResponse> => {
   try {
     const apiUrl = API_ENDPOINTS.cohortSearch;
-    const response = await post(apiUrl, payload);
+    const headers = getAspireHeaders(customHeaders);
+    const response = await post(apiUrl, payload, headers);
     return response?.data;
   } catch (error) {
     console.error('Error in getCohortSearch:', error);
+    throw error;
+  }
+};
+
+export const getCohortById = async (cohortId: string): Promise<any> => {
+  try {
+    const res = await getCohortSearch({
+      limit: 1,
+      offset: 0,
+      filters: { cohortId },
+    });
+    const details = res?.result?.results?.cohortDetails;
+    if (Array.isArray(details) && details.length > 0) {
+      return details[0];
+    }
+    return null;
+  } catch (error) {
+    console.error('Error in getCohortById:', error);
+    return null;
+  }
+};
+
+export const getCohortMemberListApplication = async (
+  payload: any,
+  customHeaders: Record<string, string> = {}
+): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.cohortMemberListApplication;
+    const headers = getAspireHeaders(customHeaders);
+    const response = await post(apiUrl, payload, headers);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in getCohortMemberListApplication:', error);
     throw error;
   }
 };
@@ -115,3 +153,68 @@ export const getCohortContentSearch = async (
     throw error;
   }
 };
+
+export const createCohort = async (payload: any): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.cohortCreate;
+    const response = await post(apiUrl, payload);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in createCohort:', error);
+    throw error;
+  }
+};
+
+export const updateCohort = async (cohortId: string, payload: any): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.cohortUpdate(cohortId);
+    const response = await put(apiUrl, payload);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in updateCohort:', error);
+    throw error;
+  }
+};
+
+export const deleteCohort = async (cohortId: string): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.cohortUpdate(cohortId);
+    const response = await put(apiUrl, { status: 'archived' });
+    return response?.data;
+  } catch (error) {
+    console.error('Error in deleteCohort:', error);
+    throw error;
+  }
+};
+
+export const bulkCreateCohortMembers = async (payload: {
+  userId: string[];
+  cohortId: string[];
+  role?: string;
+  status?: string;
+  [key: string]: any;
+}): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.cohortMemberBulkCreate;
+    const response = await post(apiUrl, payload);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in bulkCreateCohortMembers:', error);
+    throw error;
+  }
+};
+
+export const updateCohortMember = async (
+  membershipId: string | number,
+  payload: any
+): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.cohortMemberUpdate(membershipId);
+    const response = await put(apiUrl, payload);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in updateCohortMember:', error);
+    throw error;
+  }
+};
+

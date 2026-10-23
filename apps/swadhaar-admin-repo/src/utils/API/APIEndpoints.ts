@@ -1,7 +1,8 @@
 const baseurl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL || 'https://interface.tekdinext.com/interface/v1';
 
 export const API_ENDPOINTS = {
-  contentRead: (doId: string) => `${baseurl}/api/content/v1/read/${doId}?fields=artifactUrl`,
+  contentRead: (doId: string, fields?: string) =>
+    `${baseurl}/api/content/v1/read/${doId}${fields ? `?fields=${fields}` : ''}`,
   academicYearsList: `${baseurl}/academicyears/list`,
   formRead: `${baseurl}/form/read`,
   accountCreate: `${baseurl}/account/create`,
@@ -63,4 +64,7 @@ export const API_ENDPOINTS = {
     const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
     return `${lmsBase}/courses/${courseId}/hierarchy`;
   },
+  contentCreate: `${baseurl}/action/content/v3/create`,
+  contentUpdate: (doId: string) => `${baseurl}/action/content/v3/update/${doId}`,
+  contentRetire: (doId: string) => `${baseurl}/action/content/v3/retire/${doId}`,
 };

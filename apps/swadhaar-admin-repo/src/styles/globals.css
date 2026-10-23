@@ -1,12 +1,12 @@
 :root {
   --tenant-primary-color: #E6873C;
-  --tenant-secondary-color: #1A1A1A;
+  --tenant-secondary-color: #1C2B4A;
   --tenant-background-color: #F5F5F5;
   --tenant-surface-color: #FFFFFF;
   --tenant-button-text-color: #FFFFFF;
 
   --primary-color: #E6873C;
-  --secondary-color: #1A1A1A;
+  --secondary-color: #1C2B4A;
   --accent-color: #FFA05C;
   --canvas-bg: #F5F5F5;
   --surface-bg: #FFFFFF;
@@ -16,9 +16,9 @@ html,
 body {
   padding: 0;
   margin: 0;
-  font-family: Poppins, Arial, sans-serif;
+  font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--tenant-background-color);
-  color: #1F1B13;
+  color: #1F2937;
   -webkit-font-smoothing: antialiased;
 }
 

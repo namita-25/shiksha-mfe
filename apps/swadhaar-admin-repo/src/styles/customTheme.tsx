@@ -9,11 +9,13 @@ export const BRAND = {
   primaryLight: '#FFA05C',
   primaryDark: '#C66C23',
   primarySoft: '#FDF3E9',
-  secondary: '#1A1A1A',
+  secondary: '#1C2B4A', // Swadhaar Dark Navy
+  secondaryLight: '#2B406B',
+  secondaryDark: '#101B30',
   buttonText: '#FFFFFF',
   background: '#F5F5F5',
   surface: '#FFFFFF',
-  textPrimary: '#1F1B13',
+  textPrimary: '#1F2937',
   textSecondary: '#4D4639',
 } as const;
 
@@ -29,7 +31,7 @@ export const NEUTRAL = {
   canvas: '#FAF9F6',
 } as const;
 
-export const FONT_FAMILY = 'Poppins, Arial, sans-serif';
+export const FONT_FAMILY = "'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -54,8 +56,8 @@ const customTheme = extendTheme({
         },
         secondary: {
           main: BRAND.secondary,
-          light: '#3D3B37',
-          dark: '#000000',
+          light: BRAND.secondaryLight,
+          dark: BRAND.secondaryDark,
           contrastText: BRAND.buttonText,
           '100': BRAND.background,
           '200': BRAND.surface,
@@ -173,12 +175,12 @@ const customTheme = extendTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: '50px',
+          borderRadius: '8px',
           textTransform: 'none',
           fontWeight: 600,
-          boxShadow: 'unset',
+          boxShadow: 'none',
           '&:hover': {
-            boxShadow: 'unset',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
           },
         },
         containedPrimary: {
@@ -192,7 +194,7 @@ const customTheme = extendTheme({
           backgroundColor: BRAND.secondary,
           color: BRAND.buttonText,
           '&:hover': {
-            backgroundColor: '#000000',
+            backgroundColor: BRAND.secondaryDark,
           },
         },
         outlinedPrimary: {

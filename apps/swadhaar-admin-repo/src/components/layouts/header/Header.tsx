@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -11,6 +11,7 @@ import {
   Avatar,
   Chip,
   Tooltip,
+  Breadcrumbs,
   useColorScheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -18,6 +19,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
 import TranslateIcon from '@mui/icons-material/Translate';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import LogoIcon from '../logo/LogoIcon';
@@ -28,13 +31,95 @@ interface HeaderProps {
   sx?: any;
 }
 
+interface BreadcrumbSegment {
+  label: string;
+  href?: string;
+}
+
+const getHeaderBreadcrumbs = (pathname: string): BreadcrumbSegment[] => {
+  const p = pathname.toLowerCase();
+
+  // Root or dashboard
+  if (p === '/' || p === '/dashboard') {
+    return [{ label: 'Operations' }, { label: 'Dashboard', href: '/dashboard' }];
+  }
+
+  // Users
+  if (p === '/users') {
+    return [{ label: 'People' }, { label: 'Users', href: '/users' }];
+  }
+  if (p === '/users/bulk-upload') {
+    return [{ label: 'People' }, { label: 'Users', href: '/users' }, { label: 'Bulk Upload' }];
+  }
+  if (p.startsWith('/users/')) {
+    return [{ label: 'People' }, { label: 'Users', href: '/users' }, { label: 'User Details' }];
+  }
+
+  // Cohorts / Groups
+  if (p === '/cohorts' || p === '/groups') {
+    return [{ label: 'People' }, { label: 'Groups', href: '/cohorts' }];
+  }
+  if (p === '/cohorts/create' || p === '/groups/create') {
+    return [{ label: 'People' }, { label: 'Groups', href: '/cohorts' }, { label: 'Create Group' }];
+  }
+  if (p.startsWith('/cohorts/') || p.startsWith('/groups/')) {
+    return [{ label: 'People' }, { label: 'Groups', href: '/cohorts' }, { label: 'Group Details' }];
+  }
+
+  // Learning Paths
+  if (p === '/learning-paths') {
+    return [{ label: 'Learning' }, { label: 'Learning Paths', href: '/learning-paths' }];
+  }
+  if (p === '/learning-paths/builder') {
+    return [
+      { label: 'Learning' },
+      { label: 'Learning Paths', href: '/learning-paths' },
+      { label: 'Path Builder' },
+    ];
+  }
+
+  // Content
+  if (p === '/content/create-video') {
+    const isEdit = typeof window !== 'undefined' && window.location.search.includes('id=');
+    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: isEdit ? 'Edit Video' : 'Add Video' }];
+  }
+  if (p === '/content/create-pdf') {
+    const isEdit = typeof window !== 'undefined' && window.location.search.includes('id=');
+    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: isEdit ? 'Edit Document' : 'Add Document' }];
+  }
+  if (p === '/content/create-assessment') {
+    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: 'Create Assessment' }];
+  }
+  if (p.startsWith('/content/assessments/')) {
+    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: 'Assessment Details' }];
+  }
+  if (p === '/content/courses/create' || p === '/courses/create') {
+    return [{ label: 'Learning' }, { label: 'Courses', href: '/content?tab=courses' }, { label: 'Create Course' }];
+  }
+  if (p.startsWith('/content')) {
+    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }];
+  }
+
+  // Reports
+  if (p === '/reports') {
+    return [{ label: 'Operations' }, { label: 'Reports', href: '/reports' }];
+  }
+
+  // Default fallback from pathname segments
+  const segments = p.split('/').filter(Boolean);
+  return segments.map((seg, i) => ({
+    label: seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' '),
+    href: i < segments.length - 1 ? `/${segments.slice(0, i + 1).join('/')}` : undefined,
+  }));
+};
+
 export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { mode, setMode } = useColorScheme();
   const [profile, setProfile] = useState<UserProfileSummary>({
     userId: 'admin-01',
-    name: '[Admin name]',
+    name: 'Administrator',
     username: 'admin',
     roles: ['Super Admin'],
     tenantId: 'swadhaar-tenant',
@@ -46,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
       if (data) {
         setProfile({
           ...data,
-          name: data.name && data.name !== 'Administrator' ? data.name : '[Admin name]',
+          name: data.name || 'Administrator',
           roles: data.roles?.length ? data.roles : ['Super Admin'],
         });
       }
@@ -83,22 +168,11 @@ export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
     router.push('/logout');
   };
 
-  // Dynamic route badge like 'People / Users' in screenshot
-  const getRouteBadge = () => {
-    const path = router.pathname;
-    if (path.includes('cohort') || path.includes('group')) return 'People / Groups';
-    if (path.includes('user') || path === '/' || path.includes('dashboard')) return 'People / Users';
-    if (path.includes('course')) return 'Learning / Courses';
-    if (path.includes('content')) return 'Learning / Content';
-    if (path.includes('question')) return 'Learning / Question Sets';
-    if (path.includes('analytics')) return 'Operations / Analytics';
-    if (path.includes('notification')) return 'Operations / Notifications';
-    return '';
-  };
+  const breadcrumbs = useMemo(() => getHeaderBreadcrumbs(router.pathname), [router.pathname]);
 
   const getInitials = () => {
     if (profile.roles?.includes('Super Admin')) return 'SA';
-    if (!profile.name || profile.name === '[Admin name]') return 'SA';
+    if (!profile.name) return 'SA';
     const parts = profile.name.trim().split(' ');
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
@@ -154,31 +228,70 @@ export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
           <LogoIcon />
         </Box>
 
-        {/* Center Section: Route Badge (People / Users) */}
+        {/* Center Section: Multi-level Clickable Breadcrumbs */}
         <Box
           sx={{
             flex: 1,
             display: 'flex',
             alignItems: 'center',
             px: { xs: 1.5, sm: 3 },
+            overflow: 'hidden',
           }}
         >
-          <Box
+          <Breadcrumbs
+            separator={<NavigateNextIcon sx={{ fontSize: 14, color: '#9CA3AF' }} />}
+            aria-label="breadcrumb"
             sx={{
-              // backgroundColor: '#5C4CE6',
-              color: '#000',
-              px: 1.5,
-              py: 0.45,
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 600,
-              letterSpacing: '0.2px',
-              display: 'inline-flex',
-              alignItems: 'center',
+              '& .MuiBreadcrumbs-ol': {
+                flexWrap: 'nowrap',
+              },
+              '& .MuiBreadcrumbs-li': {
+                display: 'inline-flex',
+                alignItems: 'center',
+                whiteSpace: 'nowrap',
+              },
             }}
           >
-            {getRouteBadge()}
-          </Box>
+            {breadcrumbs.map((crumb, idx) => {
+              const isLast = idx === breadcrumbs.length - 1;
+              if (isLast || !crumb.href) {
+                return (
+                  <Typography
+                    key={idx}
+                    sx={{
+                      fontSize: '13px',
+                      fontWeight: isLast ? 600 : 500,
+                      color: isLast ? '#111827' : '#6B7280',
+                    }}
+                  >
+                    {crumb.label}
+                  </Typography>
+                );
+              }
+              return (
+                <Link
+                  key={idx}
+                  href={crumb.href}
+                  style={{ textDecoration: 'none' }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: '#4B5563',
+                      transition: 'color 0.15s ease',
+                      '&:hover': {
+                        color: '#E6873C',
+                        textDecoration: 'underline',
+                      },
+                    }}
+                  >
+                    {crumb.label}
+                  </Typography>
+                </Link>
+              );
+            })}
+          </Breadcrumbs>
         </Box>
 
         {/* Top Right Corner: Language & Profile */}

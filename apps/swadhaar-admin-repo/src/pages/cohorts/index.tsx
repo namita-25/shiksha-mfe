@@ -7,21 +7,23 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import SDBVHierarchyFilter, { SDBVFilterValues } from '@/components/common/SDBVHierarchyFilter';
 import SwadhaarDataTable, { ColumnDef } from '@/components/common/SwadhaarDataTable';
 import LifecycleChip from '@/components/common/LifecycleChip';
-import TenantService from '@/services/TenantService';
-import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
+import CommonDialog from '@/components/common/CommonDialog';
+import EditCohortModal from '@/components/common/EditCohortModal';
 import {
   getCohortSearch,
-  getCohortMemberList,
-  getCohortContentSearch,
+  deleteCohort,
 } from '@/services/CohortService';
 
 export interface CohortItem {
@@ -72,8 +74,23 @@ export default function CohortsPage() {
   const [cohorts, setCohorts] = useState<CohortItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+
+  // Modal & Action states
+  const [editingCohort, setEditingCohort] = useState<CohortItem | null>(null);
+  const [deletingCohort, setDeletingCohort] = useState<CohortItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
 
   // Common Hierarchy & Search Filter State
   const [filters, setFilters] = useState<SDBVFilterValues>({
@@ -99,7 +116,7 @@ export default function CohortsPage() {
           status:
             filters.status && filters.status !== 'all'
               ? [filters.status.toLowerCase()]
-              : ['active'],
+              : ['active', 'draft', 'archived'],
         },
       };
 
@@ -146,6 +163,7 @@ export default function CohortsPage() {
       console.error('Failed to fetch cohorts:', err);
       setCohorts([]);
       setTotalCount(0);
+      setFetchError('Failed to load cohorts from the server. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -198,6 +216,29 @@ export default function CohortsPage() {
       return true;
     });
   }, [cohorts, filters]);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCohort) return;
+    setDeleteLoading(true);
+    try {
+      await deleteCohort(deletingCohort.cohortId);
+      setFeedback({
+        open: true,
+        message: `Group "${deletingCohort.name}" archived successfully.`,
+        severity: 'success',
+      });
+      setDeletingCohort(null);
+      fetchCohorts();
+    } catch (err: any) {
+      setFeedback({
+        open: true,
+        message: err?.response?.data?.message || err?.message || 'Failed to archive group.',
+        severity: 'error',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const columns: ColumnDef<CohortItem>[] = useMemo(
     () => [
@@ -297,15 +338,41 @@ export default function CohortsPage() {
         id: 'actions',
         label: '',
         align: 'right',
-        render: (_row) => (
+        render: (row) => (
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+            <Tooltip title="Add members">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/cohorts/create?cohortId=${row.cohortId}&mode=addMembers`);
+                }}
+                sx={{ color: '#4B5563', '&:hover': { color: 'primary.main' } }}
+              >
+                <PersonAddOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Edit Group">
-              <IconButton size="small" sx={{ color: '#6B7280', '&:hover': { color: '#1F2937' } }}>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingCohort(row);
+                }}
+                sx={{ color: '#6B7280', '&:hover': { color: '#1F2937' } }}
+              >
                 <EditOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Archive">
-              <IconButton size="small" sx={{ color: '#EF4444', '&:hover': { color: '#DC2626' } }}>
+            <Tooltip title="Archive / Delete">
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeletingCohort(row);
+                }}
+                sx={{ color: '#EF4444', '&:hover': { color: '#DC2626' } }}
+              >
                 <DeleteOutlineIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -313,7 +380,7 @@ export default function CohortsPage() {
         ),
       },
     ],
-    []
+    [router]
   );
 
   return (
@@ -340,6 +407,7 @@ export default function CohortsPage() {
 
         <Button
           variant="contained"
+          onClick={() => router.push('/cohorts/create')}
           startIcon={<GroupAddOutlinedIcon />}
           sx={{
             backgroundColor: '#D4752A',
@@ -408,6 +476,8 @@ export default function CohortsPage() {
         data={displayedCohorts}
         keyExtractor={(item) => item.id}
         loading={loading}
+        error={fetchError}
+        onRetry={fetchCohorts}
         hideToolbar={true}
         page={page}
         rowsPerPage={rowsPerPage}
@@ -419,6 +489,56 @@ export default function CohortsPage() {
         }}
         emptyMessage="No cohorts or groups found matching the filter criteria."
       />
+
+      {/* Edit Cohort Modal */}
+      {editingCohort && (
+        <EditCohortModal
+          open={Boolean(editingCohort)}
+          onClose={() => setEditingCohort(null)}
+          onSuccess={() => {
+            setFeedback({
+              open: true,
+              message: 'Group updated successfully.',
+              severity: 'success',
+            });
+            fetchCohorts();
+          }}
+          cohort={editingCohort}
+        />
+      )}
+
+      {/* Confirm Delete / Archive Dialog */}
+      <CommonDialog
+        open={Boolean(deletingCohort)}
+        onClose={() => setDeletingCohort(null)}
+        title="Archive Group"
+        subtitle={`Are you sure you want to archive group "${deletingCohort?.name}"?`}
+        confirmLabel={deleteLoading ? 'Archiving...' : 'Archive Group'}
+        confirmVariant="error"
+        confirmDisabled={deleteLoading}
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+      >
+        <Typography sx={{ fontSize: '13.5px', color: '#4B5563' }}>
+          This will set the group status to archived. Associated learners and historical progress will be preserved.
+        </Typography>
+      </CommonDialog>
+
+      {/* Snackbar feedback */}
+      <Snackbar
+        open={feedback.open}
+        autoHideDuration={4000}
+        onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
+          severity={feedback.severity}
+          sx={{ width: '100%', borderRadius: '8px' }}
+        >
+          {feedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

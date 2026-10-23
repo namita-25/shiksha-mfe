@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { post, get } from './RestClient';
+import { post, get, patch, deleteApi } from './RestClient';
 import { SWADHAAR_CHANNEL_ID } from '@/utils/app.constant';
 import { detectLanguage } from './CourseService';
 
@@ -130,15 +130,31 @@ export const detectContentSource = (item: any): string => {
  * Infer course usage from content title or description
  */
 export const inferCourseUsage = (item: any): string => {
+  if (item.usedIn && item.usedIn !== 'Not used in any course yet') {
+    return item.usedIn;
+  }
+  if (item.collections && Array.isArray(item.collections) && item.collections.length > 0) {
+    const col = item.collections[0];
+    return col.name || col.title || 'Course';
+  }
   const text = `${item.name || ''} ${item.description || ''}`;
   if (/course\s*0/i.test(text) || /स्वाधार\s*फिनएक्सेस/i.test(text)) {
     return 'Course 0 · 0.1';
   }
-  if (/course\s*1/i.test(text) || /बचत/i.test(text) || /saving/i.test(text)) {
-    return 'Course 1 · 1.1';
-  }
-  if (/budget/i.test(text) || /बजट/i.test(text)) {
+  if (/course\s*1\s*(\.|·|-)\s*1\.?2/i.test(text) || /budget/i.test(text) || /बजट/i.test(text)) {
     return 'Course 1 · 1.2';
+  }
+  if (/course\s*1\s*(\.|·|-)\s*1\.?3/i.test(text) || /chhoti\s*bachat/i.test(text)) {
+    return 'Course 1 · 1.3';
+  }
+  if (
+    /course\s*1/i.test(text) ||
+    /बचत/i.test(text) ||
+    /saving/i.test(text) ||
+    /goal\s*setting/i.test(text) ||
+    /life\s*cycle/i.test(text)
+  ) {
+    return 'Course 1 · 1.1';
   }
   return 'Not used in any course yet';
 };
@@ -297,3 +313,84 @@ export const getContentRead = async (doId: string): Promise<any> => {
     throw error;
   }
 };
+
+/**
+ * Create a new Sunbird / Tekdi content item (Video, PDF, etc.)
+ */
+export const createContent = async (contentData: {
+  name: string;
+  description?: string;
+  mimeType: string;
+  primaryCategory: string;
+  artifactUrl?: string;
+  duration?: string | number;
+  language?: string[];
+  [key: string]: any;
+}): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.contentCreate;
+    const code = `org.swadhaar.content.${Date.now()}`;
+    const payload = {
+      request: {
+        content: {
+          code,
+          name: contentData.name,
+          description: contentData.description || '',
+          mimeType: contentData.mimeType,
+          primaryCategory: contentData.primaryCategory,
+          channel: SWADHAAR_CHANNEL_ID,
+          framework: 'swadhaar-framework',
+          createdBy: 'admin',
+          artifactUrl: contentData.artifactUrl,
+          duration: contentData.duration,
+          language: contentData.language || ['Hindi'],
+          ...contentData,
+        },
+      },
+    };
+    const response = await post(apiUrl, payload);
+    return response?.data?.result;
+  } catch (error) {
+    console.error('Error in createContent:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing content item
+ */
+export const updateContent = async (
+  doId: string,
+  contentData: Record<string, any>
+): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.contentUpdate(doId);
+    const payload = {
+      request: {
+        content: {
+          ...contentData,
+        },
+      },
+    };
+    const response = await patch(apiUrl, payload);
+    return response?.data?.result;
+  } catch (error) {
+    console.error(`Error in updateContent for ${doId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Retire / archive an existing content item
+ */
+export const retireContent = async (doId: string): Promise<any> => {
+  try {
+    const apiUrl = API_ENDPOINTS.contentRetire(doId);
+    const response = await deleteApi(apiUrl);
+    return response?.data?.result;
+  } catch (error) {
+    console.error(`Error in retireContent for ${doId}:`, error);
+    throw error;
+  }
+};
+

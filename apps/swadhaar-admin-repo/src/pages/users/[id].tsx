@@ -29,8 +29,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import nextI18NextConfig from '../../../next-i18next.config.js';
-import { getUserDetailsInfo } from '@/services/UserService';
+import { getUserDetailsInfo, updateUserStatus, deleteUserAccount } from '@/services/UserService';
+import CreateUserModal from '@/components/common/CreateUserModal';
 
 export default function UserDetailsPage() {
   const router = useRouter();
@@ -39,6 +39,7 @@ export default function UserDetailsPage() {
 
   const [loading, setLoading] = useState<boolean>(true);
   const [userData, setUserData] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
 
   // Modal & Feedback states
   const [feedback, setFeedback] = useState<{
@@ -206,6 +207,19 @@ export default function UserDetailsPage() {
     };
   }, [userData]);
 
+  const userCohorts = useMemo(() => {
+    if (!userData) return [];
+    if (Array.isArray(userData.cohorts)) return userData.cohorts;
+    if (Array.isArray(userData.cohortData)) return userData.cohortData;
+    return [];
+  }, [userData]);
+
+  const reviewGroups = useMemo(() => {
+    if (!userData) return [];
+    if (Array.isArray(userData.reviewCohorts)) return userData.reviewCohorts;
+    return [];
+  }, [userData]);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 12 }}>
@@ -332,13 +346,13 @@ export default function UserDetailsPage() {
                 fontWeight: 700,
               }}
             >
-              [{parsedUser.initials}]
+              {parsedUser.initials}
             </Box>
 
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.4 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827', fontSize: '20px' }}>
-                  [{parsedUser.fullName}]
+                  {parsedUser.fullName}
                 </Typography>
 
                 <Chip
@@ -399,9 +413,7 @@ export default function UserDetailsPage() {
             <Button
               variant="outlined"
               size="small"
-              onClick={() =>
-                setFeedback({ open: true, message: 'Edit user profile opened', severity: 'info' })
-              }
+              onClick={() => setIsEditModalOpen(true)}
               sx={{
                 textTransform: 'none',
                 borderRadius: '8px',
@@ -500,7 +512,7 @@ export default function UserDetailsPage() {
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>Full name</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.fullName}]
+                  {parsedUser.fullName}
                 </Typography>
               </Box>
 
@@ -514,21 +526,21 @@ export default function UserDetailsPage() {
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>Phone</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.phone}]
+                  {parsedUser.phone}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>Employee ID</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.empId}]
+                  {parsedUser.empId}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>Gender</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.gender}]
+                  {parsedUser.gender}
                 </Typography>
               </Box>
             </Box>
@@ -567,28 +579,28 @@ export default function UserDetailsPage() {
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>State</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.state}]
+                  {parsedUser.state}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>District</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.district}]
+                  {parsedUser.district}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>Branch</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.branch}]
+                  {parsedUser.branch}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex' }}>
                 <Typography sx={{ width: 140, fontSize: '13px', color: '#6B7280' }}>Program</Typography>
                 <Typography sx={{ fontSize: '13px', color: '#111827', fontWeight: 500 }}>
-                  [{parsedUser.program}]
+                  {parsedUser.program}
                 </Typography>
               </Box>
             </Box>
@@ -678,102 +690,59 @@ export default function UserDetailsPage() {
             </Box>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {/* Group A */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  py: 0.8,
-                  borderBottom: '1px solid #F3F4F6',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    cursor: 'pointer',
-                    '&:hover': { textDecoration: 'underline' },
-                  }}
-                  onClick={() => router.push('/cohorts')}
-                >
-                  [Group A]
-                </Typography>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Chip
-                    label="Reviewer"
-                    size="small"
-                    sx={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '11px', height: '22px' }}
-                  />
-                  <Chip
-                    label="Learner"
-                    size="small"
-                    sx={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '11px', height: '22px' }}
-                  />
-                  <IconButton
-                    size="small"
-                    onClick={() =>
-                      setConfirmDialog({
-                        open: true,
-                        title: 'Remove from Group A',
-                        description: 'Remove this user from [Group A]?',
-                        actionType: 'remove_group',
-                      })
-                    }
-                    sx={{ color: '#9CA3AF', p: 0.3 }}
+              {userCohorts.length > 0 ? (
+                userCohorts.map((c: any, idx: number) => (
+                  <Box
+                    key={c.cohortId || idx}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 0.8,
+                      borderBottom: '1px solid #F3F4F6',
+                    }}
                   >
-                    <RemoveCircleOutlineOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Box>
+                    <Typography
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'primary.main',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                      onClick={() => router.push(`/cohorts/${c.cohortId}`)}
+                    >
+                      {c.name || c.cohortName || 'Group'}
+                    </Typography>
 
-              {/* Group B */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  py: 0.8,
-                  borderBottom: '1px solid #F3F4F6',
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    cursor: 'pointer',
-                    '&:hover': { textDecoration: 'underline' },
-                  }}
-                  onClick={() => router.push('/cohorts')}
-                >
-                  [Group B]
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Chip
+                        label={c.role || 'Learner'}
+                        size="small"
+                        sx={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '11px', height: '22px' }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={() =>
+                          setConfirmDialog({
+                            open: true,
+                            title: `Remove from ${c.name || 'group'}`,
+                            description: `Remove this user from ${c.name || 'group'}?`,
+                            actionType: 'remove_group',
+                          })
+                        }
+                        sx={{ color: '#9CA3AF', p: 0.3 }}
+                      >
+                        <RemoveCircleOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                ))
+              ) : (
+                <Typography sx={{ fontSize: '13px', color: '#6B7280', py: 1 }}>
+                  Not enrolled in any group yet.
                 </Typography>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Chip
-                    label="Learner"
-                    size="small"
-                    sx={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '11px', height: '22px' }}
-                  />
-                  <IconButton
-                    size="small"
-                    onClick={() =>
-                      setConfirmDialog({
-                        open: true,
-                        title: 'Remove from Group B',
-                        description: 'Remove this user from [Group B]?',
-                        actionType: 'remove_group',
-                      })
-                    }
-                    sx={{ color: '#9CA3AF', p: 0.3 }}
-                  >
-                    <RemoveCircleOutlineOutlinedIcon fontSize="small" />
-                  </IconButton>
-                </Box>
-              </Box>
+              )}
 
               {/* Bottom footnote */}
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 1 }}>
@@ -830,65 +799,38 @@ export default function UserDetailsPage() {
             </Box>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.8 }}>
-              {/* Review 1 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: 'primary.main',
-                      cursor: 'pointer',
-                      '&:hover': { textDecoration: 'underline' },
-                    }}
-                    onClick={() => router.push('/cohorts')}
-                  >
-                    [Group A]
-                  </Typography>
-                  <Typography sx={{ fontSize: '11.5px', color: '#6B7280' }}>
-                    Whole group · from the Reviewer role in that group
-                  </Typography>
-                </Box>
-                <Chip
-                  label="Group"
-                  size="small"
-                  sx={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '11px', height: '22px' }}
-                />
-              </Box>
-
-              {/* Review 2 */}
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: 'primary.main',
-                      cursor: 'pointer',
-                      '&:hover': { textDecoration: 'underline' },
-                    }}
-                  >
-                    ankur@swadhaar.org
-                  </Typography>
-                  <Typography sx={{ fontSize: '11.5px', color: '#6B7280' }}>
-                    Individual user
-                  </Typography>
-                </Box>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    setConfirmDialog({
-                      open: true,
-                      title: 'Remove Reviewer',
-                      description: 'Remove ankur@swadhaar.org from reviews list?',
-                      actionType: 'remove_review',
-                    })
-                  }
-                  sx={{ color: '#9CA3AF', p: 0.3 }}
-                >
-                  <RemoveCircleOutlineOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Box>
+              {reviewGroups.length > 0 ? (
+                reviewGroups.map((rg: any, idx: number) => (
+                  <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          color: 'primary.main',
+                          cursor: 'pointer',
+                          '&:hover': { textDecoration: 'underline' },
+                        }}
+                        onClick={() => router.push(rg.cohortId ? `/cohorts/${rg.cohortId}` : '/cohorts')}
+                      >
+                        {rg.name}
+                      </Typography>
+                      <Typography sx={{ fontSize: '11.5px', color: '#6B7280' }}>
+                        {rg.subtitle || 'Assigned review group'}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={rg.type || 'Group'}
+                      size="small"
+                      sx={{ backgroundColor: '#F3F4F6', color: '#4B5563', fontSize: '11px', height: '22px' }}
+                    />
+                  </Box>
+                ))
+              ) : (
+                <Typography sx={{ fontSize: '13px', color: '#6B7280', py: 0.5 }}>
+                  No active review assignments.
+                </Typography>
+              )}
             </Box>
           </Card>
 
@@ -909,10 +851,10 @@ export default function UserDetailsPage() {
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                 <Typography sx={{ fontSize: '13px', fontWeight: 500, color: '#374151' }}>
-                  [Learning item]
+                  Financial Inclusion Training Programme
                 </Typography>
                 <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#6B7280' }}>
-                  [75%]
+                  75%
                 </Typography>
               </Box>
               <LinearProgress
@@ -1022,14 +964,25 @@ export default function UserDetailsPage() {
           </Button>
           <Button
             variant="contained"
-            onClick={() => {
-              setUserData((prev: any) => ({ ...prev, status: 'blocked' }));
+            onClick={async () => {
+              try {
+                await updateUserStatus(userId, 'blocked');
+                setUserData((prev: any) => ({ ...prev, status: 'blocked' }));
+                setFeedback({
+                  open: true,
+                  message: `${parsedUser.fullName} has been blocked.`,
+                  severity: 'success',
+                });
+                fetchUserDetails();
+              } catch (e) {
+                console.error('Failed to block user:', e);
+                setFeedback({
+                  open: true,
+                  message: 'Failed to block user. Please try again.',
+                  severity: 'error',
+                });
+              }
               setDialogType(null);
-              setFeedback({
-                open: true,
-                message: `[${parsedUser.fullName}] has been blocked.`,
-                severity: 'success',
-              });
             }}
             sx={{
               textTransform: 'none',
@@ -1078,7 +1031,7 @@ export default function UserDetailsPage() {
             mb: 2,
           }}
         >
-          Unblock [{parsedUser.fullName}]?
+          Unblock {parsedUser.fullName}?
         </Typography>
 
         <Typography
@@ -1116,14 +1069,25 @@ export default function UserDetailsPage() {
           </Button>
           <Button
             variant="contained"
-            onClick={() => {
-              setUserData((prev: any) => ({ ...prev, status: 'active' }));
+            onClick={async () => {
+              try {
+                await updateUserStatus(userId, 'active');
+                setUserData((prev: any) => ({ ...prev, status: 'active' }));
+                setFeedback({
+                  open: true,
+                  message: `${parsedUser.fullName} has been unblocked.`,
+                  severity: 'success',
+                });
+                fetchUserDetails();
+              } catch (e) {
+                console.error('Failed to unblock user:', e);
+                setFeedback({
+                  open: true,
+                  message: 'Failed to unblock user. Please try again.',
+                  severity: 'error',
+                });
+              }
               setDialogType(null);
-              setFeedback({
-                open: true,
-                message: `[${parsedUser.fullName}] has been unblocked.`,
-                severity: 'success',
-              });
             }}
             sx={{
               textTransform: 'none',
@@ -1172,7 +1136,7 @@ export default function UserDetailsPage() {
             mb: 1.5,
           }}
         >
-          Delete [{parsedUser.fullName}]?
+          Delete {parsedUser.fullName}?
         </Typography>
 
         <Typography
@@ -1231,9 +1195,24 @@ export default function UserDetailsPage() {
           </Button>
           <Button
             variant="contained"
-            onClick={() => {
+            onClick={async () => {
+              try {
+                await deleteUserAccount(userId);
+                setFeedback({
+                  open: true,
+                  message: `${parsedUser.fullName} has been deleted.`,
+                  severity: 'success',
+                });
+                router.push('/users');
+              } catch (e) {
+                console.error('Failed to delete user:', e);
+                setFeedback({
+                  open: true,
+                  message: 'Failed to delete user. Please try again.',
+                  severity: 'error',
+                });
+              }
               setDialogType(null);
-              router.push('/users');
             }}
             sx={{
               textTransform: 'none',
@@ -1312,6 +1291,33 @@ export default function UserDetailsPage() {
           {feedback.message}
         </Alert>
       </Snackbar>
+
+      {/* CreateUserModal in edit mode */}
+      {isEditModalOpen && (
+        <CreateUserModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            setIsEditModalOpen(false);
+            fetchUserDetails();
+          }}
+          isEdit={true}
+          initialData={{
+            userId,
+            fullName: parsedUser.fullName !== '-' ? parsedUser.fullName : '',
+            email: parsedUser.email !== '-' ? parsedUser.email : '',
+            phone: parsedUser.phone !== '-' ? parsedUser.phone : '',
+            employeeId: parsedUser.empId !== '-' ? parsedUser.empId : '',
+            gender: parsedUser.gender !== '-' ? parsedUser.gender : '',
+            role: parsedUser.role,
+            state: parsedUser.state !== '-' ? parsedUser.state : '',
+            district: parsedUser.district !== '-' ? parsedUser.district : '',
+            branch: parsedUser.branch !== '-' ? parsedUser.branch : '',
+            program: parsedUser.program !== '-' ? parsedUser.program : '',
+            status: parsedUser.status,
+          }}
+        />
+      )}
     </Box>
   );
 }

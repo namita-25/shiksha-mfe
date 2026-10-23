@@ -102,9 +102,14 @@ export default function AssessmentBuilderPage() {
         .then((res: any) => {
           const content = res?.content || res;
           if (content) {
-            if (content.name) setName(content.name);
+            if (content.name || content.title) setName(content.name || content.title);
             if (content.description) setDescription(content.description);
             if (content.duration) setTimeLimit(String(content.duration));
+            if (content.name?.includes('Course 0')) {
+              setLinkedContent('Course 0 · Swadhaar FinAccess Overview');
+            } else if (content.name?.includes('Course 1')) {
+              setLinkedContent('Course 1 · Introduction to Saving');
+            }
           }
         })
         .catch((err) => {

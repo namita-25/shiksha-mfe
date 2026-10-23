@@ -41,7 +41,7 @@ const VARIANT_STYLES: Record<CommonButtonVariant, { muiVariant: ButtonProps['var
     sx: {
       backgroundColor: BRAND.secondary,
       color: BRAND.buttonText,
-      '&:hover': { backgroundColor: '#000000' },
+      '&:hover': { backgroundColor: BRAND.secondaryDark },
     },
   },
   danger: {

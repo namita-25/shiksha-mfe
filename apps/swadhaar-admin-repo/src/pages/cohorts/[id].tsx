@@ -19,24 +19,27 @@ import {
   CircularProgress,
   Breadcrumbs,
   Link as MuiLink,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Snackbar,
   Alert,
+  MenuItem,
+  Select,
+  FormControl,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
+import CommonDialog from '@/components/common/CommonDialog';
+import EditCohortModal from '@/components/common/EditCohortModal';
+import LifecycleChip from '@/components/common/LifecycleChip';
 import {
   getCohortById,
   getCohortMemberListApplication,
+  bulkCreateCohortMembers,
+  deleteCohort,
+  getCohortContentSearch,
 } from '@/services/CohortService';
 
 export interface MemberRowItem {
@@ -59,10 +62,9 @@ const mapMemberToRow = (user: any, index: number): MemberRowItem => {
   const uUsername = user.username ? String(user.username).trim() : '';
   const fullName = [fn, mn, ln].filter(Boolean).join(' ') || user.name || uUsername || '-';
   const email = user.email && user.email !== '-' ? String(user.email).trim() : (uUsername || '-');
-  const role = user.role || 'Student';
-  const status = (user.status || 'applied').toLowerCase();
+  const role = user.role || user.membershipRole || 'Student';
+  const status = (user.status || 'active').toLowerCase();
 
-  // Extract custom fields (check both customField and customFields)
   const cFields = Array.isArray(user.customField)
     ? user.customField
     : Array.isArray(user.customFields)
@@ -76,57 +78,27 @@ const mapMemberToRow = (user: any, index: number): MemberRowItem => {
 
   for (const cf of cFields) {
     const label = (cf.label || cf.name || '').toLowerCase();
-    const rawVal = cf.value ?? cf.code;
+    const rawVal = cf.value ?? cf.code ?? cf.selectedValues?.[0]?.value;
     const val = Array.isArray(rawVal) ? rawVal[0] : rawVal;
     if (val && typeof val === 'string' && val.trim()) {
       const trimmed = val.trim();
-      // State
       if (!state && (label === 'state' || label.includes('choose your state'))) {
         state = trimmed;
       }
-      // District / City
       if (!district && (label === 'city' || label === 'district')) {
         district = trimmed;
       }
-      // Branch / University / College
-      if (
-        !branch &&
-        (label.includes('university or college') ||
-          label.includes('university/college') ||
-          label.includes('name of university') ||
-          label.includes('branch') ||
-          label.includes('institution'))
-      ) {
-        if (!trimmed.startsWith('http')) {
-          branch = trimmed;
-        }
+      if (!branch && (label.includes('branch') || label.includes('block') || label.includes('institution'))) {
+        if (!trimmed.startsWith('http')) branch = trimmed;
       }
-      // Program / Field of study
-      if (
-        !program &&
-        (label.includes('field(s) of study') ||
-          label.includes('field of study') ||
-          label.includes('course') ||
-          label === 'program' ||
-          label.includes('level of education'))
-      ) {
+      if (!program && (label.includes('program') || label.includes('course') || label.includes('field of study'))) {
         program = trimmed;
       }
     }
   }
 
   const locParts = [state, district].filter(Boolean);
-  const stateDistrict =
-    locParts.length > 0
-      ? locParts.join(' · ')
-      : user.country || user.permanentCountry || user.currentCountry || user.applicationCountry || '-';
-
-  if (!branch) {
-    branch = district || user.district || '-';
-  }
-  if (!program) {
-    program = user.form?.title || '-';
-  }
+  const stateDistrict = locParts.length > 0 ? locParts.join(' · ') : '-';
 
   return {
     id: userId,
@@ -135,8 +107,8 @@ const mapMemberToRow = (user: any, index: number): MemberRowItem => {
     email,
     role,
     stateDistrict,
-    branch,
-    program,
+    branch: branch || district || '-',
+    program: program || '-',
     status,
   };
 };
@@ -153,24 +125,25 @@ export default function GroupDetailsPage() {
   const [page, setPage] = useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [cohortContents, setCohortContents] = useState<any[]>([]);
 
-  // Dialog & Notification feedback states
-  const [feedback, setFeedback] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'error' }>({
+  // Modals & Action States
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState<boolean>(false);
+  const [isChangeRoleOpen, setIsChangeRoleOpen] = useState<boolean>(false);
+  const [newSelectedRole, setNewSelectedRole] = useState<'Student' | 'Reviewer'>('Reviewer');
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+
+  // Feedback Snackbar
+  const [feedback, setFeedback] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'info' | 'error';
+  }>({
     open: false,
     message: '',
     severity: 'info',
-  });
-
-  const [confirmDialog, setConfirmDialog] = useState<{
-    open: boolean;
-    title: string;
-    description: string;
-    actionType: 'delete' | 'remove' | 'role' | 'notify';
-  }>({
-    open: false,
-    title: '',
-    description: '',
-    actionType: 'remove',
   });
 
   // Fetch cohort metadata
@@ -186,7 +159,7 @@ export default function GroupDetailsPage() {
     }
   }, [cohortId]);
 
-  // Fetch cohort members list via Aspire application API
+  // Fetch cohort members list
   const fetchMembers = useCallback(async () => {
     if (!cohortId) return;
     setLoading(true);
@@ -196,8 +169,6 @@ export default function GroupDetailsPage() {
         offset: page * rowsPerPage,
         filters: {
           cohortId: [cohortId],
-          status: ['applied'],
-          role: 'Student',
         },
       };
 
@@ -217,12 +188,28 @@ export default function GroupDetailsPage() {
     }
   }, [cohortId, page, rowsPerPage]);
 
+  // Fetch cohort assigned contents/learning paths
+  const fetchCohortContent = useCallback(async () => {
+    if (!cohortId) return;
+    try {
+      const res = await getCohortContentSearch({ filter: { cohortId } });
+      const contents = res?.result?.results?.cohortContent || res?.result || [];
+      if (Array.isArray(contents)) {
+        setCohortContents(contents);
+      }
+    } catch (err) {
+      // Non-critical, fallback gracefully
+      console.log('No cohort content returned:', err);
+    }
+  }, [cohortId]);
+
   useEffect(() => {
     if (cohortId) {
       fetchCohortDetails();
       fetchMembers();
+      fetchCohortContent();
     }
-  }, [cohortId, fetchCohortDetails, fetchMembers]);
+  }, [cohortId, fetchCohortDetails, fetchMembers, fetchCohortContent]);
 
   // Selection handlers
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,8 +235,103 @@ export default function GroupDetailsPage() {
     setPage(0);
   };
 
+  // Action: Remove selected members from cohort
+  const handleConfirmRemoveMembers = async () => {
+    if (selectedIds.length === 0 || !cohortId) return;
+    setActionLoading(true);
+    try {
+      await bulkCreateCohortMembers({
+        userId: selectedIds,
+        cohortId: [],
+        removeCohortId: [cohortId],
+      });
+      setFeedback({
+        open: true,
+        message: `Successfully removed ${selectedIds.length} member(s) from group.`,
+        severity: 'success',
+      });
+      setSelectedIds([]);
+      setIsRemoveConfirmOpen(false);
+      fetchMembers();
+      fetchCohortDetails();
+    } catch (err: any) {
+      console.error('Failed to remove members:', err);
+      setFeedback({
+        open: true,
+        message: err?.response?.data?.message || err?.message || 'Failed to remove members from group.',
+        severity: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Action: Change role of selected members
+  const handleConfirmChangeRole = async () => {
+    if (selectedIds.length === 0 || !cohortId) return;
+    setActionLoading(true);
+    try {
+      await bulkCreateCohortMembers({
+        userId: selectedIds,
+        cohortId: [cohortId],
+        role: newSelectedRole,
+      });
+      setFeedback({
+        open: true,
+        message: `Updated role to ${newSelectedRole} for ${selectedIds.length} member(s).`,
+        severity: 'success',
+      });
+      setSelectedIds([]);
+      setIsChangeRoleOpen(false);
+      fetchMembers();
+    } catch (err: any) {
+      console.error('Failed to change member role:', err);
+      setFeedback({
+        open: true,
+        message: err?.response?.data?.message || err?.message || 'Failed to change role in group.',
+        severity: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Action: Delete/Archive cohort
+  const handleConfirmDeleteCohort = async () => {
+    if (!cohortId) return;
+    setActionLoading(true);
+    try {
+      await deleteCohort(cohortId);
+      setFeedback({
+        open: true,
+        message: `Group "${cohort?.name || 'Group'}" archived successfully.`,
+        severity: 'success',
+      });
+      setIsDeleteConfirmOpen(false);
+      setTimeout(() => {
+        router.push('/cohorts');
+      }, 700);
+    } catch (err: any) {
+      console.error('Failed to archive cohort:', err);
+      setFeedback({
+        open: true,
+        message: err?.response?.data?.message || err?.message || 'Failed to archive group.',
+        severity: 'error',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const groupName = cohort?.name || 'Group Details';
-  const groupStatus = cohort?.status || 'active';
+  const rawStatus = (cohort?.status || 'active').toLowerCase();
+  const groupStatus: 'Active' | 'Draft' | 'Archived' =
+    rawStatus === 'draft' ? 'Draft' : rawStatus === 'archived' ? 'Archived' : 'Active';
+
+  // Reviewers extracted from member list
+  const reviewerMembers = useMemo(() => {
+    return members.filter((m) => m.role.toLowerCase() === 'reviewer');
+  }, [members]);
 
   return (
     <Box sx={{ py: 1.5, px: { xs: 1, md: 2 } }}>
@@ -286,49 +368,9 @@ export default function GroupDetailsPage() {
             Groups
           </MuiLink>
           <Typography sx={{ color: '#111827', fontWeight: 600, fontSize: '13px' }}>
-            [{groupName}]
+            {groupName}
           </Typography>
         </Breadcrumbs>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              backgroundColor: '#FFFFFF',
-              border: '1px solid #E5E7EB',
-              borderRadius: '20px',
-              py: 0.4,
-              px: 1.5,
-            }}
-          >
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                backgroundColor: '#111827',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '11px',
-                fontWeight: 600,
-              }}
-            >
-              SA
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#111827', lineHeight: 1.2 }}>
-                Admin
-              </Typography>
-              <Typography sx={{ fontSize: '10px', color: '#6B7280', lineHeight: 1 }}>
-                Super Admin
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
       </Box>
 
       {/* 2. Group Header Card with Title, Badges, and Action Buttons */}
@@ -343,69 +385,24 @@ export default function GroupDetailsPage() {
         }}
       >
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mb: 0.5 }}>
             <Typography variant="h5" sx={{ fontWeight: 700, color: '#111827', fontSize: '24px' }}>
-              [{groupName}]
+              {groupName}
             </Typography>
-            <Chip
-              label="BRD §4.3"
-              size="small"
-              sx={{
-                backgroundColor: '#F3E8FF',
-                color: '#7E22CE',
-                fontWeight: 700,
-                fontSize: '11px',
-                borderRadius: '6px',
-                height: '22px',
-              }}
-            />
-
-            <Chip
-              label={groupStatus.toUpperCase()}
-              size="small"
-              sx={{
-                backgroundColor: groupStatus === 'active' ? '#ECFDF5' : '#F3F4F6',
-                color: groupStatus === 'active' ? '#047857' : '#4B5563',
-                fontWeight: 600,
-                fontSize: '11px',
-                borderRadius: '6px',
-                height: '22px',
-              }}
-            />
+            <LifecycleChip state={groupStatus} />
           </Box>
           <Typography variant="body2" sx={{ color: '#6B7280', fontSize: '13px' }}>
-            [Cohort group] · {totalCount} members
+            {cohort?.description || 'Cohort training group'} · {totalCount} enrolled member(s)
           </Typography>
         </Box>
 
-        {/* Action Buttons matching Image 1 */}
+        {/* Action Buttons */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             size="small"
-            onClick={() =>
-              setFeedback({ open: true, message: 'Notification draft created', severity: 'info' })
-            }
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#374151',
-              borderColor: '#D1D5DB',
-              backgroundColor: '#FFFFFF',
-              '&:hover': { backgroundColor: '#F9FAFB', borderColor: '#9CA3AF' },
-            }}
-          >
-            Send notification
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() =>
-              setFeedback({ open: true, message: 'Edit Group Dialog opened', severity: 'info' })
-            }
+            onClick={() => setIsEditModalOpen(true)}
+            startIcon={<EditOutlinedIcon fontSize="small" />}
             sx={{
               textTransform: 'none',
               borderRadius: '8px',
@@ -423,43 +420,36 @@ export default function GroupDetailsPage() {
           <Button
             variant="outlined"
             size="small"
-            onClick={() =>
-              setConfirmDialog({
-                open: true,
-                title: 'Delete Group',
-                description: `Are you sure you want to delete [${groupName}]? This action cannot be undone.`,
-                actionType: 'delete',
-              })
-            }
+            onClick={() => setIsDeleteConfirmOpen(true)}
+            startIcon={<DeleteOutlineIcon fontSize="small" />}
             sx={{
               textTransform: 'none',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 500,
-              color: '#E11D48',
+              color: '#DC2626',
               borderColor: '#FECDD3',
               backgroundColor: '#FFFFFF',
               '&:hover': { backgroundColor: '#FFF1F2', borderColor: '#FDA4AF' },
             }}
           >
-            Delete
+            Archive
           </Button>
 
           <Button
             variant="contained"
             size="small"
-            onClick={() =>
-              setFeedback({ open: true, message: 'Add members dialog opened', severity: 'info' })
-            }
+            startIcon={<PersonAddOutlinedIcon fontSize="small" />}
+            onClick={() => router.push(`/cohorts/create?cohortId=${cohortId}&mode=addMembers`)}
             sx={{
               textTransform: 'none',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 600,
-              backgroundColor: '#111827',
+              backgroundColor: '#D4752A',
               color: '#FFFFFF',
               boxShadow: 'none',
-              '&:hover': { backgroundColor: '#1F2937', boxShadow: 'none' },
+              '&:hover': { backgroundColor: '#B85D1A', boxShadow: 'none' },
             }}
           >
             Add members
@@ -492,7 +482,7 @@ export default function GroupDetailsPage() {
               }}
             >
               <Typography sx={{ fontSize: '16px', fontWeight: 700, color: '#111827' }}>
-                Members ({totalCount})
+                Enrolled Members ({totalCount})
               </Typography>
 
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
@@ -504,14 +494,7 @@ export default function GroupDetailsPage() {
                   variant="outlined"
                   size="small"
                   disabled={selectedIds.length === 0}
-                  onClick={() =>
-                    setConfirmDialog({
-                      open: true,
-                      title: 'Change Role in Group',
-                      description: `Update the group role for ${selectedIds.length} selected member(s).`,
-                      actionType: 'role',
-                    })
-                  }
+                  onClick={() => setIsChangeRoleOpen(true)}
                   sx={{
                     textTransform: 'none',
                     borderRadius: '6px',
@@ -528,14 +511,7 @@ export default function GroupDetailsPage() {
                   variant="outlined"
                   size="small"
                   disabled={selectedIds.length === 0}
-                  onClick={() =>
-                    setConfirmDialog({
-                      open: true,
-                      title: 'Remove from Group',
-                      description: `Are you sure you want to remove ${selectedIds.length} member(s) from this group? Progress data will be retained.`,
-                      actionType: 'remove',
-                    })
-                  }
+                  onClick={() => setIsRemoveConfirmOpen(true)}
                   sx={{
                     textTransform: 'none',
                     borderRadius: '6px',
@@ -647,19 +623,6 @@ export default function GroupDetailsPage() {
                         py: 1.2,
                       }}
                     >
-                      PROGRAM
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: '#6B7280',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        borderBottom: '1px solid #E5E7EB',
-                        py: 1.2,
-                      }}
-                    >
                       STATUS
                     </TableCell>
                   </TableRow>
@@ -668,8 +631,8 @@ export default function GroupDetailsPage() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} sx={{ textAlign: 'center', py: 6 }}>
-                        <CircularProgress size={32} sx={{ color: 'primary.main', mb: 1 }} />
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
+                        <CircularProgress size={30} sx={{ color: 'primary.main', mb: 1 }} />
                         <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
                           Loading cohort members...
                         </Typography>
@@ -677,7 +640,7 @@ export default function GroupDetailsPage() {
                     </TableRow>
                   ) : members.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} sx={{ textAlign: 'center', py: 6 }}>
+                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
                         <Typography sx={{ fontSize: '14px', color: '#6B7280' }}>
                           No members found for this group.
                         </Typography>
@@ -770,14 +733,7 @@ export default function GroupDetailsPage() {
                             </Typography>
                           </TableCell>
 
-                          {/* 6. Program */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Typography sx={{ fontSize: '12.5px', color: '#4B5563', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {row.program}
-                            </Typography>
-                          </TableCell>
-
-                          {/* 7. Status */}
+                          {/* 6. Status */}
                           <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
                             <Chip
                               label={row.status.charAt(0).toUpperCase() + row.status.slice(1)}
@@ -792,17 +748,13 @@ export default function GroupDetailsPage() {
                                     ? '#ECFDF5'
                                     : row.status === 'applied'
                                       ? '#EFF6FF'
-                                      : row.status === 'completed'
-                                        ? '#F0FDF4'
-                                        : '#F3F4F6',
+                                      : '#F3F4F6',
                                 color:
                                   row.status === 'active'
                                     ? '#047857'
                                     : row.status === 'applied'
                                       ? '#1D4ED8'
-                                      : row.status === 'completed'
-                                        ? '#15803D'
-                                        : '#4B5563',
+                                      : '#4B5563',
                               }}
                             />
                           </TableCell>
@@ -814,12 +766,11 @@ export default function GroupDetailsPage() {
               </Table>
             </TableContainer>
 
-            {/* Footnote matching Image 1 */}
             <Typography
               variant="caption"
               sx={{ display: 'block', mt: 2, color: '#6B7280', fontSize: '12px' }}
             >
-              Progress data is kept when a user is removed from a group (BRD §4.3).
+              Learner progress data is retained when a user is removed from a group.
             </Typography>
 
             {/* Pagination */}
@@ -836,7 +787,7 @@ export default function GroupDetailsPage() {
           </Card>
         </Grid>
 
-        {/* Right Column: Reviewers & Learning Paths Cards matching Image 1 */}
+        {/* Right Column: Reviewers & Learning Paths Cards */}
         <Grid item xs={12} lg={3.5}>
           {/* Reviewers Card */}
           <Card
@@ -849,60 +800,50 @@ export default function GroupDetailsPage() {
               mb: 2.5,
             }}
           >
-            <Box
+            <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#111827', mb: 2 }}>
+              Reviewers ({reviewerMembers.length})
+            </Typography>
+
+            {reviewerMembers.length === 0 ? (
+              <Typography sx={{ fontSize: '12.5px', color: '#6B7280', py: 1 }}>
+                No reviewers currently assigned to this group.
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {reviewerMembers.map((rev) => (
+                  <Box key={rev.userId}>
+                    <Typography
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'primary.main',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                      onClick={() => router.push(`/users/${rev.userId}`)}
+                    >
+                      {rev.fullName}
+                    </Typography>
+                    <Typography sx={{ fontSize: '12px', color: '#6B7280' }}>
+                      {rev.email} · Reviewer
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            <Typography
               sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 2,
+                fontSize: '11.5px',
+                color: '#9CA3AF',
+                pt: 1.5,
+                mt: 1.5,
+                borderTop: '1px solid #F3F4F6',
+                lineHeight: 1.4,
               }}
             >
-              <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
-                Reviewers
-              </Typography>
-
-            </Box>
-
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box>
-                <Typography
-                  sx={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    cursor: 'pointer',
-                    '&:hover': { textDecoration: 'underline' },
-                  }}
-                  onClick={() => router.push('/users')}
-                >
-                  aman@swadhaar.org
-                </Typography>
-                <Typography sx={{ fontSize: '12px', color: '#6B7280' }}>
-                  DI · Reviewer and Learner
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>
-                  [Full name]
-                </Typography>
-                <Typography sx={{ fontSize: '12px', color: '#6B7280' }}>
-                  ARM - Reviewer
-                </Typography>
-              </Box>
-
-              <Typography
-                sx={{
-                  fontSize: '11.5px',
-                  color: '#9CA3AF',
-                  pt: 1.5,
-                  borderTop: '1px solid #F3F4F6',
-                  lineHeight: 1.4,
-                }}
-              >
-                Members with the Reviewer role in this group. Notifier distinction
-              </Typography>
-            </Box>
+              Members with the Reviewer role can inspect and verify beneficiary progress in this group.
+            </Typography>
           </Card>
 
           {/* Learning Paths Card */}
@@ -915,86 +856,162 @@ export default function GroupDetailsPage() {
               p: 2.5,
             }}
           >
-            <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#111827', mb: 2 }}>
-              Learning paths
-            </Typography>
-
             <Box
               sx={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                py: 0.5,
+                mb: 2,
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  color: 'primary.main',
-                  cursor: 'pointer',
-                  '&:hover': { textDecoration: 'underline' },
-                }}
+              <Typography sx={{ fontSize: '15px', fontWeight: 700, color: '#111827' }}>
+                Learning Paths
+              </Typography>
+              <Button
+                size="small"
                 onClick={() => router.push('/learning-paths')}
+                sx={{ textTransform: 'none', fontSize: '12px', color: 'primary.main', p: 0 }}
               >
-                [Learning path]
-              </Typography>
-              <Typography sx={{ fontSize: '12px', color: '#6B7280' }}>
-                Enrolled from Learning
-              </Typography>
+                Browse paths
+              </Button>
             </Box>
+
+            {cohortContents.length === 0 ? (
+              <Box sx={{ py: 1 }}>
+                <Typography sx={{ fontSize: '12.5px', color: '#6B7280', mb: 1 }}>
+                  No learning paths assigned to this cohort yet.
+                </Typography>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => router.push('/learning-paths')}
+                  sx={{
+                    textTransform: 'none',
+                    fontSize: '12px',
+                    borderRadius: '6px',
+                    borderColor: '#D1D5DB',
+                    color: '#374151',
+                  }}
+                >
+                  Assign Learning Path
+                </Button>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {cohortContents.map((cc, idx) => (
+                  <Box
+                    key={cc.contentId || idx}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      py: 0.5,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'primary.main',
+                        cursor: 'pointer',
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                      onClick={() => router.push('/learning-paths')}
+                    >
+                      {cc.name || cc.contentTitle || 'Assigned Content'}
+                    </Typography>
+                    <Typography sx={{ fontSize: '11px', color: '#6B7280' }}>
+                      Enrolled
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
           </Card>
         </Grid>
       </Grid>
 
-      {/* Confirmation Dialog */}
-      <Dialog
-        open={confirmDialog.open}
-        onClose={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
-        PaperProps={{ sx: { borderRadius: '12px', p: 1, maxWidth: 420 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700, fontSize: '16px', color: '#111827' }}>
-          {confirmDialog.title}
-        </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ fontSize: '13.5px', color: '#4B5563' }}>
-            {confirmDialog.description}
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button
-            size="small"
-            onClick={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
-            sx={{ textTransform: 'none', color: '#6B7280' }}
-          >
-            Cancel
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            color={confirmDialog.actionType === 'delete' || confirmDialog.actionType === 'remove' ? 'error' : 'primary'}
-            onClick={() => {
-              setConfirmDialog((prev) => ({ ...prev, open: false }));
-              setFeedback({
-                open: true,
-                message: `Action executed successfully: ${confirmDialog.title}`,
-                severity: 'success',
-              });
-              if (confirmDialog.actionType === 'remove') {
-                setSelectedIds([]);
-              }
-            }}
-            sx={{ textTransform: 'none', borderRadius: '6px' }}
-          >
-            Confirm
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Edit Cohort Modal */}
+      {cohort && (
+        <EditCohortModal
+          open={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            setFeedback({
+              open: true,
+              message: 'Group updated successfully.',
+              severity: 'success',
+            });
+            fetchCohortDetails();
+          }}
+          cohort={cohort}
+        />
+      )}
 
-      {/* Snackbar feedback */}
+      {/* Delete / Archive Confirmation Dialog */}
+      <CommonDialog
+        open={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="Archive Group"
+        subtitle={`Are you sure you want to archive "${groupName}"?`}
+        confirmLabel={actionLoading ? 'Archiving...' : 'Archive Group'}
+        confirmVariant="error"
+        confirmDisabled={actionLoading}
+        loading={actionLoading}
+        onConfirm={handleConfirmDeleteCohort}
+      >
+        <Typography sx={{ fontSize: '13.5px', color: '#4B5563' }}>
+          This will set the group status to archived. Progress data for enrolled members will be preserved.
+        </Typography>
+      </CommonDialog>
+
+      {/* Remove Members Confirmation Dialog */}
+      <CommonDialog
+        open={isRemoveConfirmOpen}
+        onClose={() => setIsRemoveConfirmOpen(false)}
+        title="Remove from Group"
+        subtitle={`Remove ${selectedIds.length} member(s) from this group?`}
+        confirmLabel={actionLoading ? 'Removing...' : 'Remove Members'}
+        confirmVariant="error"
+        confirmDisabled={actionLoading}
+        loading={actionLoading}
+        onConfirm={handleConfirmRemoveMembers}
+      >
+        <Typography sx={{ fontSize: '13.5px', color: '#4B5563' }}>
+          Enrolled members will be removed from this cohort. Their past course completion and assessment progress will remain intact.
+        </Typography>
+      </CommonDialog>
+
+      {/* Change Role Dialog */}
+      <CommonDialog
+        open={isChangeRoleOpen}
+        onClose={() => setIsChangeRoleOpen(false)}
+        title="Change Role in Group"
+        subtitle={`Select new role for ${selectedIds.length} member(s)`}
+        confirmLabel={actionLoading ? 'Updating...' : 'Update Role'}
+        confirmVariant="primary"
+        confirmDisabled={actionLoading}
+        loading={actionLoading}
+        onConfirm={handleConfirmChangeRole}
+      >
+        <Box sx={{ pt: 1 }}>
+          <FormControl fullWidth size="small">
+            <Select
+              value={newSelectedRole}
+              onChange={(e) => setNewSelectedRole(e.target.value as 'Student' | 'Reviewer')}
+              sx={{ fontSize: '13.5px' }}
+            >
+              <MenuItem value="Student">Learner (Student)</MenuItem>
+              <MenuItem value="Reviewer">Reviewer</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </CommonDialog>
+
+      {/* Feedback Snackbar */}
       <Snackbar
         open={feedback.open}
-        autoHideDuration={3000}
+        autoHideDuration={4000}
         onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >

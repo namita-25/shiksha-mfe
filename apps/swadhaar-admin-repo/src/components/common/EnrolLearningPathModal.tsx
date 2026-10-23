@@ -58,24 +58,11 @@ interface UserRow {
 }
 
 const NOT_ENROLLED = '—';
-/** Sentinels for prototype values; translated at render time. */
 const ENROLLED_MARKER = 'Enrolled';
 const N_USERS_MARKER = '[N] users';
-const N_PLACEHOLDER = '[N]';
 
-const FALLBACK_GROUPS: GroupRow[] = [
-  { id: 'group-a', name: '[Group A]', members: N_PLACEHOLDER, alreadyEnrolled: NOT_ENROLLED },
-  { id: 'group-b', name: '[Group B]', members: N_PLACEHOLDER, alreadyEnrolled: N_USERS_MARKER },
-  { id: 'group-c', name: '[Group C]', members: N_PLACEHOLDER, alreadyEnrolled: NOT_ENROLLED },
-  { id: 'group-d', name: '[Trainer Cohort 2026]', members: '18', alreadyEnrolled: NOT_ENROLLED },
-];
-
-const FALLBACK_USERS: UserRow[] = [
-  { id: 'u-1', name: 'Aman Sharma', email: 'aman@swadhaar.org', role: 'Trainer', alreadyEnrolled: ENROLLED_MARKER },
-  { id: 'u-2', name: 'Pooja Verma', email: 'pooja.v@swadhaar.org', role: 'DI', alreadyEnrolled: NOT_ENROLLED },
-  { id: 'u-3', name: 'Rajesh Patil', email: 'rajesh.p@swadhaar.org', role: 'ARM', alreadyEnrolled: NOT_ENROLLED },
-  { id: 'u-4', name: 'Sunita Gaikwad', email: 'sunita.g@swadhaar.org', role: 'Trainer', alreadyEnrolled: NOT_ENROLLED },
-];
+const FALLBACK_GROUPS: GroupRow[] = [];
+const FALLBACK_USERS: UserRow[] = [];
 
 const HEADER_CELL_SX = {
   backgroundColor: NEUTRAL.canvas,
@@ -108,7 +95,7 @@ export const EnrolLearningPathModal: React.FC<EnrolLearningPathModalProps> = ({
   const [groups, setGroups] = useState<GroupRow[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [groupSearch, setGroupSearch] = useState('');
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(['group-a', 'group-b']);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   // Users state
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -131,9 +118,9 @@ export const EnrolLearningPathModal: React.FC<EnrolLearningPathModalProps> = ({
       const payload = {
         limit: 50,
         offset: 0,
+        sort: ['updatedAt', 'desc'],
         filters: {
-          type: 'ADHOC-Group',
-          tenantId: tenantId,
+          status: ['active', 'draft'],
         },
       };
 
@@ -144,22 +131,21 @@ export const EnrolLearningPathModal: React.FC<EnrolLearningPathModalProps> = ({
       if (rawList.length > 0) {
         const enriched: GroupRow[] = rawList.map((g: any, idx: number) => ({
           id: g.cohortId || `group-${idx}`,
-          name: g.name || t('ENROL_LEARNING_PATH.GROUP_FALLBACK_NAME', { letter: String.fromCharCode(65 + idx) }),
-          members: N_PLACEHOLDER,
-          alreadyEnrolled: idx === 1 ? N_USERS_MARKER : NOT_ENROLLED,
+          name: g.name || `Group ${idx + 1}`,
+          members: String(g.youthCount ?? 0),
+          alreadyEnrolled: NOT_ENROLLED,
         }));
         setGroups(enriched);
       } else {
-        // Prototype fallback groups
-        setGroups(FALLBACK_GROUPS);
+        setGroups([]);
       }
     } catch (err) {
-      console.warn('Could not fetch live groups, using fallback data:', err);
-      setGroups(FALLBACK_GROUPS);
+      console.warn('Could not fetch live groups:', err);
+      setGroups([]);
     } finally {
       setLoadingGroups(false);
     }
-  }, [t]);
+  }, []);
 
   // Fetch Users from UserService
   const fetchUsers = useCallback(async () => {
@@ -189,12 +175,12 @@ export const EnrolLearningPathModal: React.FC<EnrolLearningPathModalProps> = ({
             name,
             email: u.email && u.email !== '-' ? u.email : u.username || NOT_ENROLLED,
             role,
-            alreadyEnrolled: idx === 0 ? ENROLLED_MARKER : NOT_ENROLLED,
+            alreadyEnrolled: NOT_ENROLLED,
           };
         });
         setUsers(mapped);
       } else {
-        setUsers(FALLBACK_USERS);
+        setUsers([]);
       }
     } catch (err) {
       console.warn('Could not fetch live users, using fallback:', err);
@@ -259,6 +245,7 @@ export const EnrolLearningPathModal: React.FC<EnrolLearningPathModalProps> = ({
   const currentSearch = isGroupsTab ? groupSearch : userSearch;
 
   const formatEnrolled = (value: string) => {
+    if (!value || value === NOT_ENROLLED) return NOT_ENROLLED;
     if (value === ENROLLED_MARKER) return t('ENROL_LEARNING_PATH.ENROLLED');
     if (value === N_USERS_MARKER) return t('ENROL_LEARNING_PATH.N_USERS');
     return value;

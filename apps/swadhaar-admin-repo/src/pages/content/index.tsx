@@ -12,6 +12,7 @@ import {
   TextField,
   InputAdornment,
   Alert,
+  Snackbar,
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -29,14 +30,17 @@ import LifecycleChip from '@/components/common/LifecycleChip';
 import CommonButton from '@/components/common/CommonButton';
 import CommonSelect from '@/components/common/CommonSelect';
 import PageHeader from '@/components/common/PageHeader';
+import CommonDialog from '@/components/common/CommonDialog';
 import { BRAND, NEUTRAL } from '@/styles/customTheme';
 import {
   searchContentLibrary,
   fetchContentTabCounts,
+  retireContent,
   ContentItem,
   ContentTabType,
   ContentTabCounts,
 } from '@/services/ContentLibraryService';
+import { getCourseList } from '@/services/CourseService';
 
 type AssessmentSubTab = 'assessments' | 'questions' | 'results';
 
@@ -84,8 +88,11 @@ const LOAD_ERROR_KEY = 'CONTENT.LIBRARY.LOAD_ERROR';
 const isContentTab = (value: unknown): value is ContentTabType =>
   value === 'videos' || value === 'pdfs' || value === 'assessments';
 
-const getEditHref = (tab: ContentTabType, id: string) =>
-  tab === 'videos' ? `/content/create-video?id=${id}` : `/content/create-pdf?id=${id}`;
+const getEditHref = (tab: ContentTabType, id: string, usedIn?: string) => {
+  const query = new URLSearchParams({ id });
+  if (usedIn) query.set('usedIn', usedIn);
+  return tab === 'videos' ? `/content/create-video?${query.toString()}` : `/content/create-pdf?${query.toString()}`;
+};
 
 const actionIconSx = {
   color: NEUTRAL.muted,
@@ -175,6 +182,24 @@ export default function ContentLibraryPage() {
   // Preview Modal state (Native in-app viewer, no external player/workspace MFE)
   const [previewContent, setPreviewContent] = useState<PreviewContentData | null>(null);
 
+  // Delete confirmation & action states
+  const [itemToDelete, setItemToDelete] = useState<ContentItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [feedback, setFeedback] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info',
+  });
+
+  // Dynamic Course Filter Options
+  const [courseOptions, setCourseOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: 'all', label: 'All Courses' },
+  ]);
+
   // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -242,18 +267,52 @@ export default function ContentLibraryPage() {
     router.replace({ pathname: '/content', query: { tab: newValue } }, undefined, { shallow: true });
   };
 
-  const handleDeleteItem = (id: string) => {
-    setContentList((prev) => prev.filter((item) => item.identifier !== id));
-  };
-
   const isVideoTab = activeTab === 'videos';
-  const courseLabel = (n: number) => t('CONTENT.LIBRARY.COURSE_N', { n });
 
-  const courseOptions = [
-    { value: 'all', label: t('CONTENT.LIBRARY.ALL_COURSES') },
-    { value: 'course 0', label: courseLabel(0) },
-    { value: 'course 1', label: courseLabel(1) },
-  ];
+  // Load actual courses for the filter
+  useEffect(() => {
+    getCourseList({ limit: 50 })
+      .then((res) => {
+        if (Array.isArray(res?.courses) && res.courses.length > 0) {
+          const opts = res.courses.map((c) => ({
+            value: c.name || c.id,
+            label: c.name || 'Untitled Course',
+          }));
+          setCourseOptions([
+            { value: 'all', label: t('CONTENT.LIBRARY.ALL_COURSES') || 'All Courses' },
+            ...opts,
+          ]);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load courses for filter:', err);
+      });
+  }, [t]);
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await retireContent(itemToDelete.identifier);
+      setContentList((prev) => prev.filter((item) => item.identifier !== itemToDelete.identifier));
+      setFeedback({
+        open: true,
+        message: 'Content deleted successfully.',
+        severity: 'success',
+      });
+      setItemToDelete(null);
+      fetchContentTabCounts().then(setTabCounts);
+    } catch (err: any) {
+      console.error('Failed to retire content:', err);
+      setFeedback({
+        open: true,
+        message: err?.response?.data?.message || err?.message || 'Failed to delete content.',
+        severity: 'error',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const languageOptions = [
     { value: 'all', label: t('CONTENT.LIBRARY.ALL_LANGUAGES') },
@@ -291,7 +350,7 @@ export default function ContentLibraryPage() {
             >
               {isVideoTab ? t('CONTENT.LIBRARY.BADGE_VIDEO') : 'PDF'}
             </Box>
-            <Link href={getEditHref(activeTab, row.identifier)} style={{ textDecoration: 'none' }}>
+            <Link href={getEditHref(activeTab, row.identifier, row.usedIn)} style={{ textDecoration: 'none' }}>
               <Typography sx={{ ...nameLinkSx, lineHeight: 1.35 }}>{row.name}</Typography>
             </Link>
           </Box>
@@ -324,11 +383,21 @@ export default function ContentLibraryPage() {
         label: t('CONTENT.LIBRARY.COL_USED_IN'),
         labelKey: 'CONTENT.LIBRARY.COL_USED_IN',
         minWidth: 140,
-        render: (row) => (
-          <Typography variant="body2" sx={cellTextSx}>
-            {row.usedIn || `${courseLabel(0)} · 0.1`}
-          </Typography>
-        ),
+        render: (row) => {
+          const isUsed = Boolean(row.usedIn && row.usedIn !== 'Not used in any course yet');
+          return (
+            <Typography
+              variant="body2"
+              sx={{
+                ...cellTextSx,
+                color: isUsed ? NEUTRAL.ink : NEUTRAL.muted,
+                fontWeight: isUsed ? 500 : 400,
+              }}
+            >
+              {row.usedIn || 'Not used in any course yet'}
+            </Typography>
+          );
+        },
       },
       {
         id: 'language',
@@ -382,14 +451,14 @@ export default function ContentLibraryPage() {
             <Tooltip title={t('CONTENT.LIBRARY.EDIT_CONTENT')}>
               <IconButton
                 size="small"
-                onClick={() => router.push(getEditHref(activeTab, row.identifier))}
+                onClick={() => router.push(getEditHref(activeTab, row.identifier, row.usedIn))}
                 sx={actionIconSx}
               >
                 <EditOutlinedIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
             <Tooltip title={t('COMMON.DELETE')}>
-              <IconButton size="small" onClick={() => handleDeleteItem(row.identifier)} sx={deleteIconSx}>
+              <IconButton size="small" onClick={() => setItemToDelete(row)} sx={deleteIconSx}>
                 <DeleteOutlineIcon sx={{ fontSize: 16 }} />
               </IconButton>
             </Tooltip>
@@ -732,6 +801,8 @@ export default function ContentLibraryPage() {
         data={contentList}
         keyExtractor={(item) => item.identifier}
         loading={loading}
+        error={error ? t(error) : null}
+        onRetry={fetchContent}
         hideToolbar={true}
         emptyMessage={t(tabMeta.emptyKey)}
         page={page}
@@ -759,6 +830,39 @@ export default function ContentLibraryPage() {
         onClose={() => setPreviewContent(null)}
         content={previewContent}
       />
+
+      {/* Confirm Retire / Delete Content Dialog */}
+      <CommonDialog
+        open={Boolean(itemToDelete)}
+        onClose={() => setItemToDelete(null)}
+        title="Delete Content"
+        subtitle={`Are you sure you want to delete "${itemToDelete?.name}"?`}
+        confirmLabel={deleteLoading ? 'Deleting...' : 'Delete Content'}
+        confirmVariant="error"
+        confirmDisabled={deleteLoading}
+        loading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+      >
+        <Typography sx={{ fontSize: '13.5px', color: '#4B5563' }}>
+          This will archive/retire this content item from the Swadhaar repository.
+        </Typography>
+      </CommonDialog>
+
+      {/* Snackbar Feedback */}
+      <Snackbar
+        open={feedback.open}
+        autoHideDuration={4000}
+        onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setFeedback((prev) => ({ ...prev, open: false }))}
+          severity={feedback.severity}
+          sx={{ width: '100%', borderRadius: '8px' }}
+        >
+          {feedback.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

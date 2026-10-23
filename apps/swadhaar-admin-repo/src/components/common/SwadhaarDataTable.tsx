@@ -16,10 +16,12 @@ import {
   Typography,
   Skeleton,
   TableSortLabel,
+  Button,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 export interface ColumnDef<T> {
   id: string;
@@ -45,6 +47,8 @@ export interface SwadhaarDataTableProps<T> {
   onSelectionChange?: (selectedIds: string[]) => void;
   actionsToolbar?: React.ReactNode;
   emptyMessage?: string;
+  error?: string | null;
+  onRetry?: () => void;
   // Pagination
   page?: number;
   rowsPerPage?: number;
@@ -68,6 +72,8 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
   onSelectionChange,
   actionsToolbar,
   emptyMessage = 'No records found',
+  error = null,
+  onRetry,
   page: controlledPage,
   rowsPerPage: controlledRowsPerPage,
   totalCount,
@@ -315,6 +321,35 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
                   ))}
                 </TableRow>
               ))
+            ) : error ? (
+              <TableRow>
+                <TableCell colSpan={columns.length + (selectable ? 1 : 0)} align="center" sx={{ py: 6 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                    <ErrorOutlineIcon sx={{ fontSize: 44, color: '#DC2626' }} />
+                    <Typography variant="body1" sx={{ color: '#1F2937', fontWeight: 600 }}>
+                      {error}
+                    </Typography>
+                    {onRetry && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={onRetry}
+                        sx={{
+                          borderColor: '#E6873C',
+                          color: '#E6873C',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          mt: 0.5,
+                          '&:hover': { borderColor: '#C66C23', backgroundColor: '#FDF3E9' },
+                        }}
+                      >
+                        Retry
+                      </Button>
+                    )}
+                  </Box>
+                </TableCell>
+              </TableRow>
             ) : displayData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length + (selectable ? 1 : 0)} align="center" sx={{ py: 6 }}>

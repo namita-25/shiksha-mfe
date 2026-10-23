@@ -26,6 +26,7 @@ import nextI18NextConfig from '../../../next-i18next.config.js';
 import { createUserAccount, CreateUserPayload } from '@/services/UserService';
 import TenantService from '@/services/TenantService';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
+import { buildCreateUserPayload } from '@/utils/userPayloadBuilder';
 import CommonButton from '@/components/common/CommonButton';
 import PageHeader from '@/components/common/PageHeader';
 import { BRAND, NEUTRAL } from '@/styles/customTheme';
@@ -124,36 +125,6 @@ const getValidationError = (fields: RowFields, seen: SeenKeys, t: TFunction): st
   if (!fields.program) return missing('PROGRAM');
   if (!fields.role) return missing('ROLE');
   return '';
-};
-
-const buildCreateUserPayload = (fields: RowFields, tenantId: string): CreateUserPayload => {
-  const { fullName, phone, email, gender, state } = fields;
-  const nameParts = fullName.split(/\s+/);
-  const firstName = nameParts[0] || '';
-  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || '';
-
-  return {
-    name: fullName,
-    username: phone || email,
-    password: 'Password@123',
-    firstName: firstName,
-    lastName: lastName,
-    gender: gender ? gender.toLowerCase() : 'male',
-    email: email,
-    mobile: phone,
-    tenantCohortRoleMapping: [
-      {
-        tenantId: tenantId,
-        roleId: '57bc16f8-f446-4e5d-b595-c908a229e776',
-      },
-    ],
-    customFields: [
-      {
-        fieldId: '800265b1-9058-482a-94f4-726197e1dfe4',
-        value: [String(state || '4')],
-      },
-    ],
-  };
 };
 
 /** Creates the user account; returns a failure reason, or null on success. */

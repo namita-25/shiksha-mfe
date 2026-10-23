@@ -157,18 +157,18 @@ const StartScreen: React.FC<{
           {/* Description shown prominently at top; name shown as orange label below */}
           {description ? (
             <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: 16, color: '#1F2937', lineHeight: 1.4 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#1F2937', lineHeight: 1.4, fontFamily: 'Open Sans, sans-serif' }}>
                 {name}
               </Typography>
-              <Typography sx={{ fontSize: 12, color: '#1F2937', fontWeight: 500, mt: 0.5 }}>
+              <Typography sx={{ fontSize: 14, color: '#374151', fontWeight: 400, mt: 0.5, lineHeight: 1.6, fontFamily: 'Open Sans, sans-serif' }}>
                 {stripHtml(description)}
               </Typography>
             </Box>
           ) : (
             <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: 16, color: '#1F2937' }}>{name}</Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#1F2937', fontFamily: 'Open Sans, sans-serif' }}>{name}</Typography>
               {!isSubjectiveSet && (
-                <Typography sx={{ fontSize: 12, color: PRIMARY, fontWeight: 700, mt: 0.5 }}>Quiz</Typography>
+                <Typography sx={{ fontSize: 12, color: PRIMARY, fontWeight: 700, mt: 0.5, fontFamily: 'Open Sans, sans-serif' }}>Quiz</Typography>
               )}
             </Box>
           )}
@@ -177,12 +177,12 @@ const StartScreen: React.FC<{
           {(sectionName || sectionDescription) && (
             <Box sx={{ mt: 1, pt: 1.5, borderTop: '1px solid #F3F4F6' }}>
               {sectionName && (
-                <Typography sx={{ fontWeight: 800, fontSize: 14, color: '#1F2937', mb: 0.5 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#1F2937', mb: 0.5, fontFamily: 'Open Sans, sans-serif' }}>
                   {sectionName}
                 </Typography>
               )}
               {sectionDescription && (
-                <Typography sx={{ fontSize: 12, color: '#4B5563', fontWeight: 500, lineHeight: 1.5 }}>
+                <Typography sx={{ fontSize: 14, color: '#4B5563', fontWeight: 400, lineHeight: 1.6, fontFamily: 'Open Sans, sans-serif' }}>
                   {stripHtml(sectionDescription)}
                 </Typography>
               )}
@@ -295,7 +295,17 @@ const QuestionScreen: React.FC<{
   isLast: boolean;
 }> = ({ question, qIndex, total, answer, reviewMode, onAnswer, onNext, isLast }) => {
   const opts = question.options || [];
-  const questionText = question.editorState?.question || question.body || question.name || `Question ${qIndex + 1}`;
+  let rawQText = question.editorState?.question || question.body || question.name || `Question ${qIndex + 1}`;
+  const cleanPlainText = (text: string) => (text || '').replace(/<[^>]+>/g, '').trim();
+  const rawClean = cleanPlainText(rawQText);
+  if ((rawClean === '.' || rawClean === '-' || rawClean === '·' || !rawClean) && question.name) {
+    const nameClean = cleanPlainText(question.name);
+    if (nameClean && nameClean !== '.' && nameClean !== '-' && nameClean !== '·') {
+      rawQText = question.name;
+    }
+  }
+  const showQuestionHeading = Boolean(cleanPlainText(rawQText) && cleanPlainText(rawQText) !== '.' && cleanPlainText(rawQText) !== '-' && cleanPlainText(rawQText) !== '·');
+  const questionText = rawQText;
   const subjective = isSubjective(question);
   // Model answer for SA: prefer editorState.solutions array, fallback to question.answer
   const modelAnswer = question.editorState?.solutions?.[0] || (question as any).answer || '';
@@ -358,32 +368,80 @@ const QuestionScreen: React.FC<{
         </Box> */}
 
         {!subjective && (
-          <Typography sx={{ fontSize: 11, color: PRIMARY, fontWeight: 700, mb: 0.5 }}>Quiz</Typography>
+          <Typography sx={{ fontSize: 11, color: PRIMARY, fontWeight: 700, mb: 0.5, fontFamily: 'Open Sans, sans-serif' }}>Quiz</Typography>
         )}
-        <Box
-          sx={{ fontWeight: 800, fontSize: 15, color: '#1F2937', mb: 3, lineHeight: 1.4, '& img': { maxWidth: '100%', height: 'auto', mt: 1, borderRadius: '8px' } }}
-          dangerouslySetInnerHTML={{ __html: fixRichText(questionText) }}
-        />
+        {showQuestionHeading && (
+          <Box
+            sx={{
+              fontWeight: 700,
+              fontSize: 16,
+              color: '#1F2937',
+              mb: 2,
+              lineHeight: 1.5,
+              fontFamily: 'Open Sans, sans-serif',
+              '& h1, & h2, & h3, & h4, & h5, & h6, & p, & div': {
+                fontSize: '16px !important',
+                fontWeight: '700 !important',
+                color: '#1F2937 !important',
+                fontFamily: 'Open Sans, sans-serif !important',
+                lineHeight: '1.5 !important',
+                margin: '0 0 10px 0 !important',
+              },
+              '& span, & strong, & b': {
+                fontSize: '16px !important',
+                fontWeight: '700 !important',
+                color: 'inherit !important',
+                fontFamily: 'Open Sans, sans-serif !important',
+              },
+              '& img': { maxWidth: '100%', height: 'auto', mt: 1, borderRadius: '8px' }
+            }}
+            dangerouslySetInnerHTML={{ __html: fixRichText(questionText) }}
+          />
+        )}
 
         {subjective ? (
           /* ── SA: Read-only FAQ card — question + pre-filled answer ── */
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Answer box — always shown, not editable */}
             <Box sx={{
-              p: 2, borderRadius: '12px',
-              // border: `1.5px solid ${SUCCESS_GREEN}`,
-              // bgcolor: 'rgba(76,175,80,0.04)',
+              p: 0,
+              borderRadius: '12px',
             }}>
               <Box
                 sx={{
                   fontSize: 14,
-                  color: '#1F2937',
+                  color: '#374151',
                   lineHeight: 1.7,
-                  '& p': { m: 0, mb: 1, '&:last-child': { mb: 0 } },
-                  '& ol, & ul': { m: 0, pl: 2, mb: 1 },
-                  '& li': { mb: 0.5 },
+                  fontFamily: 'Open Sans, sans-serif',
+                  '& p, & div': {
+                    m: 0,
+                    mb: 1.25,
+                    fontSize: '14px !important',
+                    lineHeight: '1.7 !important',
+                    fontFamily: 'Open Sans, sans-serif !important',
+                    color: '#374151 !important',
+                    '&:last-child': { mb: 0 },
+                  },
+                  '& ol, & ul': { m: 0, pl: 2.5, mb: 1.25 },
+                  '& li': {
+                    mb: 0.75,
+                    fontSize: '14px !important',
+                    lineHeight: '1.7 !important',
+                    fontFamily: 'Open Sans, sans-serif !important',
+                    color: '#374151 !important',
+                  },
+                  '& span': {
+                    fontSize: '14px !important',
+                    fontFamily: 'Open Sans, sans-serif !important',
+                    backgroundColor: 'transparent !important',
+                  },
+                  '& strong, & b': {
+                    fontWeight: '700 !important',
+                  },
+                  '& em, & i': {
+                    fontStyle: 'italic',
+                  },
                   '& img': { maxWidth: '100%', height: 'auto', mt: 1, borderRadius: '8px' },
-                  '& span': { backgroundColor: 'transparent !important' }
                 }}
               >
                 {modelAnswer ? (

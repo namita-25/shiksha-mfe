@@ -1,6 +1,7 @@
 import { API_ENDPOINTS } from "./EndUrls";
 import { post, get, put } from "./RestClient";
 import { filterCoursesByLanguage, extractCourseLanguages } from "@learner/utils/courseLanguageUtils";
+import { normalizeCourseHierarchy } from "@learner/utils/courseHierarchyNormalizer";
 
 /**
  * Service for Swadhaar specific API calls and data processing.
@@ -136,7 +137,8 @@ export const getCourseHierarchy = async (courseId: string): Promise<any> => {
   const apiUrl = API_ENDPOINTS.courseHierarchy(courseId);
   try {
     const response = await get(apiUrl);
-    return response?.data?.result?.content;
+    const content = response?.data?.result?.content;
+    return normalizeCourseHierarchy(content);
   } catch (error) {
     console.error(`Error fetching hierarchy for course ${courseId}:`, error);
     throw error;

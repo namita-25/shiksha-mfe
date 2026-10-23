@@ -159,12 +159,12 @@ export default function LessonViewerPage() {
 
           const moduleHierarchy = await getCourseHierarchy(moduleId);
           const subtopics = moduleHierarchy?.children || [];
-          const currentSubtopic = subtopics.find((s: any) => s.identifier === subtopicId) || await getCourseHierarchy(subtopicId);
+          const currentSubtopic = subtopics.find((s: any) => s.identifier === subtopicId || s._aliasIdentifiers?.includes(subtopicId)) || await getCourseHierarchy(subtopicId);
           setSubtopicName(prev => prev === currentSubtopic?.name ? prev : (currentSubtopic?.name || 'Lesson Detail'));
           setSubtopicDescription(prev => prev === currentSubtopic?.description ? prev : (currentSubtopic?.description || ''));
 
           setAllLessons(flatLessons);
-          const activeLesson = flatLessons.find((l: any) => l.identifier === lessonId)
+          const activeLesson = flatLessons.find((l: any) => l.identifier === lessonId || l._aliasIdentifiers?.includes(lessonId))
             || (flatLessons.length > 0 ? flatLessons[0] : (currentSubtopic && !currentSubtopic.children ? currentSubtopic : null));
 
           setCurrentLesson((prev: any) => prev?.identifier === activeLesson?.identifier ? prev : activeLesson);
@@ -391,7 +391,8 @@ export default function LessonViewerPage() {
               const subtopicLessons = allLessons.filter(l => l.parentSubtopicId === subtopicId);
               const isFirstLesson = subtopicLessons[0]?.identifier === currentLesson.identifier;
               
-              if (!isFirstLesson || !subtopicDescription || subtopicDescription === '-') {
+              const trimmedDesc = (subtopicDescription || '').trim();
+              if (!isFirstLesson || !trimmedDesc || trimmedDesc === '-' || trimmedDesc === '.' || trimmedDesc === '·') {
                 return null;
               }
 
@@ -412,7 +413,7 @@ export default function LessonViewerPage() {
                   </Box>
                   <Box sx={{ bgcolor: '#fff', pt: 2, pb: 1, px: 2 }}>
                     <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A' }}>
-                      {subtopicDescription}
+                      {trimmedDesc}
                     </Typography>
                   </Box>
                 </Box>
@@ -425,13 +426,16 @@ export default function LessonViewerPage() {
                 (() => {
                   return (
                     <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
-                      {allowFullscreen && (
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', bgcolor: '#1C2B4A', px: 1, py: 0.5 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.75 }}>
+                        <Typography sx={{ color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'Open Sans', lineHeight: 1.3, flex: 1 }}>
+                          {currentLesson.name}
+                        </Typography>
+                        {allowFullscreen && (
                           <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
                             {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
                           </IconButton>
-                        </Box>
-                      )}
+                        )}
+                      </Box>
                       <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <SwadhaarContentPlayer
                           key={currentLesson.identifier} identifier={currentLesson.identifier} courseId={courseId} unitId={subtopicId} mimeType={currentLesson.mimeType} contentType={currentLesson.contentType}

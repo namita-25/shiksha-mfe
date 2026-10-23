@@ -19,7 +19,13 @@ export const TextCardBlob: React.FC<TextCardBlobProps> = ({ name, body, subheadi
   }, []);
 
   useEffect(() => {
-    const htmlContent = body || description || '';
+    const rawContent = body || description || '';
+    // Strip solitary dots or hyphens from content (e.g. "<p>.</p>" or ".")
+    const htmlContent = rawContent
+      .replace(/^\s*<p[^>]*>\s*(\.|\-|·)\s*<\/p>/i, '')
+      .replace(/^\s*(\.|\-|·)\s*(<br\s*\/?>)?/i, '')
+      .trim();
+
     if (typeof window !== 'undefined' && htmlContent) {
       try {
         const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
@@ -48,6 +54,9 @@ export const TextCardBlob: React.FC<TextCardBlobProps> = ({ name, body, subheadi
     }
   }, [body, description]);
 
+  const cleanName = (name || '').trim();
+  const showName = cleanName && cleanName !== '.' && cleanName !== '-' && cleanName !== '·';
+
   return (
     <Box
       sx={{
@@ -59,12 +68,14 @@ export const TextCardBlob: React.FC<TextCardBlobProps> = ({ name, body, subheadi
       }}
     >
       {/* Body */}
-      <Box sx={{ p: 2 }}>
-        <Typography sx={{ fontWeight: 800, fontSize: 16, color: '#1C2B4A', mb: subheading ? 0.5 : 1, fontFamily: 'Inter, sans-serif', lineHeight: 1.4 }}>
-          {name}
-        </Typography>
+      <Box sx={{ p: 2.5 }}>
+        {showName && (
+          <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#1C2B4A', mb: subheading ? 0.5 : 1.5, fontFamily: 'Open Sans, sans-serif', lineHeight: 1.4 }}>
+            {cleanName}
+          </Typography>
+        )}
         {subheading && (
-          <Typography sx={{ fontSize: 12, color: '#E6873C', fontWeight: 700, mb: 1.5, fontFamily: 'Inter, sans-serif' }}>
+          <Typography sx={{ fontSize: 12, color: '#E6873C', fontWeight: 700, mb: 1.5, fontFamily: 'Open Sans, sans-serif' }}>
             {subheading}
           </Typography>
         )}
@@ -74,9 +85,18 @@ export const TextCardBlob: React.FC<TextCardBlobProps> = ({ name, body, subheadi
               fontSize: 14,
               color: '#374151',
               lineHeight: 1.7,
-              fontFamily: 'Inter, sans-serif',
-              '& p': { mb: 1 },
-              '& ul': { pl: 2, mb: 1 },
+              fontFamily: 'Open Sans, sans-serif',
+              '& h1, & h2, & h3, & h4, & h5, & h6': {
+                fontSize: '16px !important',
+                fontWeight: '700 !important',
+                color: '#1C2B4A !important',
+                margin: '0 0 10px 0 !important',
+                lineHeight: '1.4 !important',
+                fontFamily: 'Open Sans, sans-serif !important',
+              },
+              '& p': { mb: 1.5 },
+              '& ul': { pl: 2.5, mb: 1.5 },
+              '& li': { mb: 0.75 },
               '& strong': { fontWeight: 700 },
             }}
             dangerouslySetInnerHTML={{ __html: processedHtml }}

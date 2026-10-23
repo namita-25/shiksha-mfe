@@ -379,7 +379,6 @@ export const SwadhaarContentPlayer: React.FC<SwadhaarContentPlayerProps> = ({
           mode={isReviewMode ? 'review' : 'play'}
           instructions={questionsetInstructions}
           questionsetDescription={questionsetDescription}
-          sectionName={sectionName}
           sectionDescription={sectionDescription}
           initiallyPassed={alreadyPassed}
           onStart={() => {

@@ -268,7 +268,7 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
   // Sync active lesson when lessonId or allLessons change
   useEffect(() => {
     if (allLessons.length > 0) {
-      const active = allLessons.find((l) => l.identifier === lessonId) ||
+      const active = allLessons.find((l) => l.identifier === lessonId || l._aliasIdentifiers?.includes(lessonId)) ||
         allLessons.find((l) => l.parentSubtopicId === lessonId) ||
         allLessons.find((l) => l.parentModuleId === lessonId) ||
         allLessons[0];
@@ -307,7 +307,16 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
       if (cache.has(id)) return cache.get(id)!;
       let perc = 0;
       if (!node.children || node.children.length === 0) {
-        const s = map.get(id);
+        let s = map.get(id);
+        if (!s && node._aliasIdentifiers) {
+          for (const aid of node._aliasIdentifiers) {
+            const aliasStatus = map.get(aid);
+            if (aliasStatus) {
+              s = aliasStatus;
+              break;
+            }
+          }
+        }
         perc = s?.completionPercentage ?? (s?.status === 2 ? 100 : 0);
       } else {
         const childPercs = node.children.map((c: any) => walk(c));
@@ -320,14 +329,24 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
     return cache;
   }, [courseHierarchy, statusData, buildStatusMap]);
 
-  const getStatusInfo = (id: string) => {
-    const perc = completionCache.get(id) ?? 0;
-    return { state: perc >= 70 ? 'done' : perc > 0 ? 'progress' : 'todo', percentage: perc };
+  const getStatusInfo = (id: string, aliasIds?: string[]) => {
+    let perc = completionCache.get(id);
+    if ((perc === undefined || perc === 0) && aliasIds) {
+      for (const aid of aliasIds) {
+        const aPerc = completionCache.get(aid);
+        if (aPerc !== undefined && aPerc > 0) {
+          perc = aPerc;
+          break;
+        }
+      }
+    }
+    const finalPerc = perc ?? 0;
+    return { state: finalPerc >= 70 ? 'done' : finalPerc > 0 ? 'progress' : 'todo', percentage: finalPerc };
   };
 
   const currentCompletion = useMemo(() => {
     if (!currentLesson) return 0;
-    return getStatusInfo(currentLesson.identifier).percentage;
+    return getStatusInfo(currentLesson.identifier, currentLesson._aliasIdentifiers).percentage;
   }, [currentLesson, completionCache]);
 
   const hierarchyRef = React.useRef(courseHierarchy);
@@ -372,7 +391,8 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
   // Course-scoped next lesson — used by the completion modal's Continue button
   // (may cross module boundaries: subtopic → next subtopic → next module)
   const nextLessonInCourse = useMemo(() => {
-    const idx = allLessons.findIndex((l) => l.identifier === (currentLesson?.identifier || lessonId));
+    const curId = currentLesson?.identifier || lessonId;
+    const idx = allLessons.findIndex((l) => l.identifier === curId || l._aliasIdentifiers?.includes(curId));
     return idx !== -1 && idx < allLessons.length - 1 ? allLessons[idx + 1] : null;
   }, [allLessons, currentLesson, lessonId]);
 
@@ -656,7 +676,7 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                   const nodeChildren = node.children || [];
 
                   if (isColNode) {
-                    const isCurrentSub = nodeId === subtopicId || expandedSubtopics.has(nodeId);
+                    const isCurrentSub = nodeId === subtopicId || node._aliasIdentifiers?.includes(subtopicId) || expandedSubtopics.has(nodeId);
                     const subExpanded = expandedSubtopics.has(nodeId);
                     const subPerc = Math.round(completionCache.get(nodeId) ?? 0);
                     const subDone = subPerc >= 70;
@@ -703,14 +723,9 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                                 )}
                               </Box>
                             </Box>
-                            <Typography sx={{ fontFamily: 'Inter', fontSize: '10px', color: '#999999', fontWeight: 400, mb: (node.description && subExpanded) ? 0.3 : 0 }}>
+                            <Typography sx={{ fontFamily: 'Inter', fontSize: '10px', color: '#999999', fontWeight: 400 }}>
                               Completed {doneCount}/{displayChildren.length} {unitLabel}
                             </Typography>
-                            {(node.description && subExpanded) && (
-                              <Typography sx={{ fontFamily: 'Inter', fontSize: '10px', fontWeight: 400, color: '#999999' }}>
-                                {node.description}
-                              </Typography>
-                            )}
                           </Box>
                           <Collapse in={subExpanded && !isLocked}>
                             <Box sx={{ bgcolor: '#F9FAFB', pt: 1, pb: 1 }}>
@@ -725,15 +740,19 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                   }
 
                   // Playable Leaf Lesson item
-                  const isCurrent = nodeId === (currentLesson?.identifier || lessonId);
-                  const lInfo = getStatusInfo(nodeId);
+                  const isCurrent = nodeId === (currentLesson?.identifier || lessonId) ||
+                    currentLesson?._aliasIdentifiers?.includes(nodeId) ||
+                    node._aliasIdentifiers?.includes(lessonId);
+                  const lInfo = getStatusInfo(nodeId, node._aliasIdentifiers);
                   const lDone = lInfo.state === 'done';
                   const isStarted = lInfo.percentage > 0 || isCurrent;
 
                   const isLessonLocked = idx > 0 && (() => {
                     const prevLesson = siblings[idx - 1];
                     const prevId = prevLesson.identifier || prevLesson.id;
-                    return (completionCache.get(prevId) ?? 0) < 70;
+                    const prevPerc = completionCache.get(prevId) ??
+                      (prevLesson._aliasIdentifiers?.map((aid: string) => completionCache.get(aid)).find((p: number | undefined) => p !== undefined) ?? 0);
+                    return prevPerc < 70;
                   })();
 
                   let borderColor = '#E5E7EB';
@@ -797,36 +816,95 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <Box sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
                 {currentLesson && (() => {
-                  const currentSubtopic = (currentModule?.children || []).find((s: any) => s.identifier === subtopicId);
-                  const subtopicLessons = allLessons.filter(l => l.parentSubtopicId === subtopicId);
-                  const isFirstLesson = subtopicLessons[0]?.identifier === currentLesson.identifier;
-                  
-                  const subtopicDescription = currentSubtopic?.description;
-                  const showDescriptionBox = isFirstLesson && subtopicDescription && subtopicDescription !== '-';
-                  const subtopicNameDisplay = currentSubtopic?.name || 'Description';
+                  const isMeaningful = (text?: string): boolean => {
+                    if (!text) return false;
+                    const trimmed = text.trim();
+                    return trimmed.length > 0 && trimmed !== '.' && trimmed !== '-' && trimmed !== '·';
+                  };
 
-                  const isTextOrQuiz = currentLesson?.mimeType === 'application/vnd.ekstep.html-archive' || currentLesson?.mimeType?.startsWith('text/') || currentLesson?.contentType === 'html' || currentLesson?.mimeType === 'application/vnd.sunbird.questionset' || currentLesson?.contentType === 'questionset';
+                  // Find ancestral path from currentModule down to currentLesson
+                  const path: any[] = [];
+                  const findPath = (curr: any): boolean => {
+                    path.push(curr);
+                    const currId = curr.identifier || curr.id;
+                    const lessonIdToMatch = currentLesson.identifier || currentLesson.id;
+                    if (currId === lessonIdToMatch || currentLesson._aliasIdentifiers?.includes(currId)) {
+                      return true;
+                    }
+                    if (curr.children && curr.children.length > 0) {
+                      for (const child of curr.children) {
+                        if (findPath(child)) return true;
+                      }
+                    }
+                    path.pop();
+                    return false;
+                  };
+
+                  if (currentModule) {
+                    findPath(currentModule);
+                  }
+
+                  // Find the nearest enclosing subtopic ancestor with a meaningful description
+                  let activeOverview: { title: string; description: string } | null = null;
+                  for (let i = path.length - 2; i >= 0; i--) {
+                    const ancestor = path[i];
+                    if (isMeaningful(ancestor.description)) {
+                      const getFirstLeafId = (n: any): string | null => {
+                        if (!n.children || n.children.length === 0) return n.identifier || n.id;
+                        return getFirstLeafId(n.children[0]);
+                      };
+                      const firstId = getFirstLeafId(ancestor);
+                      const isFirst =
+                        (currentLesson.identifier || currentLesson.id) === firstId ||
+                        currentLesson._aliasIdentifiers?.includes(firstId);
+
+                      if (isFirst) {
+                        activeOverview = {
+                          title: ancestor.name || 'Overview',
+                          description: ancestor.description.trim(),
+                        };
+                        break;
+                      }
+                    }
+                  }
+
+                  const isTextOrQuiz =
+                    currentLesson?.mimeType === 'application/vnd.ekstep.html-archive' ||
+                    currentLesson?.mimeType?.startsWith('text/') ||
+                    currentLesson?.contentType === 'html' ||
+                    currentLesson?.mimeType === 'application/vnd.sunbird.questionset' ||
+                    currentLesson?.contentType === 'questionset';
+
+                  // If this is a video lesson with introductory text (e.g. merged lesson 1 & 2), show intro above video
+                  let videoIntroText: string | null = null;
+                  if (!isTextOrQuiz && isMeaningful(currentLesson?.description)) {
+                    const trimmed = currentLesson.description.trim();
+                    if (!activeOverview || activeOverview.description !== trimmed) {
+                      videoIntroText = trimmed;
+                    }
+                  }
 
                   return (
                     <>
-                      {showDescriptionBox && (
-                        <Box sx={{ borderRadius: '12px', overflow: 'hidden', mb: 2.5, border: '1px solid #E5E7EB' }}>
-                          <Box sx={{ bgcolor: DARK_NAV, px: 2, py: 1 }}>
-                            <Typography sx={{ color: '#fff', fontSize: '11px', fontWeight: 600, fontFamily: 'Inter', textTransform: 'uppercase' }}>
-                              {subtopicNameDisplay}
+                      {activeOverview && (
+                        <Box sx={{ borderRadius: '12px', overflow: 'hidden', mb: 2.5, border: '1px solid #E5E7EB', bgcolor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                          <Box sx={{ bgcolor: DARK_NAV, px: 2.5, py: 1.25 }}>
+                            <Typography sx={{ color: '#fff', fontSize: '12px', fontWeight: 700, fontFamily: 'Open Sans', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              {activeOverview.title}
                             </Typography>
                           </Box>
-                          <Box sx={{ bgcolor: '#fff', p: 2.5 }}>
-                            <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '13px', color: '#1A1A1A' }}>
-                              {subtopicDescription}
+                          <Box sx={{ p: 2.5 }}>
+                            <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '14px', color: '#1F2937', lineHeight: 1.6 }}>
+                              {activeOverview.description}
                             </Typography>
                           </Box>
                         </Box>
                       )}
-                      <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 1.5, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2, py: 0.5, minHeight: '36px' }}>
-                          <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans' }}>
-                            {!isTextOrQuiz ? currentLesson.name : ""}
+
+                      <Box ref={playerRef} sx={{ borderRadius: isFullscreen ? 0 : '12px', overflow: 'hidden', mb: 2, border: isFullscreen ? 'none' : '1px solid #E5E7EB', background: '#fff', height: isFullscreen ? '100dvh' : 'auto', display: isFullscreen ? 'flex' : 'block', flexDirection: 'column', boxShadow: isFullscreen ? 'none' : '0 1px 4px rgba(0,0,0,0.04)' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#1C2B4A', px: 2.5, py: 1, minHeight: '40px' }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'Open Sans', lineHeight: 1.4 }}>
+                            {currentLesson.name}
                           </Typography>
                           {allowFullscreen && (
                             <IconButton onClick={toggleFullscreen} sx={{ color: '#fff', p: 0.5 }}>
@@ -834,6 +912,15 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                             </IconButton>
                           )}
                         </Box>
+
+                        {videoIntroText && !isFullscreen && (
+                          <Box sx={{ px: 2.5, py: 2, bgcolor: '#FEF9F4', borderBottom: '1px solid #FDE6D2' }}>
+                            <Typography sx={{ fontFamily: 'Open Sans', fontWeight: 400, fontSize: '14px', color: '#1F2937', lineHeight: 1.6 }}>
+                              {videoIntroText}
+                            </Typography>
+                          </Box>
+                        )}
+
                         <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                           <SwadhaarContentPlayer
                             key={currentLesson.identifier}
@@ -856,7 +943,6 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
                           />
                         </Box>
                       </Box>
-                      <Typography sx={{ fontSize: 11, color: '#9CA3AF', mb: 3, px: 0.5, display: isFullscreen ? 'none' : 'block' }}>{currentLesson.name} — {currentLesson.topic || currentLesson.contentType || 'topic'}</Typography>
                     </>
                   );
                 })()}
@@ -864,7 +950,7 @@ const SwadhaarDesktopLessonPlayer: React.FC<SwadhaarDesktopLessonPlayerProps> = 
 
               <Box sx={{ bgcolor: '#fff', borderTop: '1px solid #F3F4F6', px: 4, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, flexShrink: 0 }}>
                 <Button variant="outlined" onClick={() => prevLesson ? goTo(prevLesson) : router.push('/swadhaar-home')} sx={{ borderColor: PRIMARY, color: PRIMARY, borderRadius: '10px', fontWeight: 600, textTransform: 'none', fontSize: 15, px: 3, minWidth: 110, fontFamily: 'Open sans' }}>{t('LEARNER_APP.LEARN.PREVIOUS')}</Button>
-                <Typography sx={{ fontFamily: 'Open sans', fontWeight: 600, fontSize: 11, color: "#11A1A", px: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 200, textAlign: 'center' }}>{currentLesson?.name || ''}</Typography>
+                <Typography sx={{ fontFamily: 'Open sans', fontWeight: 600, fontSize: 13, color: "#1A1A1A", px: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 280, textAlign: 'center' }}>{currentLesson?.name || ''}</Typography>
                 <Button
                   variant="contained"
                   disabled={currentCompletion < 70}

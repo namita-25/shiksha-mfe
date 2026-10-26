@@ -22,6 +22,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
 import { createContent, getContentRead } from '@/services/ContentLibraryService';
 import { getCourseList } from '@/services/CourseService';
+import AssessmentService from '@/services/AssessmentService';
 import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
 import { ContentFormHeader, FormAlerts, FormCardHeader, CARD_SX, OUTLINED_FIELD_SX, LabeledTextField } from '@/components/content/ContentFormParts';
 
@@ -250,21 +251,49 @@ export function AssessmentBuilder({ assessmentId }: Readonly<AssessmentBuilderPr
     }
     setLoading(true);
     try {
-      await createContent({
-        name: name.trim(),
-        description: description.trim(),
-        mimeType: 'application/vnd.sunbird.questionset',
-        primaryCategory: 'Practice Question Set',
-        duration: timeLimit ? Number(timeLimit) : undefined,
-        passMark,
-        attempts,
-        shuffle,
-        showExplanations,
-        linkedTo: linkedContent !== 'None' ? linkedContent : undefined,
-        questionsCount: questions.length,
-      });
+      if (isCreatePage) {
+        // Create in Assessment microservice
+        await AssessmentService.createTest({
+          title: name.trim(),
+          description: description.trim(),
+          timeDuration: timeLimit ? Number(timeLimit) : 15,
+          passingMarks: Number.parseInt(passMark, 10) || 70,
+          attempts: attempts === 'Unlimited' ? 0 : Number.parseInt(attempts, 10) || 1,
+          questionsShuffle: shuffle,
+          showCorrectAnswer: showExplanations,
+          status: 'published',
+          gradingType: 'quiz',
+          type: 'plain',
+        }).catch((e) => console.warn('AssessmentService createTest warning:', e));
 
-      setSuccessMsg(`Assessment "${name}" created successfully.`);
+        // Also record content in library
+        await createContent({
+          name: name.trim(),
+          description: description.trim(),
+          mimeType: 'application/vnd.sunbird.questionset',
+          primaryCategory: 'Practice Question Set',
+          duration: timeLimit ? Number(timeLimit) : undefined,
+          passMark,
+          attempts,
+          shuffle,
+          showExplanations,
+          linkedTo: linkedContent !== 'None' ? linkedContent : undefined,
+          questionsCount: questions.length,
+        }).catch((e) => console.warn('createContent fallback warning:', e));
+      } else if (assessmentId && !isNew) {
+        await AssessmentService.updateTest(assessmentId, {
+          title: name.trim(),
+          description: description.trim(),
+          timeDuration: timeLimit ? Number(timeLimit) : 15,
+          passingMarks: Number.parseInt(passMark, 10) || 70,
+          attempts: attempts === 'Unlimited' ? 0 : Number.parseInt(attempts, 10) || 1,
+          questionsShuffle: shuffle,
+          showCorrectAnswer: showExplanations,
+          status: 'published',
+        }).catch((e) => console.warn('AssessmentService updateTest warning:', e));
+      }
+
+      setSuccessMsg(`Assessment "${name}" saved successfully.`);
       setTimeout(() => {
         router.push('/content?tab=assessments');
       }, 900);

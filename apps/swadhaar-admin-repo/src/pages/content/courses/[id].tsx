@@ -168,7 +168,7 @@ export default function CourseDetailsPage() {
           : data.audience || 'Field trainers and learners'
       );
 
-      // In Aspire LMS, course children are the modules, and module children are lessons
+      // In LMS, course children are the modules, and module children are lessons
       setSections(data.children || []);
     } catch (err) {
       console.error('Failed to load course hierarchy:', err);

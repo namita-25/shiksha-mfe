@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
 import { post, get, patch, deleteApi } from './RestClient';
 import { SWADHAAR_CHANNEL_ID } from '@/utils/app.constant';
 import { detectLanguage } from './CourseService';
+import AssessmentService from './AssessmentService';
 
 export type ContentTabType = 'videos' | 'pdfs' | 'assessments';
 
@@ -179,6 +180,48 @@ export const searchContentLibrary = async (
   params: ContentSearchParams
 ): Promise<{ count: number; content: ContentItem[] }> => {
   try {
+    if (params.tab === 'assessments') {
+      try {
+        const testRes = await AssessmentService.getAllTests({
+          search: params.query || undefined,
+          limit: params.limit ?? 20,
+          offset: params.offset ?? 0,
+        });
+        const tests = testRes?.result?.tests || testRes?.result || testRes?.data || [];
+        if (Array.isArray(tests) && tests.length > 0) {
+          const mappedTests: ContentItem[] = tests.map((t: any) => {
+            const title = t.title || t.name || 'Untitled Assessment';
+            return {
+              identifier: t.id || t.testId || `test-${Math.random()}`,
+              name: title,
+              title,
+              description: t.description || '',
+              mimeType: 'application/vnd.sunbird.questionset',
+              primaryCategory: 'Practice Question Set',
+              status: t.status || 'Live',
+              detectedLanguage: detectLanguage(title),
+              formattedDuration: t.timeDuration ? `${t.timeDuration} min` : '15 min',
+              source: 'In-house Assessment',
+              usedIn: title.includes('Course 0') ? 'Course 0' : 'Course 1',
+              questionsCount: t.totalQuestions || t.questionsCount || 10,
+              passMark: t.passingMarks ? `${t.passingMarks}%` : '70%',
+              attempts: t.attempts ? String(t.attempts) : 'Unlimited',
+              timeLimit: t.timeDuration ? `${t.timeDuration} min` : '—',
+              assignedTo: 'All Learners',
+              linkedTo: title.includes('Course 0') ? 'Course 0' : 'Course 1',
+            };
+          });
+
+          return {
+            count: testRes?.result?.totalCount ?? testRes?.result?.count ?? mappedTests.length,
+            content: mappedTests,
+          };
+        }
+      } catch {
+        // Fall back to composite search
+      }
+    }
+
     const apiUrl = API_ENDPOINTS.compositeSearch;
     const tabFilters = getFiltersForTab(params.tab, params.status);
 

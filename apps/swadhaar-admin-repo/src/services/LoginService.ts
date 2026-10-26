@@ -1,7 +1,6 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
 import { post, get } from './RestClient';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
-import axios from 'axios';
 
 interface LoginParams {
   username: string;
@@ -111,10 +110,8 @@ export const verifyOTP = async ({
 export const getUserAuth = async (token: string): Promise<any> => {
   const apiUrl = API_ENDPOINTS.userAuth;
   try {
-    const response = await axios.get(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await get(apiUrl, {
+      Authorization: `Bearer ${token}`,
     });
     return response?.data;
   } catch (error) {
@@ -192,10 +189,8 @@ export const getUserId = async (): Promise<any> => {
     if (!token) {
       throw new Error('Authorization token not found');
     }
-    const response = await axios.get(apiUrl, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+    const response = await get(apiUrl, {
+      Authorization: `Bearer ${token}`,
     });
     return response?.data?.result;
   } catch (error) {

@@ -57,9 +57,7 @@ export interface CohortSearchResponse {
     };
   };
 }
-import { getAspireHeaders } from '@/utils/API/aspireHeaders';
-
-
+import { getServiceHeaders } from '@/utils/API/aspireHeaders';
 
 export const getCohortSearch = async (
   payload: CohortSearchParams,
@@ -67,7 +65,7 @@ export const getCohortSearch = async (
 ): Promise<CohortSearchResponse> => {
   try {
     const apiUrl = API_ENDPOINTS.cohortSearch;
-    const headers = getAspireHeaders(customHeaders);
+    const headers = getServiceHeaders(customHeaders);
     const response = await post(apiUrl, payload, headers);
     return response?.data;
   } catch (error) {
@@ -100,7 +98,7 @@ export const getCohortMemberListApplication = async (
 ): Promise<any> => {
   try {
     const apiUrl = API_ENDPOINTS.cohortMemberListApplication;
-    const headers = getAspireHeaders(customHeaders);
+    const headers = getServiceHeaders(customHeaders);
     const response = await post(apiUrl, payload, headers);
     return response?.data;
   } catch (error) {

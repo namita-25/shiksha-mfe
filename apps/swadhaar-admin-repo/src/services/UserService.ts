@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
 import { get, post, patch } from './RestClient';
-import { getAspireHeaders } from '@/utils/API/aspireHeaders';
+import { getServiceHeaders } from '@/utils/API/aspireHeaders';
 
 export const getUserDetailsInfo = async (
   userId: string,
@@ -8,7 +8,7 @@ export const getUserDetailsInfo = async (
 ): Promise<any> => {
   try {
     const apiUrl = API_ENDPOINTS.userRead(userId, true);
-    const headers = getAspireHeaders(customHeaders);
+    const headers = getServiceHeaders(customHeaders);
     const response = await get(apiUrl, headers);
     return response?.data;
   } catch (error) {
@@ -23,7 +23,7 @@ export const getUserList = async (
 ): Promise<any> => {
   try {
     const apiUrl = API_ENDPOINTS.userList;
-    const headers = getAspireHeaders(customHeaders);
+    const headers = getServiceHeaders(customHeaders);
     const response = await post(apiUrl, payload, headers);
     return response?.data;
   } catch (error) {

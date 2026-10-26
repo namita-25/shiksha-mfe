@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { get } from './RestClient';
-import { getAspireHeaders } from '@/utils/API/aspireHeaders';
+import { get, post } from './RestClient';
+import { getServiceHeaders } from '@/utils/API/aspireHeaders';
 
 export interface CourseItem {
   courseId: string;
@@ -217,7 +217,7 @@ export const getCourseList = async (
     }
 
     const apiUrl = API_ENDPOINTS.lmsCoursesSearch(queryParams.toString());
-    const headers = getAspireHeaders();
+    const headers = getServiceHeaders();
 
     const response = await get(apiUrl, headers);
     const result = response?.data?.result || {};
@@ -321,7 +321,7 @@ export const getModuleList = async (
     }
 
     const apiUrl = API_ENDPOINTS.lmsModulesSearch(queryParams.toString());
-    const headers = getAspireHeaders();
+    const headers = getServiceHeaders();
     const response = await get(apiUrl, headers);
     const result = response?.data?.result || {};
     return {
@@ -350,7 +350,7 @@ export const getCourseHierarchy = async (courseId: string): Promise<CourseHierar
     }
 
     const apiUrl = API_ENDPOINTS.lmsCourseHierarchy(effectiveCourseId);
-    const headers = getAspireHeaders();
+    const headers = getServiceHeaders();
     const response = await get(apiUrl, headers);
     const result = response?.data?.result;
 
@@ -414,3 +414,62 @@ export const getCourseHierarchy = async (courseId: string): Promise<CourseHierar
     throw error;
   }
 };
+
+/**
+ * Enroll a user into a course
+ * POST /enrollments?userId={userId}
+ */
+export const enrollUser = async (
+  payload: { courseId: string; learnerId: string; status?: string },
+  customHeaders?: Record<string, string>
+): Promise<any> => {
+  try {
+    const url = API_ENDPOINTS.lmsEnrollments(payload.learnerId);
+    const headers = getServiceHeaders(customHeaders);
+    const response = await post(url, payload, headers);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in CourseService.enrollUser:', error);
+    throw error;
+  }
+};
+
+/**
+ * Start or resume a lesson attempt
+ * POST /tracking/lesson/attempt/:lessonId?userId={userId}
+ */
+export const startResumeLessonAttempt = async (
+  lessonId: string,
+  userId: string,
+  payload: { courseId: string; moduleId: string },
+  customHeaders?: Record<string, string>
+): Promise<any> => {
+  try {
+    const url = API_ENDPOINTS.lmsLessonAttempt(lessonId, userId);
+    const headers = getServiceHeaders(customHeaders);
+    const response = await post(url, payload, headers);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in CourseService.startResumeLessonAttempt:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch LMS service config
+ * GET /config
+ */
+export const getLmsConfig = async (
+  customHeaders?: Record<string, string>
+): Promise<any> => {
+  try {
+    const url = API_ENDPOINTS.lmsConfig;
+    const headers = getServiceHeaders(customHeaders);
+    const response = await get(url, headers);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in CourseService.getLmsConfig:', error);
+    throw error;
+  }
+};
+

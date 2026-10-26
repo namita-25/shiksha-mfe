@@ -9,7 +9,7 @@ export const SWADHAAR_FIELD_IDS = {
 } as const;
 
 export const DEFAULT_ROLE_ID_MAP: Record<string, string> = {
-  // Swadhaar / Aspire Company & System Roles
+  // Swadhaar Company & System Roles
   student: '57bc16f8-f446-4e5d-b595-c908a229e776',
   learner: '57bc16f8-f446-4e5d-b595-c908a229e776',
   trainer: 'a5f1dbc9-2ad4-442c-b762-0e3fc1f6c6da',

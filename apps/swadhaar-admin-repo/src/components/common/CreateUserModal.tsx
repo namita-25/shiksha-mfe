@@ -49,6 +49,7 @@ interface FormState {
 const GENDER_NOT_SELECTED = 'Select';
 const STATE_FIELD_ID = '800265b1-9058-482a-94f4-726197e1dfe4';
 const PHONE_REGEX = /^\d{10}$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 const GENDER_OPTIONS: { value: string; labelKey: string }[] = [
   { value: GENDER_NOT_SELECTED, labelKey: 'COMMON.SELECT' },
@@ -121,18 +122,26 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   // Fetch states on mount / modal open
   useEffect(() => {
     if (open) {
-      MasterDataService.getStates().then((res) => {
-        setStates(res);
-      });
+      MasterDataService.getStates()
+        .then((res) => {
+          setStates(res);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch states:', err);
+        });
     }
   }, [open]);
 
   // Fetch districts when state changes
   useEffect(() => {
     if (formData.state) {
-      MasterDataService.getDistricts(formData.state).then((res) => {
-        setDistricts(res);
-      });
+      MasterDataService.getDistricts(formData.state)
+        .then((res) => {
+          setDistricts(res);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch districts:', err);
+        });
     } else {
       setDistricts([]);
       setBranches([]);
@@ -142,9 +151,13 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   // Fetch branches (blocks) when district changes
   useEffect(() => {
     if (formData.district) {
-      MasterDataService.getBlocks(formData.district).then((res) => {
-        setBranches(res);
-      });
+      MasterDataService.getBlocks(formData.district)
+        .then((res) => {
+          setBranches(res);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch branches:', err);
+        });
     } else {
       setBranches([]);
     }
@@ -374,7 +387,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     } else if (
       email &&
       email !== '-' &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      !EMAIL_REGEX.test(email)
     ) {
       newErrors.email = 'USERS.FORM.ERROR_EMAIL_INVALID';
     }

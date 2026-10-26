@@ -4,5 +4,15 @@
   "sourceRoot": "apps/swadhaar-admin-repo",
   "projectType": "application",
   "tags": ["tenant:swadhaar", "type:admin"],
-  "targets": {}
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/swadhaar-admin-repo",
+        "command": "next build"
+      },
+      "dependsOn": [],
+      "outputs": ["{workspaceRoot}/apps/swadhaar-admin-repo/.next"]
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import {
@@ -78,7 +78,7 @@ export default function CreateAssessmentPage() {
     getCourseList({ limit: 50 })
       .then((res) => {
         if (Array.isArray(res?.courses) && res.courses.length > 0) {
-          const names = res.courses.map((c) => c.name).filter(Boolean);
+          const names = res?.courses.map((c) => c.name).filter(Boolean);
           setLinkedOptions(['None', ...names]);
         }
       })

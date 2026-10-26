@@ -2,6 +2,7 @@
 import nextI18nextConfig from './next-i18next.config.js';
 
 const nextConfig = {
+  output: 'standalone',
   typescript: {
     ignoreBuildErrors: true,
   },

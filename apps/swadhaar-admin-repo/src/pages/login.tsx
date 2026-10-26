@@ -214,7 +214,7 @@ export default function LoginPage() {
    * 1. /user/verify-otp with mobile, reason, otp, hash
    * 2. /user/auth with Bearer token
    * 3. /user/read/{userId}?fieldvalue=true
-   * 4. Persist session and redirect to /dashboard
+   * 4. Persist session and redirect to /users
    */
   const handleSignIn = async () => {
     const otpStr = otp.join('');
@@ -301,7 +301,7 @@ export default function LoginPage() {
       document.cookie = `token=${token}; path=/; max-age=86400; SameSite=Lax`;
 
       showToastMessage(t('LOGIN_PAGE.LOGIN_SUCCESS'), 'success');
-      const returnUrl = (router.query.returnUrl as string) || '/dashboard';
+      const returnUrl = (router.query.returnUrl as string) || '/users';
       router.push(returnUrl);
     } catch (err: unknown) {
       console.error('Sign in error:', err);

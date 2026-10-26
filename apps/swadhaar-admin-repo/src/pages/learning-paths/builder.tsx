@@ -41,6 +41,78 @@ interface SequenceItem {
   courseId?: string;
 }
 
+const FALLBACK_SEQUENCE: SequenceItem[] = [
+  {
+    id: 'seq-0',
+    stepNumber: 1,
+    label: 'Course 0 + assessment',
+    title: 'Introduction to Swadhaar FinAccess & Its Digital Platform',
+    unlockCondition: 'Open from start',
+  },
+  {
+    id: 'seq-1',
+    stepNumber: 2,
+    label: 'Course 1 + assessment',
+    title: 'Introduction to Saving',
+    unlockCondition: 'Unlocks after previous',
+  },
+  {
+    id: 'seq-2',
+    stepNumber: 3,
+    label: 'Course 2 + assessment',
+    title: 'Financial Products and Schemes',
+    unlockCondition: 'Unlocks after previous',
+  },
+  {
+    id: 'seq-3',
+    stepNumber: 4,
+    label: 'Course 3 + assessment',
+    title: 'Digital banking',
+    unlockCondition: 'Unlocks after previous',
+  },
+];
+
+const BUILDER_CARD_SX = {
+  backgroundColor: '#FFFFFF',
+  border: '1px solid #D6D3CC',
+  borderRadius: '10px',
+  overflow: 'hidden',
+};
+
+const BUILDER_CARD_HEADER_SX = {
+  px: 2.5,
+  py: 1.8,
+  borderBottom: '1px solid #ECEAE5',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#FAF9F6',
+};
+
+const DateField: React.FC<{ label: string; value: string; onChange: (value: string) => void }> = ({
+  label,
+  value,
+  onChange,
+}) => (
+  <Box>
+    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C', mb: 0.6 }}>{label}</Typography>
+    <TextField
+      fullWidth
+      size="small"
+      type="date"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      sx={{
+        '& .MuiOutlinedInput-root': {
+          borderRadius: '6px',
+          '&:hover fieldset': { borderColor: '#E6873C' },
+          '&.Mui-focused fieldset': { borderColor: '#E6873C' },
+        },
+      }}
+    />
+  </Box>
+);
+
 const DEFAULT_PATH_TITLE = 'Financial Inclusion Training Programme';
 
 export default function LearningPathBuilderPage() {
@@ -104,69 +176,11 @@ export default function LearningPathBuilderPage() {
         setSequence(items);
       } else {
         // Fallback sequence matching Prototype Image 2
-        setSequence([
-          {
-            id: 'seq-0',
-            stepNumber: 1,
-            label: 'Course 0 + assessment',
-            title: 'Introduction to Swadhaar FinAccess & Its Digital Platform',
-            unlockCondition: 'Open from start',
-          },
-          {
-            id: 'seq-1',
-            stepNumber: 2,
-            label: 'Course 1 + assessment',
-            title: 'Introduction to Saving',
-            unlockCondition: 'Unlocks after previous',
-          },
-          {
-            id: 'seq-2',
-            stepNumber: 3,
-            label: 'Course 2 + assessment',
-            title: 'Financial Products and Schemes',
-            unlockCondition: 'Unlocks after previous',
-          },
-          {
-            id: 'seq-3',
-            stepNumber: 4,
-            label: 'Course 3 + assessment',
-            title: 'Digital banking',
-            unlockCondition: 'Unlocks after previous',
-          },
-        ]);
+        setSequence(FALLBACK_SEQUENCE);
       }
     } catch (err) {
       console.warn('Could not load courses from Sunbird, using fallback:', err);
-      setSequence([
-        {
-          id: 'seq-0',
-          stepNumber: 1,
-          label: 'Course 0 + assessment',
-          title: 'Introduction to Swadhaar FinAccess & Its Digital Platform',
-          unlockCondition: 'Open from start',
-        },
-        {
-          id: 'seq-1',
-          stepNumber: 2,
-          label: 'Course 1 + assessment',
-          title: 'Introduction to Saving',
-          unlockCondition: 'Unlocks after previous',
-        },
-        {
-          id: 'seq-2',
-          stepNumber: 3,
-          label: 'Course 2 + assessment',
-          title: 'Financial Products and Schemes',
-          unlockCondition: 'Unlocks after previous',
-        },
-        {
-          id: 'seq-3',
-          stepNumber: 4,
-          label: 'Course 3 + assessment',
-          title: 'Digital banking',
-          unlockCondition: 'Unlocks after previous',
-        },
-      ]);
+      setSequence(FALLBACK_SEQUENCE);
     } finally {
       setLoading(false);
     }
@@ -563,104 +577,24 @@ export default function LearningPathBuilderPage() {
         <Grid item xs={12} md={4}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
             {/* Card 1: Dates */}
-            <Paper
-              elevation={0}
-              sx={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  px: 2.5,
-                  py: 1.8,
-                  borderBottom: '1px solid #ECEAE5',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  backgroundColor: '#FAF9F6',
-                }}
-              >
+            <Paper elevation={0} sx={BUILDER_CARD_SX}>
+              <Box sx={BUILDER_CARD_HEADER_SX}>
                 <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
                   Dates
                 </Typography>
               </Box>
 
               <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box>
-                  <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C', mb: 0.6 }}>
-                    Start date
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        '&:hover fieldset': { borderColor: '#E6873C' },
-                        '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                      },
-                    }}
-                  />
-                </Box>
+                <DateField label="Start date" value={startDate} onChange={setStartDate} />
 
-                <Box>
-                  <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C', mb: 0.6 }}>
-                    End date
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        '&:hover fieldset': { borderColor: '#E6873C' },
-                        '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                      },
-                    }}
-                  />
-                </Box>
+                <DateField label="End date" value={endDate} onChange={setEndDate} />
 
-                <Box>
-                  <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C', mb: 0.6 }}>
-                    Completion deadline
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="date"
-                    value={deadline}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        '&:hover fieldset': { borderColor: '#E6873C' },
-                        '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                      },
-                    }}
-                  />
-                </Box>
+                <DateField label="Completion deadline" value={deadline} onChange={setDeadline} />
               </Box>
             </Paper>
 
             {/* Card 2: Certificate */}
-            <Paper
-              elevation={0}
-              sx={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                overflow: 'hidden',
-              }}
-            >
+            <Paper elevation={0} sx={BUILDER_CARD_SX}>
               <Box
                 sx={{
                   px: 2.5,
@@ -716,26 +650,8 @@ export default function LearningPathBuilderPage() {
             </Paper>
 
             {/* Card 3: Enrolled */}
-            <Paper
-              elevation={0}
-              sx={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                overflow: 'hidden',
-              }}
-            >
-              <Box
-                sx={{
-                  px: 2.5,
-                  py: 1.8,
-                  borderBottom: '1px solid #ECEAE5',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  backgroundColor: '#FAF9F6',
-                }}
-              >
+            <Paper elevation={0} sx={BUILDER_CARD_SX}>
+              <Box sx={BUILDER_CARD_HEADER_SX}>
                 <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
                   Enrolled
                 </Typography>

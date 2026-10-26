@@ -159,8 +159,8 @@ export const parseCourseDuration = (item: any): string => {
   return '—';
 };
 
-const PUBLISHED_STATUSES = ['published', 'Live', 'live'];
-const DRAFT_STATUSES = ['draft', 'Draft', 'unpublished'];
+const PUBLISHED_STATUSES = new Set(['published', 'Live', 'live']);
+const DRAFT_STATUSES = new Set(['draft', 'Draft', 'unpublished']);
 
 const resolveExplicitStatus = (status: string): string | undefined => {
   if (status === 'published' || status === 'unpublished' || status === 'archived') return status;
@@ -170,8 +170,8 @@ const resolveExplicitStatus = (status: string): string | undefined => {
 
 const resolveFilterStatus = (status: string | string[]): string | undefined => {
   const statuses = Array.isArray(status) ? status : [status];
-  const hasPublished = statuses.some((st) => PUBLISHED_STATUSES.includes(st));
-  const hasDraft = statuses.some((st) => DRAFT_STATUSES.includes(st));
+  const hasPublished = statuses.some((st) => PUBLISHED_STATUSES.has(st));
+  const hasDraft = statuses.some((st) => DRAFT_STATUSES.has(st));
   if (hasPublished) return hasDraft ? undefined : 'published';
   return hasDraft ? 'unpublished' : undefined;
 };

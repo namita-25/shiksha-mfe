@@ -150,6 +150,94 @@ const toEditInitialData = (userId: string, parsedUser: typeof EMPTY_PARSED_USER)
   status: parsedUser.status,
 });
 
+const DARK_CONFIRM_COLORS = { backgroundColor: '#18181B', hover: '#27272A' };
+const DANGER_CONFIRM_COLORS = { backgroundColor: '#9F1239', hover: '#881337' };
+
+const DialogText: React.FC<{ mb: number; children: React.ReactNode }> = ({ mb, children }) => (
+  <Typography sx={{ fontSize: '14px', color: '#4B5563', lineHeight: 1.5, mb }}>{children}</Typography>
+);
+
+interface UserActionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  titleMb?: number;
+  confirmLabel: string;
+  confirmColors: { backgroundColor: string; hover: string };
+  onConfirm: () => void;
+  children: React.ReactNode;
+}
+
+/** Confirmation dialog used for the block / unblock / delete user actions. */
+const UserActionDialog: React.FC<UserActionDialogProps> = ({
+  open,
+  onClose,
+  title,
+  titleMb = 2,
+  confirmLabel,
+  confirmColors,
+  onConfirm,
+  children,
+}) => (
+  <Dialog
+    open={open}
+    onClose={onClose}
+    PaperProps={{
+      sx: {
+        width: '100%',
+        maxWidth: '520px',
+        borderRadius: '16px',
+        p: 3,
+        backgroundColor: '#FFFFFF',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+      },
+    }}
+  >
+    <Typography variant="h6" sx={{ fontSize: '18px', fontWeight: 700, color: '#111827', mb: titleMb }}>
+      {title}
+    </Typography>
+    {children}
+    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+      <Button
+        variant="outlined"
+        onClick={onClose}
+        sx={{
+          textTransform: 'none',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: 500,
+          color: '#374151',
+          borderColor: '#D1D5DB',
+          backgroundColor: '#FFFFFF',
+          px: 2.2,
+          py: 0.8,
+          '&:hover': { backgroundColor: '#F9FAFB', borderColor: '#9CA3AF' },
+        }}
+      >
+        Cancel
+      </Button>
+      <Button
+        variant="contained"
+        onClick={onConfirm}
+        sx={{
+          textTransform: 'none',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: 600,
+          backgroundColor: confirmColors.backgroundColor,
+          color: '#FFFFFF',
+          px: 2.4,
+          py: 0.8,
+          boxShadow: 'none',
+          '&:hover': { backgroundColor: confirmColors.hover, boxShadow: 'none' },
+        }}
+      >
+        {confirmLabel}
+      </Button>
+    </Box>
+  </Dialog>
+);
+
 export default function UserDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -220,6 +308,31 @@ export default function UserDetailsPage() {
     if (Array.isArray(userData.reviewCohorts)) return userData.reviewCohorts;
     return [];
   }, [userData]);
+
+  const handleStatusChange = async (status: 'blocked' | 'active', verb: 'block' | 'unblock') => {
+    try {
+      await updateUserStatus(userId, status);
+      setUserData((prev: any) => ({ ...prev, status }));
+      setFeedback({ open: true, message: `${parsedUser.fullName} has been ${verb}ed.`, severity: 'success' });
+      fetchUserDetails();
+    } catch (e) {
+      console.error(`Failed to ${verb} user:`, e);
+      setFeedback({ open: true, message: `Failed to ${verb} user. Please try again.`, severity: 'error' });
+    }
+    setDialogType(null);
+  };
+
+  const handleDeleteUser = async () => {
+    try {
+      await deleteUserAccount(userId);
+      setFeedback({ open: true, message: `${parsedUser.fullName} has been deleted.`, severity: 'success' });
+      router.push('/users');
+    } catch (e) {
+      console.error('Failed to delete user:', e);
+      setFeedback({ open: true, message: 'Failed to delete user. Please try again.', severity: 'error' });
+    }
+    setDialogType(null);
+  };
 
   if (loading) {
     return (
@@ -889,269 +1002,45 @@ export default function UserDetailsPage() {
         </Grid>
       </Grid>
 
-      {/* ============================================================ */}
-      {/* Block User Dialog (Image 2)                                  */}
-      {/* ============================================================ */}
-      <Dialog
+      <UserActionDialog
         open={dialogType === 'block'}
         onClose={() => setDialogType(null)}
-        PaperProps={{
-          sx: {
-            width: '100%',
-            maxWidth: '520px',
-            borderRadius: '16px',
-            p: 3,
-            backgroundColor: '#FFFFFF',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-          },
-        }}
+        title={`Block ${parsedUser.fullName}?`}
+        confirmLabel="Block user"
+        confirmColors={DARK_CONFIRM_COLORS}
+        onConfirm={() => handleStatusChange('blocked', 'block')}
       >
-        <Typography
-          variant="h6"
-          sx={{
-            fontSize: '18px',
-            fontWeight: 700,
-            color: '#111827',
-            mb: 2,
-          }}
-        >
-          Block {parsedUser.fullName}?
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: '14px',
-            color: '#4B5563',
-            lineHeight: 1.5,
-            mb: 2,
-          }}
-        >
+        <DialogText mb={2}>
           Their platform access is revoked immediately. The account and its data are not deleted, and
           you can unblock at any time.
-        </Typography>
+        </DialogText>
+        <DialogText mb={3}>They will see a message when they try to log in.</DialogText>
+      </UserActionDialog>
 
-        <Typography
-          sx={{
-            fontSize: '14px',
-            color: '#4B5563',
-            lineHeight: 1.5,
-            mb: 3,
-          }}
-        >
-          They will see a message when they try to log in.
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            onClick={() => setDialogType(null)}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#374151',
-              borderColor: '#D1D5DB',
-              backgroundColor: '#FFFFFF',
-              px: 2.2,
-              py: 0.8,
-              '&:hover': {
-                backgroundColor: '#F9FAFB',
-                borderColor: '#9CA3AF',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              try {
-                await updateUserStatus(userId, 'blocked');
-                setUserData((prev: any) => ({ ...prev, status: 'blocked' }));
-                setFeedback({
-                  open: true,
-                  message: `${parsedUser.fullName} has been blocked.`,
-                  severity: 'success',
-                });
-                fetchUserDetails();
-              } catch (e) {
-                console.error('Failed to block user:', e);
-                setFeedback({
-                  open: true,
-                  message: 'Failed to block user. Please try again.',
-                  severity: 'error',
-                });
-              }
-              setDialogType(null);
-            }}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backgroundColor: '#18181B',
-              color: '#FFFFFF',
-              px: 2.4,
-              py: 0.8,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: '#27272A',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Block user
-          </Button>
-        </Box>
-      </Dialog>
-
-      {/* ============================================================ */}
-      {/* Unblock User Dialog (Image 4)                                */}
-      {/* ============================================================ */}
-      <Dialog
+      <UserActionDialog
         open={dialogType === 'unblock'}
         onClose={() => setDialogType(null)}
-        PaperProps={{
-          sx: {
-            width: '100%',
-            maxWidth: '520px',
-            borderRadius: '16px',
-            p: 3,
-            backgroundColor: '#FFFFFF',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-          },
-        }}
+        title={`Unblock ${parsedUser.fullName}?`}
+        confirmLabel="Unblock user"
+        confirmColors={DARK_CONFIRM_COLORS}
+        onConfirm={() => handleStatusChange('active', 'unblock')}
       >
-        <Typography
-          variant="h6"
-          sx={{
-            fontSize: '18px',
-            fontWeight: 700,
-            color: '#111827',
-            mb: 2,
-          }}
-        >
-          Unblock {parsedUser.fullName}?
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: '14px',
-            color: '#4B5563',
-            lineHeight: 1.5,
-            mb: 3,
-          }}
-        >
+        <DialogText mb={3}>
           Their platform access is restored immediately with their existing roles, groups and progress.
-        </Typography>
+        </DialogText>
+      </UserActionDialog>
 
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            onClick={() => setDialogType(null)}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#374151',
-              borderColor: '#D1D5DB',
-              backgroundColor: '#FFFFFF',
-              px: 2.2,
-              py: 0.8,
-              '&:hover': {
-                backgroundColor: '#F9FAFB',
-                borderColor: '#9CA3AF',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              try {
-                await updateUserStatus(userId, 'active');
-                setUserData((prev: any) => ({ ...prev, status: 'active' }));
-                setFeedback({
-                  open: true,
-                  message: `${parsedUser.fullName} has been unblocked.`,
-                  severity: 'success',
-                });
-                fetchUserDetails();
-              } catch (e) {
-                console.error('Failed to unblock user:', e);
-                setFeedback({
-                  open: true,
-                  message: 'Failed to unblock user. Please try again.',
-                  severity: 'error',
-                });
-              }
-              setDialogType(null);
-            }}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backgroundColor: '#18181B',
-              color: '#FFFFFF',
-              px: 2.4,
-              py: 0.8,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: '#27272A',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Unblock user
-          </Button>
-        </Box>
-      </Dialog>
-
-      {/* ============================================================ */}
-      {/* Delete User Dialog (Image 3)                                 */}
-      {/* ============================================================ */}
-      <Dialog
+      <UserActionDialog
         open={dialogType === 'delete'}
         onClose={() => setDialogType(null)}
-        PaperProps={{
-          sx: {
-            width: '100%',
-            maxWidth: '520px',
-            borderRadius: '16px',
-            p: 3,
-            backgroundColor: '#FFFFFF',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-          },
-        }}
+        title={`Delete ${parsedUser.fullName}?`}
+        titleMb={1.5}
+        confirmLabel="Delete user"
+        confirmColors={DANGER_CONFIRM_COLORS}
+        onConfirm={handleDeleteUser}
       >
-        <Typography
-          variant="h6"
-          sx={{
-            fontSize: '18px',
-            fontWeight: 700,
-            color: '#111827',
-            mb: 1.5,
-          }}
-        >
-          Delete {parsedUser.fullName}?
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: '14px',
-            color: '#4B5563',
-            lineHeight: 1.5,
-            mb: 2,
-          }}
-        >
-          The user can no longer log in. Their record is kept for audit.
-        </Typography>
-
-        {/* Shaded gray retention box matching Image 3 */}
+        <DialogText mb={2}>The user can no longer log in. Their record is kept for audit.</DialogText>
+        {/* Shaded gray retention box */}
         <Box
           sx={{
             backgroundColor: '#F4F4F5',
@@ -1162,79 +1051,11 @@ export default function UserDetailsPage() {
             mb: 3,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: '13.5px',
-              color: '#52525B',
-            }}
-          >
+          <Typography sx={{ fontSize: '13.5px', color: '#52525B' }}>
             Retention period and access to retained data
           </Typography>
         </Box>
-
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            onClick={() => setDialogType(null)}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: '#374151',
-              borderColor: '#D1D5DB',
-              backgroundColor: '#FFFFFF',
-              px: 2.2,
-              py: 0.8,
-              '&:hover': {
-                backgroundColor: '#F9FAFB',
-                borderColor: '#9CA3AF',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={async () => {
-              try {
-                await deleteUserAccount(userId);
-                setFeedback({
-                  open: true,
-                  message: `${parsedUser.fullName} has been deleted.`,
-                  severity: 'success',
-                });
-                router.push('/users');
-              } catch (e) {
-                console.error('Failed to delete user:', e);
-                setFeedback({
-                  open: true,
-                  message: 'Failed to delete user. Please try again.',
-                  severity: 'error',
-                });
-              }
-              setDialogType(null);
-            }}
-            sx={{
-              textTransform: 'none',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              backgroundColor: '#9F1239',
-              color: '#FFFFFF',
-              px: 2.4,
-              py: 0.8,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: '#881337',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Delete user
-          </Button>
-        </Box>
-      </Dialog>
+      </UserActionDialog>
 
       {/* Confirmation Dialog for group/review removal */}
       <Dialog

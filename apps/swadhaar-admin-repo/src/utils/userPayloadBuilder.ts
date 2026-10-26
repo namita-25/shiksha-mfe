@@ -77,7 +77,7 @@ const splitFullName = (fullName: string) => {
       nameTrimmed,
       firstName,
       middleName: nameParts.slice(1, -1).join(' '),
-      lastName: nameParts[nameParts.length - 1],
+      lastName: nameParts.at(-1) ?? '',
     };
   }
   return { nameTrimmed, firstName, middleName: '', lastName: firstName };

@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import {
   Box,
   Typography,
-  Button,
   Paper,
   Grid,
-  TextField,
-  FormControl,
-  Select,
-  MenuItem,
   Radio,
-  Alert,
-  Chip,
 } from '@mui/material';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
@@ -28,6 +20,38 @@ import {
 } from '@/services/ContentLibraryService';
 import { detectLanguage } from '@/services/CourseService';
 import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
+import { ContentFormHeader, FormAlerts, FormCardHeader, DescriptionField, LanguageSelect, UsedInCard, CARD_SX, LabeledTextField } from '@/components/content/ContentFormParts';
+
+interface SourceOptionProps {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  subtitle: string;
+}
+
+const SourceOption: React.FC<SourceOptionProps> = ({ selected, onSelect, title, subtitle }) => (
+  <Paper
+    onClick={onSelect}
+    elevation={0}
+    sx={{
+      p: 2,
+      cursor: 'pointer',
+      border: selected ? '2px solid #1F1E1C' : '1px solid #BDB9B1',
+      backgroundColor: selected ? '#FAF9F6' : '#FFFFFF',
+      borderRadius: '8px',
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 1.2,
+      transition: 'all 0.2s',
+    }}
+  >
+    <Radio checked={selected} sx={{ p: 0, '&.Mui-checked': { color: '#1F1E1C' } }} />
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>{title}</Typography>
+      <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>{subtitle}</Typography>
+    </Box>
+  </Paper>
+);
 
 const toLanguageOption = (language: string): 'Hindi' | 'English' => (language === 'Hindi' ? 'Hindi' : 'English');
 
@@ -196,386 +220,77 @@ export default function CreateVideoPage() {
 
   return (
     <Box sx={{ py: 1, maxWidth: 1400, mx: 'auto' }}>
-      {/* Breadcrumb Navigation */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 2, fontSize: '13px', color: '#6B6862' }}>
-        <span>Learning</span>
-        <span>/</span>
-        <Link
-          href="/content"
-          style={{ color: '#6B6862', textDecoration: 'none', transition: 'color 0.2s' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#E6873C')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#6B6862')}
-        >
-          Content library
-        </Link>
-        <span>/</span>
-        <Link
-          href="/content?tab=videos"
-          style={{ color: '#6B6862', textDecoration: 'none', transition: 'color 0.2s' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#E6873C')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#6B6862')}
-        >
-          Videos
-        </Link>
-        <span>/</span>
-        <Typography component="span" sx={{ color: '#1F1E1C', fontWeight: 600, fontSize: '13px' }}>
-          {isEditing ? 'Edit video' : 'Create video'}
-        </Typography>
-      </Box>
+      <ContentFormHeader
+        sectionLabel="Videos"
+        sectionHref="/content?tab=videos"
+        title={isEditing ? 'Edit video' : 'Create video'}
+        saveLabel="Save video"
+        onCancel={() => router.push('/content?tab=videos')}
+        onSaveDraft={() => handleSave(true)}
+        onSave={() => handleSave(false)}
+      />
 
-      {/* Header & Action Bar */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          mb: 3,
-          flexWrap: 'wrap',
-          gap: 2,
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: '#1F1E1C', fontSize: '26px' }}>
-            {isEditing ? 'Edit video' : 'Create video'}
-          </Typography>
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            onClick={() => router.push('/content?tab=videos')}
-            sx={{
-              borderColor: '#D6D3CC',
-              color: '#1F1E1C',
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: '14px',
-              borderRadius: '6px',
-              height: 38,
-              px: 2.2,
-              backgroundColor: '#FFFFFF',
-              '&:hover': {
-                backgroundColor: '#F3F4F6',
-                borderColor: '#BDB9B1',
-              },
-            }}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            variant="outlined"
-            onClick={() => handleSave(true)}
-            sx={{
-              borderColor: '#D6D3CC',
-              color: '#1F1E1C',
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: '14px',
-              borderRadius: '6px',
-              height: 38,
-              px: 2.2,
-              backgroundColor: '#FFFFFF',
-              '&:hover': {
-                backgroundColor: '#FDF3E9',
-                borderColor: '#E6873C',
-                color: '#E6873C',
-              },
-            }}
-          >
-            Save as draft
-          </Button>
-
-          <Button
-            variant="contained"
-            onClick={() => handleSave(false)}
-            sx={{
-              backgroundColor: '#E6873C',
-              color: '#FFFFFF',
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '14px',
-              borderRadius: '6px',
-              height: 38,
-              px: 2.5,
-              boxShadow: 'none',
-              '&:hover': {
-                backgroundColor: '#C66C23',
-                boxShadow: 'none',
-              },
-            }}
-          >
-            Save video
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Notifications */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2.5, borderRadius: '6px' }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-      {successMsg && (
-        <Alert severity="success" sx={{ mb: 2.5, borderRadius: '6px' }} onClose={() => setSuccessMsg(null)}>
-          {successMsg}
-        </Alert>
-      )}
+      <FormAlerts
+        error={error}
+        successMsg={successMsg}
+        onCloseError={() => setError(null)}
+        onCloseSuccess={() => setSuccessMsg(null)}
+      />
 
       {/* Main 2-Column Grid matching Prototype */}
       <Grid container spacing={3}>
         {/* Left Column (8 cols): Video Details + Video Source */}
         <Grid item xs={12} lg={8}>
           {/* Card 1: Video details */}
-          <Paper
-            elevation={0}
-            sx={{
-              border: '1px solid #D6D3CC',
-              borderRadius: '10px',
-              backgroundColor: '#FFFFFF',
-              mb: 3,
-              overflow: 'hidden',
-            }}
-          >
-            <Box sx={{ px: 2.5, py: 1.8, borderBottom: '1px solid #ECEAE5' }}>
-              <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                Video details
-              </Typography>
-            </Box>
+          <Paper elevation={0} sx={{ ...CARD_SX, mb: 3 }}>
+            <FormCardHeader title="Video details" />
 
             <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2.2 }}>
               {/* Title */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Title *
-                </Typography>
-                <TextField
-                  fullWidth
-                  size="small"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Life Cycle Needs | Episode 3 | Budgeting"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '6px',
-                      backgroundColor: '#FFFFFF',
-                      fontSize: '14px',
-                      '& fieldset': { borderColor: '#BDB9B1' },
-                      '&:hover fieldset': { borderColor: '#1F1E1C' },
-                      '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                    },
-                  }}
-                />
-              </Box>
+              <LabeledTextField label="Title *" value={title} onChange={setTitle} placeholder="e.g. Life Cycle Needs | Episode 3 | Budgeting" />
 
-              {/* Description with Toolbar */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Description (optional)
-                </Typography>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    px: 1.5,
-                    py: 0.8,
-                    backgroundColor: '#FAF9F6',
-                    border: '1px solid #BDB9B1',
-                    borderBottom: 'none',
-                    borderRadius: '6px 6px 0 0',
-                    color: '#6B6862',
-                  }}
-                >
-                  <Box component="span" sx={{ fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>B</Box>
-                  <Box component="span" sx={{ fontStyle: 'italic', fontSize: '13px', cursor: 'pointer' }}>I</Box>
-                  <Box component="span" sx={{ textDecoration: 'underline', fontSize: '13px', cursor: 'pointer' }}>U</Box>
-                  <Box sx={{ width: '1px', height: 16, backgroundColor: '#D6D3CC' }} />
-                  <Box component="span" sx={{ fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>• List</Box>
-                  <Box component="span" sx={{ fontSize: '12px', fontWeight: 500, cursor: 'pointer' }}>Link</Box>
-                </Box>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Provide an overview of the video content..."
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '0 0 6px 6px',
-                      backgroundColor: '#FFFFFF',
-                      fontSize: '14px',
-                      '& fieldset': { borderColor: '#BDB9B1' },
-                      '&:hover fieldset': { borderColor: '#1F1E1C' },
-                      '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                    },
-                  }}
-                />
-              </Box>
+              <DescriptionField value={description} onChange={setDescription} placeholder="Provide an overview of the video content..." />
 
               {/* Duration and Language */}
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                    <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                      Duration
-                    </Typography>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      placeholder="e.g. 1:43 or 45 min"
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '6px',
-                          backgroundColor: '#FFFFFF',
-                          fontSize: '14px',
-                          '& fieldset': { borderColor: '#BDB9B1' },
-                          '&:hover fieldset': { borderColor: '#1F1E1C' },
-                          '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                        },
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ color: '#6B6862', fontSize: '12px' }}>
-                      Shown to learners, as in the course document
-                    </Typography>
-                  </Box>
+                  <LabeledTextField label="Duration" value={duration} onChange={setDuration} placeholder="e.g. 1:43 or 45 min" hint="Shown to learners, as in the course document" />
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                    <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                      Language *
-                    </Typography>
-                    <FormControl size="small" fullWidth>
-                      <Select
-                        value={language}
-                        onChange={(e) => setLanguage(e.target.value)}
-                        sx={{
-                          borderRadius: '6px',
-                          backgroundColor: '#FFFFFF',
-                          fontSize: '14px',
-                          '& .MuiOutlinedInput-notchedOutline': { borderColor: '#BDB9B1' },
-                          '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1F1E1C' },
-                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#E6873C' },
-                        }}
-                      >
-                        <MenuItem value="Hindi">Hindi</MenuItem>
-                        <MenuItem value="English">English</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
+                  <LanguageSelect value={language} onChange={setLanguage} />
                 </Grid>
               </Grid>
             </Box>
           </Paper>
 
           {/* Card 2: Video source */}
-          <Paper
-            elevation={0}
-            sx={{
-              border: '1px solid #D6D3CC',
-              borderRadius: '10px',
-              backgroundColor: '#FFFFFF',
-              overflow: 'hidden',
-            }}
-          >
-            <Box sx={{ px: 2.5, py: 1.8, borderBottom: '1px solid #ECEAE5' }}>
-              <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                Video source *
-              </Typography>
-            </Box>
+          <Paper elevation={0} sx={CARD_SX}>
+            <FormCardHeader title="Video source *" />
 
             <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Paper
-                    onClick={() => setSourceType('link')}
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: sourceType === 'link' ? '2px solid #1F1E1C' : '1px solid #BDB9B1',
-                      backgroundColor: sourceType === 'link' ? '#FAF9F6' : '#FFFFFF',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 1.2,
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <Radio
-                      checked={sourceType === 'link'}
-                      sx={{ p: 0, '&.Mui-checked': { color: '#1F1E1C' } }}
-                    />
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>
-                        Video link
-                      </Typography>
-                      <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
-                        YouTube (as in the course document)
-                      </Typography>
-                    </Box>
-                  </Paper>
+                  <SourceOption
+                    selected={sourceType === 'link'}
+                    onSelect={() => setSourceType('link')}
+                    title="Video link"
+                    subtitle="YouTube (as in the course document)"
+                  />
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
-                  <Paper
-                    onClick={() => setSourceType('upload')}
-                    elevation={0}
-                    sx={{
-                      p: 2,
-                      cursor: 'pointer',
-                      border: sourceType === 'upload' ? '2px solid #1F1E1C' : '1px solid #BDB9B1',
-                      backgroundColor: sourceType === 'upload' ? '#FAF9F6' : '#FFFFFF',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 1.2,
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    <Radio
-                      checked={sourceType === 'upload'}
-                      sx={{ p: 0, '&.Mui-checked': { color: '#1F1E1C' } }}
-                    />
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>
-                        Upload file
-                      </Typography>
-                      <Typography sx={{ fontSize: '12px', color: '#6B6862' }}>
-                        MP4, WebM formats
-                      </Typography>
-                    </Box>
-                  </Paper>
+                  <SourceOption
+                    selected={sourceType === 'upload'}
+                    onSelect={() => setSourceType('upload')}
+                    title="Upload file"
+                    subtitle="MP4, WebM formats"
+                  />
                 </Grid>
               </Grid>
 
               {sourceType === 'link' ? (
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
-                  <Typography component="label" sx={{ fontSize: '13px', fontWeight: 600, color: '#1F1E1C' }}>
-                    Video URL *
-                  </Typography>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="https://www.youtube.com/watch?v=..."
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '6px',
-                        backgroundColor: '#FFFFFF',
-                        fontSize: '14px',
-                        '& fieldset': { borderColor: '#BDB9B1' },
-                        '&:hover fieldset': { borderColor: '#1F1E1C' },
-                        '&.Mui-focused fieldset': { borderColor: '#E6873C' },
-                      },
-                    }}
-                  />
-                </Box>
+                <LabeledTextField label="Video URL *" value={videoUrl} onChange={setVideoUrl} placeholder="https://www.youtube.com/watch?v=..." />
               ) : (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                   <Box
@@ -630,20 +345,8 @@ export default function CreateVideoPage() {
         <Grid item xs={12} lg={4}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {/* Card 3: Preview */}
-            <Paper
-              elevation={0}
-              sx={{
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                backgroundColor: '#FFFFFF',
-                overflow: 'hidden',
-              }}
-            >
-              <Box sx={{ px: 2.5, py: 1.8, borderBottom: '1px solid #ECEAE5' }}>
-                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Preview
-                </Typography>
-              </Box>
+            <Paper elevation={0} sx={CARD_SX}>
+              <FormCardHeader title="Preview" />
 
               <Box sx={{ p: 2 }}>
                 {sourceType === 'link' && videoUrl.includes('youtube') ? (
@@ -694,72 +397,11 @@ export default function CreateVideoPage() {
               </Box>
             </Paper>
 
-            {/* Card 4: Used in */}
-            <Paper
-              elevation={0}
-              sx={{
-                border: '1px solid #D6D3CC',
-                borderRadius: '10px',
-                backgroundColor: '#FFFFFF',
-                overflow: 'hidden',
-              }}
-            >
-              <Box sx={{ px: 2.5, py: 1.8, borderBottom: '1px solid #ECEAE5' }}>
-                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: '#1F1E1C' }}>
-                  Used in
-                </Typography>
-              </Box>
-
-              <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.2 }}>
-                {usedIn && usedIn !== 'Not used in any course yet' ? (
-                  <>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Chip
-                        label="In course"
-                        size="small"
-                        sx={{
-                          backgroundColor: '#E8F5E9',
-                          color: '#2E7D32',
-                          fontWeight: 600,
-                          fontSize: '11px',
-                          borderRadius: '4px',
-                          height: 22,
-                        }}
-                      />
-                      <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1F1E1C' }}>
-                        {usedIn}
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" sx={{ color: '#6B6862', fontSize: '12px' }}>
-                      This video is linked and used in the course curriculum.
-                    </Typography>
-                  </>
-                ) : (
-                  <>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Chip
-                        label="Not in course"
-                        size="small"
-                        sx={{
-                          backgroundColor: '#F3F4F6',
-                          color: '#6B7280',
-                          fontWeight: 600,
-                          fontSize: '11px',
-                          borderRadius: '4px',
-                          height: 22,
-                        }}
-                      />
-                      <Typography sx={{ fontSize: '14px', color: '#6B6862' }}>
-                        Not used in any course yet.
-                      </Typography>
-                    </Box>
-                    <Typography variant="caption" sx={{ color: '#8A867F', fontSize: '12px' }}>
-                      Add it to a section from the section editor (+ Video).
-                    </Typography>
-                  </>
-                )}
-              </Box>
-            </Paper>
+            <UsedInCard
+              usedIn={usedIn}
+              linkedCaption="This video is linked and used in the course curriculum."
+              addHint="Add it to a section from the section editor (+ Video)."
+            />
           </Box>
         </Grid>
       </Grid>

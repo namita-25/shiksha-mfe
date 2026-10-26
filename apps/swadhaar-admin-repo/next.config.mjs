@@ -4,9 +4,12 @@ import nextI18nextConfig from './next-i18next.config.js';
 const nextConfig = {
   output: 'standalone',
   typescript: {
-    ignoreBuildErrors: true,
+    // Fail the build on type errors so runtime crashes are caught before deploy
+    ignoreBuildErrors: false,
   },
   eslint: {
+    // Lint runs through the workspace ESLint 9 config (nx lint / SonarCloud); Next's built-in
+    // runner cannot load the legacy .eslintrc with ESLint 9, so it is skipped during `next build`.
     ignoreDuringBuilds: true,
   },
   transpilePackages: ['@shared-lib-v2/*'],

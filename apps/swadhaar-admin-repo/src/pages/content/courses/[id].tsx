@@ -660,7 +660,7 @@ export default function CourseDetailsPage() {
                 variant="outlined"
                 size="small"
                 sx={{ ...SMALL_OUTLINED_BUTTON_SX, py: 0.4 }}
-                onClick={() => alert(t('COURSES.DETAIL.OPENING_ASSESSMENT_BUILDER'))}
+                onClick={() => router.push('/content?tab=assessments')}
               >
                 {t('COURSES.DETAIL.OPEN_IN_ASSESSMENTS')}
               </CommonButton>
@@ -743,7 +743,7 @@ export default function CourseDetailsPage() {
                     cursor: 'pointer',
                     '&:hover': { color: 'primary.main', textDecoration: 'underline' },
                   }}
-                  onClick={() => alert(t('COURSES.DETAIL.NAVIGATING_TO_PROGRAMME'))}
+                  onClick={() => router.push('/learning-paths/financial-inclusion-training-programme')}
                 >
                   {t('COURSES.PROGRAMME_NAME')}
                 </Typography>

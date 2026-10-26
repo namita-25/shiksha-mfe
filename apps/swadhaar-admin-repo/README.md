@@ -23,6 +23,27 @@ Swadhaar Admin operates as a **completely standalone Next.js application** that 
 - **Collection Framework:** `swadhaar-framework`
 - **Academic Year ID:** `edf1d200-21d8-417e-b844-1d04f92435f4`
 
+## Environment Variables
+
+Set these per environment (`.env` locally, deployment config otherwise). Several have **QA fallbacks**
+in code (`src/utils/API/APIEndpoints.ts`, `src/utils/API/aspireHeaders.ts`), so a missing value in
+production silently points the app at QA — always set them explicitly outside local development.
+
+| Variable | Purpose | Code fallback |
+| --- | --- | --- |
+| `NEXT_PUBLIC_MIDDLEWARE_URL` | Shiksha middleware base URL | `https://interface.tekdinext.com/interface/v1` |
+| `NEXT_PUBLIC_LMS_SERVICE_URL` | Aspire LMS service (courses, modules, hierarchy) | QA (`middleware-qa.aspireleaders.org`) |
+| `NEXT_PUBLIC_USER_LIST_URL` | Aspire user list API | QA |
+| `NEXT_PUBLIC_USER_READ_URL` | Aspire user read API | QA |
+| `NEXT_PUBLIC_COHORT_SEARCH_URL` | Aspire cohort search API | QA |
+| `NEXT_PUBLIC_COHORT_MEMBER_APPLICATION_URL` | Aspire cohort member list API | QA |
+| `NEXT_PUBLIC_ASPIRE_BEARER_TOKEN` | Optional default Aspire token (otherwise taken from login) | empty |
+| `NEXT_PUBLIC_TENANT_ID` | Aspire `tenantid` header | QA tenant ID |
+| `NEXT_PUBLIC_ORG_ID` | Aspire `organisationid` header | QA organisation ID |
+| `NEXT_PUBLIC_ACADEMIC_YEAR_ID` | Aspire `academicyearid` header | QA academic year ID |
+| `NEXT_PUBLIC_TELEMETRY_URL` | Telemetry proxy target (`next.config.mjs` rewrites) | `https://telemetry.tekdinext.com` |
+| `CLOUD_STORAGE_URL` | Optional public asset proxy (`/assets/public/*`) | not set (rewrite disabled) |
+
 ## Features
 
 - **Branding & Theming:** Swadhaar brand palette featuring Primary `#E6873C` and Dark Navy `#1C2B4A`.

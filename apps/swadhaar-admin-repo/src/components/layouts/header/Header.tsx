@@ -22,7 +22,6 @@ import TranslateIcon from '@mui/icons-material/Translate';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
 import LogoIcon from '../logo/LogoIcon';
 import LayoutService, { UserProfileSummary } from '@/services/LayoutService';
 
@@ -36,74 +35,72 @@ interface BreadcrumbSegment {
   href?: string;
 }
 
+const PEOPLE: BreadcrumbSegment = { label: 'People' };
+const LEARNING: BreadcrumbSegment = { label: 'Learning' };
+const OPERATIONS: BreadcrumbSegment = { label: 'Operations' };
+const USERS: BreadcrumbSegment = { label: 'Users', href: '/users' };
+const GROUPS: BreadcrumbSegment = { label: 'Groups', href: '/cohorts' };
+const LEARNING_PATHS: BreadcrumbSegment = { label: 'Learning Paths', href: '/learning-paths' };
+const CONTENT: BreadcrumbSegment = { label: 'Content', href: '/content' };
+
+const isEditQuery = () => typeof window !== 'undefined' && window.location.search.includes('id=');
+
+interface BreadcrumbRule {
+  matches: (path: string) => boolean;
+  crumbs: () => BreadcrumbSegment[];
+}
+
+/** Ordered rules: the first matching rule wins. */
+const BREADCRUMB_RULES: BreadcrumbRule[] = [
+  {
+    matches: (p) => p === '/' || p === '/dashboard',
+    crumbs: () => [OPERATIONS, { label: 'Dashboard', href: '/dashboard' }],
+  },
+  { matches: (p) => p === '/users', crumbs: () => [PEOPLE, USERS] },
+  { matches: (p) => p === '/users/bulk-upload', crumbs: () => [PEOPLE, USERS, { label: 'Bulk Upload' }] },
+  { matches: (p) => p.startsWith('/users/'), crumbs: () => [PEOPLE, USERS, { label: 'User Details' }] },
+  { matches: (p) => p === '/cohorts' || p === '/groups', crumbs: () => [PEOPLE, GROUPS] },
+  {
+    matches: (p) => p === '/cohorts/create' || p === '/groups/create',
+    crumbs: () => [PEOPLE, GROUPS, { label: 'Create Group' }],
+  },
+  {
+    matches: (p) => p.startsWith('/cohorts/') || p.startsWith('/groups/'),
+    crumbs: () => [PEOPLE, GROUPS, { label: 'Group Details' }],
+  },
+  { matches: (p) => p === '/learning-paths', crumbs: () => [LEARNING, LEARNING_PATHS] },
+  {
+    matches: (p) => p === '/learning-paths/builder',
+    crumbs: () => [LEARNING, LEARNING_PATHS, { label: 'Path Builder' }],
+  },
+  {
+    matches: (p) => p === '/content/create-video',
+    crumbs: () => [LEARNING, CONTENT, { label: isEditQuery() ? 'Edit Video' : 'Add Video' }],
+  },
+  {
+    matches: (p) => p === '/content/create-pdf',
+    crumbs: () => [LEARNING, CONTENT, { label: isEditQuery() ? 'Edit Document' : 'Add Document' }],
+  },
+  {
+    matches: (p) => p === '/content/create-assessment',
+    crumbs: () => [LEARNING, CONTENT, { label: 'Create Assessment' }],
+  },
+  {
+    matches: (p) => p.startsWith('/content/assessments/'),
+    crumbs: () => [LEARNING, CONTENT, { label: 'Assessment Details' }],
+  },
+  {
+    matches: (p) => p === '/content/courses/create' || p === '/courses/create',
+    crumbs: () => [LEARNING, { label: 'Courses', href: '/content?tab=courses' }, { label: 'Create Course' }],
+  },
+  { matches: (p) => p.startsWith('/content'), crumbs: () => [LEARNING, CONTENT] },
+  { matches: (p) => p === '/reports', crumbs: () => [OPERATIONS, { label: 'Reports', href: '/reports' }] },
+];
+
 const getHeaderBreadcrumbs = (pathname: string): BreadcrumbSegment[] => {
   const p = pathname.toLowerCase();
-
-  // Root or dashboard
-  if (p === '/' || p === '/dashboard') {
-    return [{ label: 'Operations' }, { label: 'Dashboard', href: '/dashboard' }];
-  }
-
-  // Users
-  if (p === '/users') {
-    return [{ label: 'People' }, { label: 'Users', href: '/users' }];
-  }
-  if (p === '/users/bulk-upload') {
-    return [{ label: 'People' }, { label: 'Users', href: '/users' }, { label: 'Bulk Upload' }];
-  }
-  if (p.startsWith('/users/')) {
-    return [{ label: 'People' }, { label: 'Users', href: '/users' }, { label: 'User Details' }];
-  }
-
-  // Cohorts / Groups
-  if (p === '/cohorts' || p === '/groups') {
-    return [{ label: 'People' }, { label: 'Groups', href: '/cohorts' }];
-  }
-  if (p === '/cohorts/create' || p === '/groups/create') {
-    return [{ label: 'People' }, { label: 'Groups', href: '/cohorts' }, { label: 'Create Group' }];
-  }
-  if (p.startsWith('/cohorts/') || p.startsWith('/groups/')) {
-    return [{ label: 'People' }, { label: 'Groups', href: '/cohorts' }, { label: 'Group Details' }];
-  }
-
-  // Learning Paths
-  if (p === '/learning-paths') {
-    return [{ label: 'Learning' }, { label: 'Learning Paths', href: '/learning-paths' }];
-  }
-  if (p === '/learning-paths/builder') {
-    return [
-      { label: 'Learning' },
-      { label: 'Learning Paths', href: '/learning-paths' },
-      { label: 'Path Builder' },
-    ];
-  }
-
-  // Content
-  if (p === '/content/create-video') {
-    const isEdit = typeof window !== 'undefined' && window.location.search.includes('id=');
-    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: isEdit ? 'Edit Video' : 'Add Video' }];
-  }
-  if (p === '/content/create-pdf') {
-    const isEdit = typeof window !== 'undefined' && window.location.search.includes('id=');
-    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: isEdit ? 'Edit Document' : 'Add Document' }];
-  }
-  if (p === '/content/create-assessment') {
-    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: 'Create Assessment' }];
-  }
-  if (p.startsWith('/content/assessments/')) {
-    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }, { label: 'Assessment Details' }];
-  }
-  if (p === '/content/courses/create' || p === '/courses/create') {
-    return [{ label: 'Learning' }, { label: 'Courses', href: '/content?tab=courses' }, { label: 'Create Course' }];
-  }
-  if (p.startsWith('/content')) {
-    return [{ label: 'Learning' }, { label: 'Content', href: '/content' }];
-  }
-
-  // Reports
-  if (p === '/reports') {
-    return [{ label: 'Operations' }, { label: 'Reports', href: '/reports' }];
-  }
+  const rule = BREADCRUMB_RULES.find((r) => r.matches(p));
+  if (rule) return rule.crumbs();
 
   // Default fallback from pathname segments
   const segments = p.split('/').filter(Boolean);
@@ -115,7 +112,6 @@ const getHeaderBreadcrumbs = (pathname: string): BreadcrumbSegment[] => {
 
 export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
   const router = useRouter();
-  const { t } = useTranslation();
   const { mode, setMode } = useColorScheme();
   const [profile, setProfile] = useState<UserProfileSummary>({
     userId: 'admin-01',
@@ -127,15 +123,17 @@ export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   useEffect(() => {
-    LayoutService.getUserProfile().then((data) => {
-      if (data) {
-        setProfile({
-          ...data,
-          name: data.name || 'Administrator',
-          roles: data.roles?.length ? data.roles : ['Super Admin'],
-        });
-      }
-    });
+    LayoutService.getUserProfile()
+      .then((data) => {
+        if (data) {
+          setProfile({
+            ...data,
+            name: data.name || 'Administrator',
+            roles: data.roles?.length ? data.roles : ['Super Admin'],
+          });
+        }
+      })
+      .catch((err) => console.error('Failed to load user profile:', err));
   }, []);
 
   const handleLanguageChange = (e: any) => {
@@ -257,7 +255,7 @@ export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
               if (isLast || !crumb.href) {
                 return (
                   <Typography
-                    key={idx}
+                    key={crumb.label}
                     sx={{
                       fontSize: '13px',
                       fontWeight: isLast ? 600 : 500,
@@ -270,7 +268,7 @@ export const Header: React.FC<HeaderProps> = ({ toggleMobileSidebar, sx }) => {
               }
               return (
                 <Link
-                  key={idx}
+                  key={crumb.label}
                   href={crumb.href}
                   style={{ textDecoration: 'none' }}
                 >

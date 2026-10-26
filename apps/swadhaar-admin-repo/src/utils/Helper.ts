@@ -7,12 +7,12 @@ export const generateUUID = (): string => {
     return crypto.randomUUID();
   }
 
-  const cryptoObj =
-    typeof crypto !== 'undefined'
-      ? crypto
-      : typeof window !== 'undefined'
-      ? window.crypto
-      : undefined;
+  let cryptoObj: Crypto | undefined;
+  if (typeof crypto !== 'undefined') {
+    cryptoObj = crypto;
+  } else if (typeof window !== 'undefined') {
+    cryptoObj = window.crypto;
+  }
 
   if (cryptoObj?.getRandomValues) {
     const bytes = new Uint8Array(16);
@@ -46,7 +46,7 @@ export const formatDate = (dateString?: string): string => {
   if (!dateString) return '—';
   try {
     const d = new Date(dateString);
-    return isNaN(d.getTime())
+    return Number.isNaN(d.getTime())
       ? dateString
       : d.toLocaleDateString('en-IN', {
           day: '2-digit',

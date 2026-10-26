@@ -13,7 +13,6 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  Tooltip,
   Alert,
   Chip,
 } from '@mui/material';
@@ -26,10 +25,12 @@ import {
   createContent,
   updateContent,
   inferCourseUsage,
-  formatDurationString,
+  resolveEditableDuration,
 } from '@/services/ContentLibraryService';
 import { detectLanguage } from '@/services/CourseService';
 import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
+
+const toLanguageOption = (language: string): 'Hindi' | 'English' => (language === 'Hindi' ? 'Hindi' : 'English');
 
 export default function CreatePdfPage() {
   const router = useRouter();
@@ -89,15 +90,7 @@ export default function CreatePdfPage() {
           if (content) {
             const loadedTitle = content.name || content.title || '';
             const loadedDesc = content.description || '';
-            const loadedDur = content.duration
-              ? (String(content.duration).includes(':') || String(content.duration).includes('min')
-                  ? String(content.duration)
-                  : formatDurationString(content) !== '—'
-                  ? formatDurationString(content)
-                  : String(content.duration))
-              : formatDurationString(content) !== '—'
-              ? formatDurationString(content)
-              : '';
+            const loadedDur = resolveEditableDuration(content);
             const loadedLang = detectLanguage(loadedTitle, content.language || content.languageCode);
             const loadedFile =
               content.artifactUrl?.split('/').pop() ||
@@ -109,14 +102,14 @@ export default function CreatePdfPage() {
             setDescription(loadedDesc);
             setReadingTime(loadedDur);
             setFileName(loadedFile);
-            setLanguage(loadedLang === 'Hindi' ? 'Hindi' : 'English');
+            setLanguage(toLanguageOption(loadedLang));
             setUsedIn(courseUsage);
 
             setInitialData({
               title: loadedTitle,
               description: loadedDesc,
               readingTime: loadedDur,
-              language: loadedLang === 'Hindi' ? 'Hindi' : 'English',
+              language: toLanguageOption(loadedLang),
               fileName: loadedFile,
             });
           }
@@ -555,7 +548,7 @@ export default function CreatePdfPage() {
                       height: 30,
                     }}
                   >
-                    Replace
+                    {'Replace'}
                     <input
                       type="file"
                       accept="application/pdf"
@@ -624,7 +617,7 @@ export default function CreatePdfPage() {
                   }}
                 >
                   <PictureAsPdfOutlinedIcon sx={{ fontSize: 40, color: '#8A867F' }} />
-                  <span>{fileName ? fileName : 'First page'}</span>
+                  <span>{fileName || 'First page'}</span>
                 </Box>
               </Box>
             </Paper>

@@ -106,8 +106,10 @@ const getSectionSummary = (section: CourseHierarchyChild, t: Translate): string 
       names: childUnits.slice(0, 3).map((u) => u.name).join(' · '),
     });
   }
-  return section.description?.replace(/<[^>]+>/g, '').trim() || t('COURSES.DETAIL.MODULE_CONTENT');
+  return section.description?.replace(/<[^<>]*>/g, '').trim() || t('COURSES.DETAIL.MODULE_CONTENT');
 };
+
+const SECTION_SKELETON_KEYS = ['section-sk-1', 'section-sk-2', 'section-sk-3', 'section-sk-4'];
 
 export default function CourseDetailsPage() {
   const router = useRouter();
@@ -253,8 +255,8 @@ export default function CourseDetailsPage() {
     if (loading) {
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {Array.from({ length: 4 }).map((_, idx) => (
-            <Skeleton key={idx} variant="rectangular" height={72} sx={{ borderRadius: '10px' }} />
+          {SECTION_SKELETON_KEYS.map((skeletonKey) => (
+            <Skeleton key={skeletonKey} variant="rectangular" height={72} sx={{ borderRadius: '10px' }} />
           ))}
         </Box>
       );
@@ -798,9 +800,7 @@ export const getStaticProps = async ({ locale }: { locale: string }) => {
   };
 };
 
-export const getStaticPaths = async () => {
-  return {
-    paths: [],
-    fallback: 'blocking',
-  };
-};
+export const getStaticPaths = () => ({
+  paths: [],
+  fallback: 'blocking',
+});

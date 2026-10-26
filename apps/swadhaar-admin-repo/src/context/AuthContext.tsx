@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { login, logout } from '../services/LoginService';
 
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchUser = () => {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
           const token = localStorage.getItem('token');
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     fetchUser();
   }, []);
 
-  const loginFun = async (username: string, password?: string) => {
+  const loginFun = useCallback(async (username: string, password?: string) => {
     const data = await login({ username, password });
     if (data?.result?.access_token) {
       localStorage.setItem('token', data.result.access_token);
@@ -49,9 +49,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(data.result);
     }
     return data;
-  };
+  }, []);
 
-  const logoutFun = async () => {
+  const logoutFun = useCallback(async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken') || '';
       if (refreshToken) {
@@ -68,10 +68,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(null);
       router.push('/login');
     }
-  };
+  }, [router]);
+
+  const contextValue = useMemo(
+    () => ({ user, loading, loginFun, logoutFun }),
+    [user, loading, loginFun, logoutFun]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginFun, logoutFun }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

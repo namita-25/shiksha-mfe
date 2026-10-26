@@ -27,7 +27,7 @@ export default function LogoutPage() {
       }
     };
 
-    handleLogout();
+    handleLogout().catch((err) => console.error('Logout error:', err));
   }, [router, logoutFun]);
 
   return <Loader message={t('LAYOUT.LOGGING_OUT')} minHeight="100vh" />;

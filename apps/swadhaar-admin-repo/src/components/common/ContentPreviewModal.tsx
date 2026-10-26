@@ -26,7 +26,7 @@ export interface PreviewContentData {
   identifier?: string;
   name?: string;
   title?: string;
-  type?: 'video' | 'pdf' | 'assessment' | 'document' | 'test' | string;
+  type?: string; // 'video' | 'pdf' | 'assessment' | 'document' | 'test'
   mimeType?: string;
   artifactUrl?: string;
   streamingUrl?: string;
@@ -84,7 +84,7 @@ function getYouTubeEmbedUrl(url?: string): string | null {
   try {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = regExp.exec(url);
-    if (match && match[2].length === 11) {
+    if (match?.[2].length === 11) {
       return `https://www.youtube.com/embed/${match[2]}?autoplay=1&rel=0`;
     }
   } catch (e) {
@@ -150,6 +150,34 @@ const DEFAULT_ASSESSMENT_QUESTIONS = [
   },
 ];
 
+const detectPreviewKind = (content: PreviewContentData) => {
+  const rawType = (content.type || '').toLowerCase();
+  const mime = (content.mimeType || '').toLowerCase();
+  const artifactUrl = content.artifactUrl || '';
+  const isVideo =
+    rawType === 'video' ||
+    mime.includes('video') ||
+    mime.includes('youtube') ||
+    artifactUrl.includes('youtube') ||
+    artifactUrl.includes('youtu.be') ||
+    artifactUrl.endsWith('.mp4');
+
+  const isPdf =
+    rawType === 'pdf' ||
+    rawType === 'document' ||
+    mime === 'application/pdf' ||
+    artifactUrl.toLowerCase().endsWith('.pdf');
+
+  const isAssessment =
+    rawType === 'assessment' ||
+    rawType === 'test' ||
+    rawType.includes('quiz') ||
+    mime.includes('questionset') ||
+    (!isVideo && !isPdf);
+
+  return { isVideo, isPdf, isAssessment };
+};
+
 export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, onClose, content }) => {
   const { t } = useTranslation();
   const [assessmentMode, setAssessmentMode] = useState<AssessmentMode>('review');
@@ -158,31 +186,7 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
 
   if (!content) return null;
 
-  // Determine item type
-  const rawType = (content.type || '').toLowerCase();
-  const mime = (content.mimeType || '').toLowerCase();
-  const artifactUrl = content.artifactUrl;
-  const isVideo =
-    rawType === 'video' ||
-    mime.includes('video') ||
-    mime.includes('youtube') ||
-    Boolean(
-      artifactUrl &&
-        (artifactUrl.includes('youtube') || artifactUrl.includes('youtu.be') || artifactUrl.endsWith('.mp4'))
-    );
-
-  const isPdf =
-    rawType === 'pdf' ||
-    rawType === 'document' ||
-    mime === 'application/pdf' ||
-    Boolean(artifactUrl?.toLowerCase().endsWith('.pdf'));
-
-  const isAssessment =
-    rawType === 'assessment' ||
-    rawType === 'test' ||
-    rawType.includes('quiz') ||
-    mime.includes('questionset') ||
-    (!isVideo && !isPdf);
+  const { isVideo, isPdf, isAssessment } = detectPreviewKind(content);
 
   const displayTitle = content.name || content.title || t('CONTENT.PREVIEW.DEFAULT_TITLE');
   const rawUrl = content.artifactUrl || content.streamingUrl || content.downloadUrl || '';
@@ -236,7 +240,9 @@ export const ContentPreviewModal: React.FC<ContentPreviewModalProps> = ({ open, 
           autoPlay
           src={rawUrl}
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-        />
+        >
+          <track kind="captions" />
+        </video>
       );
     }
     return <iframe src={DEFAULT_YOUTUBE_EMBED} title={displayTitle} style={absoluteFillStyle} allowFullScreen />;

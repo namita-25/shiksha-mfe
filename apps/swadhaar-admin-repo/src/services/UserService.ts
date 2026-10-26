@@ -108,7 +108,7 @@ export const updateUserAccount = async (
 
 export const updateUserStatus = async (
   userId: string,
-  status: 'active' | 'blocked' | 'archived' | 'deleted' | string
+  status: string // 'active' | 'blocked' | 'archived' | 'deleted'
 ): Promise<any> => {
   return updateUserAccount(userId, {
     userData: {

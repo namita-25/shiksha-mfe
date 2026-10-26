@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Alert, CircularProgress } from '@mui/material';
+import { Box, Alert } from '@mui/material';
 import CommonDialog from './CommonDialog';
 import CommonTextField from './CommonTextField';
 import CommonSelect from './CommonSelect';
@@ -18,6 +18,11 @@ export interface EditCohortModalProps {
   } | null;
 }
 
+const normalizeCohortStatus = (status: string): string => {
+  if (status === 'archived' || status === 'draft') return status;
+  return 'active';
+};
+
 export const EditCohortModal: React.FC<EditCohortModalProps> = ({
   open,
   onClose,
@@ -35,7 +40,7 @@ export const EditCohortModal: React.FC<EditCohortModalProps> = ({
       setName(cohort.name || '');
       setDescription(cohort.description || cohort.rawCohort?.description || '');
       const s = (cohort.status || 'active').toLowerCase();
-      setStatus(s === 'archived' ? 'archived' : s === 'draft' ? 'draft' : 'active');
+      setStatus(normalizeCohortStatus(s));
       setError(null);
     }
   }, [cohort, open]);

@@ -33,7 +33,7 @@ class TenantService {
   private static instance: TenantService;
   private tenantId: string = SWADHAAR_TENANT_ID;
   private channelId: string = SWADHAAR_CHANNEL_ID;
-  private tenantConfig: TenantConfig = {
+  private readonly tenantConfig: TenantConfig = {
     CHANNEL_ID: SWADHAAR_CHANNEL_ID,
     CONTENT_FRAMEWORK: SWADHAAR_FRAMEWORK,
     COLLECTION_FRAMEWORK: SWADHAAR_FRAMEWORK,
@@ -96,8 +96,8 @@ class TenantService {
     }
   }
 
-  public async getTenantConfig(): Promise<TenantConfig> {
-    return this.tenantConfig;
+  public getTenantConfig(): Promise<TenantConfig> {
+    return Promise.resolve(this.tenantConfig);
   }
 
   /**

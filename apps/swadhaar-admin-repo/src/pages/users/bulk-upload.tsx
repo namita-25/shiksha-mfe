@@ -23,13 +23,11 @@ import { TFunction } from 'i18next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
-import { createUserAccount, CreateUserPayload } from '@/services/UserService';
+import { createUserAccount } from '@/services/UserService';
 import TenantService from '@/services/TenantService';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
 import { buildCreateUserPayload } from '@/utils/userPayloadBuilder';
-import CommonButton from '@/components/common/CommonButton';
-import PageHeader from '@/components/common/PageHeader';
-import { BRAND, NEUTRAL } from '@/styles/customTheme';
+import { NEUTRAL } from '@/styles/customTheme';
 
 interface ParsedUserRow {
   full_name?: string;
@@ -68,7 +66,7 @@ const MANDATORY_COLUMNS = [
 const EMPTY_VALUE = '-';
 const WHITE = '#FFFFFF';
 const CARD_BORDER = `1px solid ${NEUTRAL.border}`;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const PHONE_REGEX = /^\d{10}$/;
 
 interface RowFields {
@@ -145,6 +143,49 @@ const createUserFromRow = async (fields: RowFields, tenantId: string, t: TFuncti
   }
 };
 
+const hasCellValue = (value: unknown): boolean => {
+  if (typeof value === 'string') return value.trim() !== '';
+  return value !== null && value !== undefined;
+};
+
+const toFailedRow = (rowNum: number, fields: RowFields, reason: string): FailedRowItem => ({
+  rowNum,
+  employeeId: fields.employeeId || EMPTY_VALUE,
+  email: fields.email || EMPTY_VALUE,
+  reason,
+});
+
+interface ValidRow {
+  rowNum: number;
+  fields: RowFields;
+}
+
+/** Validates every row (including duplicates within the file) before any account is created. */
+const validateRows = (rows: ParsedUserRow[], t: TFunction) => {
+  const seen: SeenKeys = { employeeIds: new Set<string>(), emails: new Set<string>(), phones: new Set<string>() };
+  const validRows: ValidRow[] = [];
+  const failures: FailedRowItem[] = [];
+  rows.forEach((row, i) => {
+    const fields = toRowFields(row);
+    const rowNum = i + 2; // Row 1 is header, so data starts at row 2
+    const failureReason = getValidationError(fields, seen, t);
+    if (failureReason) {
+      failures.push(toFailedRow(rowNum, fields, failureReason));
+      return;
+    }
+    seen.employeeIds.add(fields.employeeId.toLowerCase());
+    seen.emails.add(fields.email.toLowerCase());
+    seen.phones.add(fields.phone);
+    validRows.push({ rowNum, fields });
+  });
+  return { validRows, failures };
+};
+
+const STEP_ACTIVE_COLOR = '#E6873C';
+
+/** Step 2 is orange while active and dark once completed. */
+const getStepTwoBackground = (step: number): string => (step === 2 ? STEP_ACTIVE_COLOR : NEUTRAL.ink);
+
 const downloadCsv = (csvContent: string, fileName: string) => {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -153,7 +194,7 @@ const downloadCsv = (csvContent: string, fileName: string) => {
   link.setAttribute('download', fileName);
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
   URL.revokeObjectURL(url);
 };
 
@@ -220,7 +261,6 @@ export default function BulkUploadUsersPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Processing & Results states
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [createdCount, setCreatedCount] = useState<number>(0);
   const [failedRows, setFailedRows] = useState<FailedRowItem[]>([]);
@@ -246,9 +286,7 @@ export default function BulkUploadUsersPage() {
       skipEmptyLines: 'greedy',
       transformHeader: (header: string) => header.trim().toLowerCase().replace(/\s+/g, '_'),
       complete: (results) => {
-        const rows = results.data.filter((r) =>
-          Object.values(r).some((v) => v !== null && v !== undefined && String(v).trim() !== '')
-        );
+        const rows = results.data.filter((r) => Object.values(r).some(hasCellValue));
         setParsedRows(rows);
       },
       error: (err) => {
@@ -301,59 +339,35 @@ export default function BulkUploadUsersPage() {
     }
 
     setStep(2);
-    setIsProcessing(true);
     setProgressPercent(10);
     setErrorMsg(null);
 
-    const failures: FailedRowItem[] = [];
+    const tenantId = TenantService.getTenantId() || SWADHAAR_TENANT_ID;
+    const { validRows, failures } = validateRows(parsedRows, t);
+    const total = parsedRows.length;
+    let processed = failures.length;
     let successCount = 0;
 
-    const seen: SeenKeys = {
-      employeeIds: new Set<string>(),
-      emails: new Set<string>(),
-      phones: new Set<string>(),
-    };
-
-    const total = parsedRows.length;
-    const tenantId = TenantService.getTenantId() || SWADHAAR_TENANT_ID;
-
-    for (let i = 0; i < total; i++) {
-      const fields = toRowFields(parsedRows[i]);
-      const rowNum = i + 2; // Row 1 is header, so data starts at row 2
-
-      // Field Validations
-      let failureReason: string | null = getValidationError(fields, seen, t);
-
-      if (!failureReason) {
-        // Track unique keys
-        seen.employeeIds.add(fields.employeeId.toLowerCase());
-        seen.emails.add(fields.email.toLowerCase());
-        seen.phones.add(fields.phone);
-
-        failureReason = await createUserFromRow(fields, tenantId, t);
-        if (!failureReason) {
-          successCount++;
-        }
-      }
-
-      if (failureReason) {
-        failures.push({
-          rowNum,
-          employeeId: fields.employeeId || EMPTY_VALUE,
-          email: fields.email || EMPTY_VALUE,
-          reason: failureReason,
-        });
-      }
-
-      // Update progress bar percentage
-      const currentPct = Math.min(95, Math.round(((i + 1) / total) * 100));
-      setProgressPercent(currentPct);
-    }
+    // Create users one at a time (sequentially) to keep load on the API predictable
+    await validRows.reduce(
+      (chain, { rowNum, fields }) =>
+        chain.then(async () => {
+          const failureReason = await createUserFromRow(fields, tenantId, t);
+          if (failureReason) {
+            failures.push(toFailedRow(rowNum, fields, failureReason));
+          } else {
+            successCount++;
+          }
+          processed++;
+          setProgressPercent(Math.min(95, Math.round((processed / total) * 100)));
+        }),
+      Promise.resolve()
+    );
+    failures.sort((a, b) => a.rowNum - b.rowNum);
 
     setProgressPercent(100);
     setCreatedCount(successCount);
     setFailedRows(failures);
-    setIsProcessing(false);
     setStep(3); // Go to summary
   };
 
@@ -439,113 +453,32 @@ export default function BulkUploadUsersPage() {
 
         {/* 3-Step Stepper Progress Bar matching Prototype */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          {/* Step 1 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 600,
-                backgroundColor: step >= 1 ? '#1F1E1C' : '#FFFFFF',
-                color: step >= 1 ? '#FFFFFF' : '#6B6862',
-                border: step >= 1 ? 'none' : '1.5px solid #BDB9B1',
-              }}
-            >
-              {step > 1 ? <CheckIcon sx={{ fontSize: 14 }} /> : '1'}
-            </Box>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: step === 1 ? 600 : 500,
-                color: step === 1 ? '#1F1E1C' : '#6B6862',
-              }}
-            >
-              {t('BULK_UPLOAD.STEPPER.UPLOAD_FILE')}
-            </Typography>
-          </Box>
-
-          {/* Divider 1 */}
-          <Box
-            sx={{
-              width: 36,
-              height: '1px',
-              backgroundColor: step >= 2 ? '#1F1E1C' : '#BDB9B1',
-            }}
-          />
-
-          {/* Step 2 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 600,
-                backgroundColor: step === 2 ? '#E6873C' : step > 2 ? '#1F1E1C' : '#FFFFFF',
-                color: step >= 2 ? '#FFFFFF' : '#6B6862',
-                border: step >= 2 ? 'none' : '1.5px solid #BDB9B1',
-              }}
-            >
-              {step > 2 ? <CheckIcon sx={{ fontSize: 14 }} /> : '2'}
-            </Box>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: step === 2 ? 600 : 500,
-                color: step === 2 ? '#E6873C' : '#6B6862',
-              }}
-            >
-              {t('BULK_UPLOAD.STEPPER.VALIDATE')}
-            </Typography>
-          </Box>
-
-          {/* Divider 2 */}
-          <Box
-            sx={{
-              width: 36,
-              height: '1px',
-              backgroundColor: step >= 3 ? '#1F1E1C' : '#BDB9B1',
-            }}
-          />
-
-          {/* Step 3 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 600,
-                backgroundColor: step === 3 ? '#1F1E1C' : '#FFFFFF',
-                color: step === 3 ? '#FFFFFF' : '#6B6862',
-                border: step === 3 ? 'none' : '1.5px solid #BDB9B1',
-              }}
-            >
-              3
-            </Box>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: step === 3 ? 600 : 500,
-                color: step === 3 ? '#1F1E1C' : '#6B6862',
-              }}
-            >
-              {t('BULK_UPLOAD.STEPPER.SUMMARY')}
-            </Typography>
-          </Box>
+          {renderStep({
+            label: t('BULK_UPLOAD.STEPPER.UPLOAD_FILE'),
+            content: step > 1 ? <CheckIcon sx={{ fontSize: 14 }} /> : '1',
+            filled: true,
+            fillColor: NEUTRAL.ink,
+            active: step === 1,
+            activeColor: NEUTRAL.ink,
+          })}
+          {renderStepDivider(step >= 2)}
+          {renderStep({
+            label: t('BULK_UPLOAD.STEPPER.VALIDATE'),
+            content: step > 2 ? <CheckIcon sx={{ fontSize: 14 }} /> : '2',
+            filled: step >= 2,
+            fillColor: getStepTwoBackground(step),
+            active: step === 2,
+            activeColor: STEP_ACTIVE_COLOR,
+          })}
+          {renderStepDivider(step >= 3)}
+          {renderStep({
+            label: t('BULK_UPLOAD.STEPPER.SUMMARY'),
+            content: '3',
+            filled: step === 3,
+            fillColor: NEUTRAL.ink,
+            active: step === 3,
+            activeColor: NEUTRAL.ink,
+          })}
         </Box>
       </Box>
 
@@ -982,9 +915,9 @@ export default function BulkUploadUsersPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {failedRows.map((fail, index) => (
+                    {failedRows.map((fail) => (
                       <TableRow
-                        key={`fail-${index}`}
+                        key={`fail-${fail.rowNum}`}
                         sx={{
                           '&:last-child td': { borderBottom: 0 },
                           '&:hover': { backgroundColor: '#FDFBF9' },

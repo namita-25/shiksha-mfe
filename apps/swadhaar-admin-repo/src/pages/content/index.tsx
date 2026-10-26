@@ -222,9 +222,11 @@ export default function ContentLibraryPage() {
 
   // Load counts once
   useEffect(() => {
-    fetchContentTabCounts().then((counts) => {
-      setTabCounts(counts);
-    });
+    fetchContentTabCounts()
+      .then((counts) => {
+        setTabCounts(counts);
+      })
+      .catch((err) => console.error('Failed to load content counts:', err));
   }, []);
 
   // Fetch content for current active tab
@@ -247,7 +249,7 @@ export default function ContentLibraryPage() {
       // Update current tab count
       setTabCounts((prev) => ({
         ...prev,
-        [activeTab]: response.count === undefined ? prev[activeTab] : response.count,
+        [activeTab]: response.count ?? prev[activeTab],
       }));
     } catch (err) {
       console.error('Failed to fetch content library items:', err);
@@ -273,9 +275,9 @@ export default function ContentLibraryPage() {
   useEffect(() => {
     getCourseList({ limit: 50 })
       .then((res) => {
-        if (Array.isArray(res?.courses) && res.courses.length > 0) {
-          const opts = res.courses.map((c) => ({
-            value: c.name || c.id,
+        if (res?.content?.length > 0) {
+          const opts = res.content.map((c) => ({
+            value: c.name || c.identifier,
             label: c.name || 'Untitled Course',
           }));
           setCourseOptions([
@@ -301,7 +303,9 @@ export default function ContentLibraryPage() {
         severity: 'success',
       });
       setItemToDelete(null);
-      fetchContentTabCounts().then(setTabCounts);
+      fetchContentTabCounts()
+        .then(setTabCounts)
+        .catch((countErr) => console.error('Failed to refresh content counts:', countErr));
     } catch (err: any) {
       console.error('Failed to retire content:', err);
       setFeedback({
@@ -491,7 +495,7 @@ export default function ContentLibraryPage() {
         minWidth: 130,
         render: (row) => (
           <Typography variant="body2" sx={cellTextSx}>
-            {row.linkedTo || courseLabel(1)}
+            {row.linkedTo || '—'}
           </Typography>
         ),
       },
@@ -838,7 +842,7 @@ export default function ContentLibraryPage() {
         title="Delete Content"
         subtitle={`Are you sure you want to delete "${itemToDelete?.name}"?`}
         confirmLabel={deleteLoading ? 'Deleting...' : 'Delete Content'}
-        confirmVariant="error"
+        confirmVariant="danger"
         confirmDisabled={deleteLoading}
         loading={deleteLoading}
         onConfirm={handleConfirmDelete}

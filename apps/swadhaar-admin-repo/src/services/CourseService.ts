@@ -159,6 +159,32 @@ export const parseCourseDuration = (item: any): string => {
   return '—';
 };
 
+const PUBLISHED_STATUSES = ['published', 'Live', 'live'];
+const DRAFT_STATUSES = ['draft', 'Draft', 'unpublished'];
+
+const resolveExplicitStatus = (status: string): string | undefined => {
+  if (status === 'published' || status === 'unpublished' || status === 'archived') return status;
+  if (status === 'draft') return 'unpublished';
+  return undefined;
+};
+
+const resolveFilterStatus = (status: string | string[]): string | undefined => {
+  const statuses = Array.isArray(status) ? status : [status];
+  const hasPublished = statuses.some((st) => PUBLISHED_STATUSES.includes(st));
+  const hasDraft = statuses.some((st) => DRAFT_STATUSES.includes(st));
+  if (hasPublished) return hasDraft ? undefined : 'published';
+  return hasDraft ? 'unpublished' : undefined;
+};
+
+const resolveCourseStatusParam = (params?: CourseSearchParams): string | undefined => {
+  if (params?.status) return resolveExplicitStatus(params.status);
+  const filterStatus = params?.filters?.status;
+  if (Array.isArray(filterStatus) || typeof filterStatus === 'string') {
+    return resolveFilterStatus(filterStatus);
+  }
+  return undefined;
+};
+
 /**
  * Aspire LMS Course Search API
  * GET /lms-service/v1/courses/search?offset=0&limit=10&orderBy=ASC&query=...&status=...
@@ -170,8 +196,8 @@ export const getCourseList = async (
     const queryParams = new URLSearchParams();
 
     // Pagination
-    const limit = params?.limit !== undefined ? params.limit : 10;
-    const offset = params?.offset !== undefined ? params.offset : 0;
+    const limit = params?.limit ?? 10;
+    const offset = params?.offset ?? 0;
     queryParams.set('limit', String(limit));
     queryParams.set('offset', String(offset));
 
@@ -180,34 +206,14 @@ export const getCourseList = async (
     queryParams.set('orderBy', params?.orderBy || 'ASC');
 
     // Query Search
-    if (params?.query && params.query.trim()) {
+    if (params?.query?.trim()) {
       queryParams.set('query', params.query.trim());
     }
 
     // Status Filter (published | unpublished | archived)
-    if (params?.status) {
-      if (params.status === 'published' || params.status === 'unpublished' || params.status === 'archived') {
-        queryParams.set('status', params.status);
-      } else if (params.status === 'draft') {
-        queryParams.set('status', 'unpublished');
-      }
-    } else if (params?.filters?.status) {
-      const st = params.filters.status;
-      if (Array.isArray(st)) {
-        if (st.includes('published') || st.includes('Live') || st.includes('live')) {
-          if (!st.includes('draft') && !st.includes('Draft') && !st.includes('unpublished')) {
-            queryParams.set('status', 'published');
-          }
-        } else if (st.includes('draft') || st.includes('Draft') || st.includes('unpublished')) {
-          queryParams.set('status', 'unpublished');
-        }
-      } else if (typeof st === 'string') {
-        if (st === 'published' || st === 'Live' || st === 'live') {
-          queryParams.set('status', 'published');
-        } else if (st === 'draft' || st === 'Draft' || st === 'unpublished') {
-          queryParams.set('status', 'unpublished');
-        }
-      }
+    const statusParam = resolveCourseStatusParam(params);
+    if (statusParam) {
+      queryParams.set('status', statusParam);
     }
 
     const apiUrl = API_ENDPOINTS.lmsCoursesSearch(queryParams.toString());

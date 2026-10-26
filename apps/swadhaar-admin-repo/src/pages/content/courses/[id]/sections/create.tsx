@@ -13,25 +13,11 @@ import {
   Tooltip,
   Alert,
   Snackbar,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
 } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import AddIcon from '@mui/icons-material/Add';
-import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
-import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../../../../next-i18next.config.js';
 import { getCourseHierarchy, CourseHierarchy, parseCourseName } from '@/services/CourseService';
@@ -52,13 +38,23 @@ export interface SectionBlock {
   mediaName?: string;
 }
 
+const renameVideoInBlocks = (
+  blocks: SectionBlock[],
+  blockId: string,
+  videoId: string,
+  title: string
+): SectionBlock[] =>
+  blocks.map((b) => {
+    if (b.id !== blockId) return b;
+    return { ...b, videos: (b.videos || []).map((v) => (v.id === videoId ? { ...v, title } : v)) };
+  });
+
 export default function CreateSectionPage() {
   const router = useRouter();
   const { id } = router.query;
   const courseId = typeof id === 'string' ? id : '';
 
   const [course, setCourse] = useState<CourseHierarchy | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
 
   // Section Details Form
   const [title, setTitle] = useState<string>('Budgeting');
@@ -107,15 +103,11 @@ export default function CreateSectionPage() {
     },
   ]);
 
-  // Add block menu anchor
-  const [addBlockAnchor, setAddBlockAnchor] = useState<null | HTMLElement>(null);
-
   // Notifications
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!courseId) return;
-    setLoading(true);
     getCourseHierarchy(courseId)
       .then((data) => {
         setCourse(data);
@@ -126,9 +118,6 @@ export default function CreateSectionPage() {
       })
       .catch((err) => {
         console.error('Failed to load course details:', err);
-      })
-      .finally(() => {
-        setLoading(false);
       });
   }, [courseId]);
 
@@ -166,6 +155,13 @@ export default function CreateSectionPage() {
     );
   };
 
+  const handleEditVideoTitle = (blockId: string, video: VideoItem) => {
+    const newTitle = prompt('Edit video title:', video.title);
+    if (newTitle) {
+      setBlocks(renameVideoInBlocks(blocks, blockId, video.id, newTitle));
+    }
+  };
+
   const handleRemoveVideo = (blockId: string, videoId: string) => {
     setBlocks(
       blocks.map((b) =>
@@ -177,7 +173,6 @@ export default function CreateSectionPage() {
   };
 
   const handleAddBlockType = (type: SectionBlock['type']) => {
-    setAddBlockAnchor(null);
     let newBlock: SectionBlock;
     if (type === 'VIDEO WATCH') {
       newBlock = {
@@ -538,23 +533,7 @@ export default function CreateSectionPage() {
                               <Tooltip title="Edit video">
                                 <IconButton
                                   size="small"
-                                  onClick={() => {
-                                    const newT = prompt('Edit video title:', video.title);
-                                    if (newT) {
-                                      setBlocks(
-                                        blocks.map((b) =>
-                                          b.id === block.id
-                                            ? {
-                                                ...b,
-                                                videos: (b.videos || []).map((v) =>
-                                                  v.id === video.id ? { ...v, title: newT } : v
-                                                ),
-                                              }
-                                            : b
-                                        )
-                                      );
-                                    }
-                                  }}
+                                  onClick={() => handleEditVideoTitle(block.id, video)}
                                   sx={{ color: '#6B6862', '&:hover': { color: '#1F1E1C' } }}
                                 >
                                   <EditOutlinedIcon sx={{ fontSize: 17 }} />
@@ -677,7 +656,6 @@ export default function CreateSectionPage() {
             <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', pl: 5, mt: 1 }}>
               <Button
                 variant="outlined"
-                onClick={(e) => setAddBlockAnchor(e.currentTarget)}
                 sx={{
                   borderColor: '#BDB9B1',
                   color: '#1F1E1C',
@@ -1027,9 +1005,7 @@ export const getStaticProps = async ({ locale }: { locale: string }) => {
   };
 };
 
-export const getStaticPaths = async () => {
-  return {
-    paths: [],
-    fallback: 'blocking',
-  };
-};
+export const getStaticPaths = () => ({
+  paths: [],
+  fallback: 'blocking',
+});

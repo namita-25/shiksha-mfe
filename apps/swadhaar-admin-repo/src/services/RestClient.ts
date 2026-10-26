@@ -1,14 +1,14 @@
 import axiosInstance from './Interceptor';
 import { AxiosRequestConfig, AxiosResponse } from 'axios';
 
-export async function get(
+export function get(
   url: string,
   headers: AxiosRequestConfig['headers'] = {}
 ): Promise<AxiosResponse> {
   return axiosInstance.get(url, { headers });
 }
 
-export async function post<T>(
+export function post<T>(
   url: string,
   body: T,
   headers: AxiosRequestConfig['headers'] = {}
@@ -16,7 +16,7 @@ export async function post<T>(
   return axiosInstance.post(url, body, { headers });
 }
 
-export async function put<T>(
+export function put<T>(
   url: string,
   body: T,
   headers: AxiosRequestConfig['headers'] = {}
@@ -24,7 +24,7 @@ export async function put<T>(
   return axiosInstance.put(url, body, { headers });
 }
 
-export async function patch<T>(
+export function patch<T>(
   url: string,
   body: T,
   headers: AxiosRequestConfig['headers'] = {}
@@ -32,7 +32,7 @@ export async function patch<T>(
   return axiosInstance.patch(url, body, { headers });
 }
 
-export async function deleteApi<T>(
+export function deleteApi<T>(
   url: string,
   body?: T,
   headers: AxiosRequestConfig['headers'] = {}

@@ -45,6 +45,30 @@ export interface SDBVHierarchyFilterProps {
   onClear?: () => void;
 }
 
+const hasSelection = (value?: string): value is string => Boolean(value) && value !== 'all';
+
+const logLocationError = (err: unknown) => {
+  console.error('Failed to load location options:', err);
+};
+
+const capitalizeLabel = (opt: string): string => opt.charAt(0).toUpperCase() + opt.slice(1).toLowerCase();
+
+const toOptionItems = (options: (string | OptionItem)[], toLabel: (opt: string) => string): OptionItem[] =>
+  options.map((opt) => (typeof opt === 'string' ? { value: opt, label: toLabel(opt) } : opt));
+
+const hasAnyActiveFilter = (values: SDBVFilterValues): boolean => {
+  const textFilters = [
+    values.state,
+    values.district,
+    values.block,
+    values.branch,
+    values.village,
+    values.program,
+    values.search,
+  ];
+  return textFilters.some(Boolean) || hasSelection(values.status) || hasSelection(values.role);
+};
+
 export const SDBVHierarchyFilter: React.FC<SDBVHierarchyFilterProps> = ({
   values,
   onChange,
@@ -66,12 +90,12 @@ export const SDBVHierarchyFilter: React.FC<SDBVHierarchyFilterProps> = ({
   const programs = MasterDataService.getPrograms();
 
   useEffect(() => {
-    MasterDataService.getStates().then(setStates);
+    MasterDataService.getStates().then(setStates).catch(logLocationError);
   }, []);
 
   useEffect(() => {
-    if (values.state && values.state !== 'all') {
-      MasterDataService.getDistricts(values.state).then(setDistricts);
+    if (hasSelection(values.state)) {
+      MasterDataService.getDistricts(values.state).then(setDistricts).catch(logLocationError);
     } else {
       setDistricts([]);
       setBlocks([]);
@@ -80,8 +104,8 @@ export const SDBVHierarchyFilter: React.FC<SDBVHierarchyFilterProps> = ({
   }, [values.state]);
 
   useEffect(() => {
-    if (values.district && values.district !== 'all') {
-      MasterDataService.getBlocks(values.district).then(setBlocks);
+    if (hasSelection(values.district)) {
+      MasterDataService.getBlocks(values.district).then(setBlocks).catch(logLocationError);
     } else {
       setBlocks([]);
       setVillages([]);
@@ -90,8 +114,8 @@ export const SDBVHierarchyFilter: React.FC<SDBVHierarchyFilterProps> = ({
 
   useEffect(() => {
     const activeBlock = values.branch || values.block;
-    if (activeBlock && activeBlock !== 'all' && showVillage) {
-      MasterDataService.getVillages(activeBlock).then(setVillages);
+    if (showVillage && hasSelection(activeBlock)) {
+      MasterDataService.getVillages(activeBlock).then(setVillages).catch(logLocationError);
     } else {
       setVillages([]);
     }
@@ -156,31 +180,9 @@ export const SDBVHierarchyFilter: React.FC<SDBVHierarchyFilterProps> = ({
     if (onClear) onClear();
   };
 
-  // Format status options
-  const formattedStatuses: OptionItem[] = statusOptions.map((opt) =>
-    typeof opt === 'string'
-      ? { value: opt, label: opt.charAt(0).toUpperCase() + opt.slice(1).toLowerCase() }
-      : opt
-  );
-
-  // Format role options
-  const formattedRoles: OptionItem[] = roleOptions.map((opt) =>
-    typeof opt === 'string'
-      ? { value: opt, label: opt }
-      : opt
-  );
-
-  const hasActiveFilters = Boolean(
-    values.state ||
-    values.district ||
-    values.block ||
-    values.branch ||
-    values.village ||
-    values.program ||
-    values.search ||
-    (values.status && values.status !== 'all') ||
-    (values.role && values.role !== 'all')
-  );
+  const formattedStatuses = toOptionItems(statusOptions, capitalizeLabel);
+  const formattedRoles = toOptionItems(roleOptions, (opt) => opt);
+  const hasActiveFilters = hasAnyActiveFilter(values);
 
   // If two-row search layout requested (matching media_1792067589917.png)
   if (showSearch) {

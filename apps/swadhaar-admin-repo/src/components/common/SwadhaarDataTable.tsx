@@ -57,6 +57,161 @@ export interface SwadhaarDataTableProps<T> {
   onRowsPerPageChange?: (newRowsPerPage: number) => void;
 }
 
+const filterRows = <T extends Record<string, any>>(rows: T[], searchValue: string): T[] => {
+  if (!searchValue.trim()) return [...rows];
+  const q = searchValue.toLowerCase();
+  return rows.filter((row) =>
+    Object.values(row).some(
+      (val) => (typeof val === 'string' || typeof val === 'number') && String(val).toLowerCase().includes(q)
+    )
+  );
+};
+
+const compareRows = <T extends Record<string, any>>(
+  a: T,
+  b: T,
+  sortField: string,
+  sortOrder: 'asc' | 'desc'
+): number => {
+  const valA = a[sortField];
+  const valB = b[sortField];
+  if (valA === valB) return 0;
+  if (valA == null) return 1;
+  if (valB == null) return -1;
+  const direction = sortOrder === 'asc' ? 1 : -1;
+  return valA < valB ? -direction : direction;
+};
+
+interface DataTableBodyProps<T> {
+  loading: boolean;
+  error: React.ReactNode;
+  onRetry?: () => void;
+  emptyMessage: string;
+  columns: ColumnDef<T>[];
+  selectable: boolean;
+  displayData: T[];
+  selectedIds: string[];
+  keyExtractor: (row: T) => string;
+  onSelectRow: (rowId: string, checked: boolean) => void;
+}
+
+function DataTableBody<T extends Record<string, any>>({
+  loading,
+  error,
+  onRetry,
+  emptyMessage,
+  columns,
+  selectable,
+  displayData,
+  selectedIds,
+  keyExtractor,
+  onSelectRow,
+}: Readonly<DataTableBodyProps<T>>) {
+  const colSpan = columns.length + (selectable ? 1 : 0);
+
+  if (loading) {
+    return (
+      <>
+        {SKELETON_ROW_KEYS.map((skeletonKey) => (
+          <TableRow key={skeletonKey}>
+            {selectable && (
+              <TableCell padding="checkbox">
+                <Skeleton variant="rectangular" width={20} height={20} />
+              </TableCell>
+            )}
+            {columns.map((col) => (
+              <TableCell key={col.id}>
+                <Skeleton width="80%" height={24} />
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <TableRow>
+        <TableCell colSpan={colSpan} align="center" sx={{ py: 6 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+            <ErrorOutlineIcon sx={{ fontSize: 44, color: '#DC2626' }} />
+            <Typography variant="body1" sx={{ color: '#1F2937', fontWeight: 600 }}>
+              {error}
+            </Typography>
+            {onRetry && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={onRetry}
+                sx={{
+                  borderColor: '#E6873C',
+                  color: '#E6873C',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  mt: 0.5,
+                  '&:hover': { borderColor: '#C66C23', backgroundColor: '#FDF3E9' },
+                }}
+              >
+                Retry
+              </Button>
+            )}
+          </Box>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  if (displayData.length === 0) {
+    return (
+      <TableRow>
+        <TableCell colSpan={colSpan} align="center" sx={{ py: 6 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <InboxOutlinedIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
+            <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+              {emptyMessage}
+            </Typography>
+          </Box>
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return (
+    <>
+      {displayData.map((row, index) => {
+        const rowKey = keyExtractor(row);
+        const isSelected = selectedIds.includes(rowKey);
+        return (
+          <TableRow
+            hover
+            key={rowKey}
+            selected={isSelected}
+            sx={{
+              '&:hover': { backgroundColor: 'primary.100' },
+              '&.Mui-selected': { backgroundColor: 'primary.100 !important' },
+            }}
+          >
+            {selectable && (
+              <TableCell padding="checkbox">
+                <Checkbox color="primary" checked={isSelected} onChange={(e) => onSelectRow(rowKey, e.target.checked)} />
+              </TableCell>
+            )}
+            {columns.map((column) => (
+              <TableCell key={column.id} align={column.align || 'left'}>
+                {column.render ? column.render(row, index) : row[column.id] ?? '—'}
+              </TableCell>
+            ))}
+          </TableRow>
+        );
+      })}
+    </>
+  );
+}
+
+const SKELETON_ROW_KEYS = ['sk-1', 'sk-2', 'sk-3', 'sk-4', 'sk-5', 'sk-6'];
+
 export function SwadhaarDataTable<T extends Record<string, any>>({
   columns,
   data,
@@ -79,7 +234,7 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
   totalCount,
   onPageChange,
   onRowsPerPageChange,
-}: SwadhaarDataTableProps<T>) {
+}: Readonly<SwadhaarDataTableProps<T>>) {
   // Local state if uncontrolled
   const [localSearch, setLocalSearch] = useState('');
   const [localPage, setLocalPage] = useState(0);
@@ -87,10 +242,10 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const searchValue = searchQuery !== undefined ? searchQuery : localSearch;
+  const searchValue = searchQuery ?? localSearch;
   const isServerPaged = controlledPage !== undefined && onPageChange !== undefined;
   const currentPage = isServerPaged ? controlledPage : localPage;
-  const currentRowsPerPage = controlledRowsPerPage !== undefined ? controlledRowsPerPage : localRowsPerPage;
+  const currentRowsPerPage = controlledRowsPerPage ?? localRowsPerPage;
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -124,31 +279,9 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
   const filteredData = useMemo(() => {
     if (isServerPaged) return data;
 
-    let result = [...data];
-
-    // Filter
-    if (searchValue.trim()) {
-      const q = searchValue.toLowerCase();
-      result = result.filter((row) =>
-        Object.values(row).some((val) =>
-          typeof val === 'string' || typeof val === 'number'
-            ? String(val).toLowerCase().includes(q)
-            : false
-        )
-      );
-    }
-
-    // Sort
+    let result = filterRows(data, searchValue);
     if (sortField) {
-      result.sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
-        if (valA === valB) return 0;
-        if (valA == null) return 1;
-        if (valB == null) return -1;
-        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-        return sortOrder === 'asc' ? 1 : -1;
-      });
+      result = [...result].sort((a, b) => compareRows(a, b, sortField, sortOrder));
     }
 
     return result;
@@ -306,94 +439,18 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
           </TableHead>
 
           <TableBody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, rIdx) => (
-                <TableRow key={`skeleton-${rIdx}`}>
-                  {selectable && (
-                    <TableCell padding="checkbox">
-                      <Skeleton variant="rectangular" width={20} height={20} />
-                    </TableCell>
-                  )}
-                  {columns.map((col) => (
-                    <TableCell key={col.id}>
-                      <Skeleton width="80%" height={24} />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : error ? (
-              <TableRow>
-                <TableCell colSpan={columns.length + (selectable ? 1 : 0)} align="center" sx={{ py: 6 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                    <ErrorOutlineIcon sx={{ fontSize: 44, color: '#DC2626' }} />
-                    <Typography variant="body1" sx={{ color: '#1F2937', fontWeight: 600 }}>
-                      {error}
-                    </Typography>
-                    {onRetry && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={onRetry}
-                        sx={{
-                          borderColor: '#E6873C',
-                          color: '#E6873C',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          borderRadius: '6px',
-                          mt: 0.5,
-                          '&:hover': { borderColor: '#C66C23', backgroundColor: '#FDF3E9' },
-                        }}
-                      >
-                        Retry
-                      </Button>
-                    )}
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ) : displayData.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length + (selectable ? 1 : 0)} align="center" sx={{ py: 6 }}>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                    <InboxOutlinedIcon sx={{ fontSize: 48, color: 'text.secondary' }} />
-                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                      {emptyMessage}
-                    </Typography>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ) : (
-              displayData.map((row, index) => {
-                const rowKey = keyExtractor(row);
-                const isSelected = selectedIds.includes(rowKey);
-
-                return (
-                  <TableRow
-                    hover
-                    key={rowKey}
-                    selected={isSelected}
-                    sx={{
-                      '&:hover': { backgroundColor: 'primary.100' },
-                      '&.Mui-selected': { backgroundColor: 'primary.100 !important' },
-                    }}
-                  >
-                    {selectable && (
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          color="primary"
-                          checked={isSelected}
-                          onChange={(e) => handleSelectRow(rowKey, e.target.checked)}
-                        />
-                      </TableCell>
-                    )}
-                    {columns.map((column) => (
-                      <TableCell key={column.id} align={column.align || 'left'}>
-                        {column.render ? column.render(row, index) : row[column.id] ?? '—'}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                );
-              })
-            )}
+            <DataTableBody
+              loading={loading}
+              error={error}
+              onRetry={onRetry}
+              emptyMessage={emptyMessage}
+              columns={columns}
+              selectable={selectable}
+              displayData={displayData}
+              selectedIds={selectedIds}
+              keyExtractor={keyExtractor}
+              onSelectRow={handleSelectRow}
+            />
           </TableBody>
         </Table>
       </TableContainer>
@@ -413,7 +470,7 @@ export function SwadhaarDataTable<T extends Record<string, any>>({
           }
         }}
         onRowsPerPageChange={(e) => {
-          const newSize = parseInt(e.target.value, 10);
+          const newSize = Number.parseInt(e.target.value, 10);
           if (isServerPaged) {
             onRowsPerPageChange!(newSize);
           } else {

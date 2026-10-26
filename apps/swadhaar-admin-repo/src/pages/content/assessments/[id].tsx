@@ -14,7 +14,6 @@ import {
   FormControlLabel,
   Checkbox,
   Radio,
-  RadioGroup,
   IconButton,
   Tooltip,
   Alert,
@@ -23,7 +22,6 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AddIcon from '@mui/icons-material/Add';
-import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../../next-i18next.config.js';
 import { getContentRead } from '@/services/ContentLibraryService';
@@ -90,14 +88,12 @@ export default function AssessmentBuilderPage() {
     },
   ]);
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Load existing assessment details if id is provided
   useEffect(() => {
     if (assessmentId && !isNew) {
-      setLoading(true);
       getContentRead(assessmentId)
         .then((res: any) => {
           const content = res?.content || res;
@@ -114,8 +110,7 @@ export default function AssessmentBuilderPage() {
         })
         .catch((err) => {
           console.error('Failed to load assessment details:', err);
-        })
-        .finally(() => setLoading(false));
+        });
     }
   }, [assessmentId, isNew]);
 
@@ -806,9 +801,7 @@ export const getStaticProps = async ({ locale }: { locale: string }) => {
   };
 };
 
-export const getStaticPaths = async () => {
-  return {
-    paths: [],
-    fallback: 'blocking',
-  };
-};
+export const getStaticPaths = () => ({
+  paths: [],
+  fallback: 'blocking',
+});

@@ -1,8 +1,16 @@
 const baseurl = process.env.NEXT_PUBLIC_MIDDLEWARE_URL || 'https://interface.tekdinext.com/interface/v1';
+const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
+
+const toQueryString = (queryString = ''): string => {
+  if (!queryString) return '';
+  return queryString.startsWith('?') ? queryString : `?${queryString}`;
+};
 
 export const API_ENDPOINTS = {
-  contentRead: (doId: string, fields?: string) =>
-    `${baseurl}/api/content/v1/read/${doId}${fields ? `?fields=${fields}` : ''}`,
+  contentRead: (doId: string, fields?: string) => {
+    const fieldsQuery = fields ? `?fields=${fields}` : '';
+    return `${baseurl}/api/content/v1/read/${doId}${fieldsQuery}`;
+  },
   academicYearsList: `${baseurl}/academicyears/list`,
   formRead: `${baseurl}/form/read`,
   accountCreate: `${baseurl}/account/create`,
@@ -50,20 +58,9 @@ export const API_ENDPOINTS = {
   actionObject: `${baseurl}/action/object/category/definition/v1/read?fields=objectMetadata,forms,name,label`,
   compositeSearch: `${baseurl}/action/composite/v3/search`,
   contentHierarchy: (doId: string) => `${baseurl}/action/content/v3/hierarchy/${doId}`,
-  lmsCoursesSearch: (queryString: string = '') => {
-    const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
-    const qs = queryString ? (queryString.startsWith('?') ? queryString : `?${queryString}`) : '';
-    return `${lmsBase}/courses/search${qs}`;
-  },
-  lmsModulesSearch: (queryString: string = '') => {
-    const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
-    const qs = queryString ? (queryString.startsWith('?') ? queryString : `?${queryString}`) : '';
-    return `${lmsBase}/modules/search${qs}`;
-  },
-  lmsCourseHierarchy: (courseId: string) => {
-    const lmsBase = process.env.NEXT_PUBLIC_LMS_SERVICE_URL || 'https://middleware-qa.aspireleaders.org/lms-service/v1';
-    return `${lmsBase}/courses/${courseId}/hierarchy`;
-  },
+  lmsCoursesSearch: (queryString = '') => `${lmsBase}/courses/search${toQueryString(queryString)}`,
+  lmsModulesSearch: (queryString = '') => `${lmsBase}/modules/search${toQueryString(queryString)}`,
+  lmsCourseHierarchy: (courseId: string) => `${lmsBase}/courses/${courseId}/hierarchy`,
   contentCreate: `${baseurl}/action/content/v3/create`,
   contentUpdate: (doId: string) => `${baseurl}/action/content/v3/update/${doId}`,
   contentRetire: (doId: string) => `${baseurl}/action/content/v3/retire/${doId}`,

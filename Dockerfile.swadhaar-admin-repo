@@ -15,12 +15,14 @@ RUN npm install -g pm2@6.0.8 --ignore-scripts && \
     npm ci --legacy-peer-deps --no-audit --no-fund --ignore-scripts && \
     npm cache clean --force
 
-# Copy application sources (filtered by .dockerignore to prevent including sensitive files)
-COPY . .
+# Copy only the workspace config and sources needed to build this app
+COPY nx.json tsconfig.base.json tsconfig.swadhaar.base.json jest.preset.js eslint.config.js ./
+COPY ecosystem.swadhaar-admin-repo.config.js ./
+COPY libs ./libs
+COPY apps/swadhaar-admin-repo ./apps/swadhaar-admin-repo
 
-# Run patch script if present, build application, cleanup build caches, and configure non-root user permissions
-RUN if [ -f patch-nx.js ]; then node patch-nx.js; fi && \
-    ./node_modules/.bin/nx build swadhaar-admin-repo && \
+# Build application, cleanup build caches, and configure non-root user permissions
+RUN ./node_modules/.bin/nx build swadhaar-admin-repo && \
     rm -rf apps/swadhaar-admin-repo/.next/cache \
            .nx/cache \
            /tmp/.npm && \

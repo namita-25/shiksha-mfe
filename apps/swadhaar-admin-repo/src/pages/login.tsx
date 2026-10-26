@@ -21,13 +21,13 @@ import {
 } from '@/services/LoginService';
 import { showToastMessage } from '@/components/Toastify';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
-import { BRAND, NEUTRAL } from '@/styles/customTheme';
 
 const PRIMARY = '#E6873C';
 const DARK_NAV = '#1C2B4A';
 const TIMER_SECS = 60;
 const MAX_RESEND = 3;
 const OTP_LEN = 6;
+const OTP_SLOT_IDS = Array.from({ length: OTP_LEN }, (_, i) => `swadhaar-otp-${i}`);
 
 interface ApiError {
   response?: { data?: { params?: { errmsg?: string }; message?: string } };
@@ -44,7 +44,7 @@ export default function LoginPage() {
   const { t } = useTranslation('common');
 
   const [mobile, setMobile] = useState('');
-  const [otp, setOtp] = useState<string[]>(Array(OTP_LEN).fill(''));
+  const [otp, setOtp] = useState<string[]>(new Array(OTP_LEN).fill(''));
   const [otpHash, setOtpHash] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
@@ -192,7 +192,7 @@ export default function LoginPage() {
 
       setOtpHash(hash);
       setOtpSent(true);
-      setOtp(Array(OTP_LEN).fill(''));
+      setOtp(new Array(OTP_LEN).fill(''));
       setResendAttempts((prev) => prev + 1);
       startTimer();
       showToastMessage(t('LOGIN_PAGE.OTP_SENT_SUCCESS'), 'success');
@@ -464,11 +464,11 @@ export default function LoginPage() {
           {t('LOGIN_PAGE.OTP')}
         </Typography>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 2.75 }}>
-          {otp.map((digit, idx) => (
+          {OTP_SLOT_IDS.map((slotId, idx) => (
             <TextField
-              key={idx}
-              id={`swadhaar-otp-${idx}`}
-              value={digit}
+              key={slotId}
+              id={slotId}
+              value={otp[idx]}
               disabled={!otpSent}
               onChange={(e) => handleOtpChange(idx, e.target.value)}
               onKeyDown={(e) => handleOtpKeyDown(idx, e as React.KeyboardEvent<HTMLInputElement>)}
@@ -492,8 +492,8 @@ export default function LoginPage() {
                   fontFamily: "'Inter', 'Poppins', sans-serif",
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: PRIMARY },
                   '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: digit ? PRIMARY : '#D1D5DB',
-                    borderWidth: digit ? 2 : 1,
+                    borderColor: otp[idx] ? PRIMARY : '#D1D5DB',
+                    borderWidth: otp[idx] ? 2 : 1,
                   },
                 },
               }}

@@ -24,7 +24,6 @@ import {
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
 import Link from 'next/link';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -42,11 +41,12 @@ interface SequenceItem {
   courseId?: string;
 }
 
+const DEFAULT_PATH_TITLE = 'Financial Inclusion Training Programme';
+
 export default function LearningPathBuilderPage() {
   const router = useRouter();
-  const { id } = router.query;
 
-  const [pathTitle, setPathTitle] = useState('Financial Inclusion Training Programme');
+  const pathTitle = DEFAULT_PATH_TITLE;
   const [coursesList, setCoursesList] = useState<CourseItem[]>([]);
   const [sequence, setSequence] = useState<SequenceItem[]>([]);
   const [loading, setLoading] = useState(true);

@@ -349,7 +349,7 @@ export default function UsersPage() {
 
   const updateUserStatus = (uid: string, status: string) => {
     setUsers((prev) => prev.map((u) => (u.userId === uid ? { ...u, status } : u)));
-    if (activeUser && activeUser.userId === uid) {
+    if (activeUser?.userId === uid) {
       setActiveUser({ ...activeUser, status });
     }
   };

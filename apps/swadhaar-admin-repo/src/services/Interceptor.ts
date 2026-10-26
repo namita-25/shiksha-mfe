@@ -36,7 +36,7 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    throw error;
   }
 );
 
@@ -44,11 +44,11 @@ instance.interceptors.response.use(
   (response) => {
     return response;
   },
-  async (error) => {
+  (error) => {
     if (error?.response?.status === 401 && typeof window !== 'undefined' && !error.config?.url?.includes('aspireleaders.org')) {
       window.location.href = '/logout';
     }
-    return Promise.reject(error);
+    throw error;
   }
 );
 

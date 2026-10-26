@@ -14,7 +14,6 @@ import {
   FormControlLabel,
   Checkbox,
   Radio,
-  RadioGroup,
   IconButton,
   Tooltip,
   Alert,
@@ -77,8 +76,8 @@ export default function CreateAssessmentPage() {
   useEffect(() => {
     getCourseList({ limit: 50 })
       .then((res) => {
-        if (Array.isArray(res?.courses) && res.courses.length > 0) {
-          const names = res?.courses.map((c) => c.name).filter(Boolean);
+        if (res?.content?.length > 0) {
+          const names = res.content.map((c) => c.name).filter(Boolean);
           setLinkedOptions(['None', ...names]);
         }
       })

@@ -38,7 +38,7 @@ export const MasterDataService = {
           limit: 100,
           offset: 0,
           fieldName: 'district',
-          controllingfieldfk: [String(stateValue || '3')],
+          controllingfieldfk: [String(stateValue)],
         });
         if (response?.data?.result?.values && response.data.result.values.length > 0) {
           return response.data.result.values.map((v: any) => ({
@@ -73,7 +73,7 @@ export const MasterDataService = {
           limit: 100,
           offset: 0,
           fieldName: 'block',
-          controllingfieldfk: [String(districtValue || '143')],
+          controllingfieldfk: [String(districtValue)],
         });
         if (response?.data?.result?.values && response.data.result.values.length > 0) {
           return response.data.result.values.map((v: any) => ({

@@ -27,8 +27,6 @@ import ClearIcon from '@mui/icons-material/Clear';
 import { useTranslation } from 'next-i18next';
 import { getCohortSearch } from '@/services/CohortService';
 import { getUserList } from '@/services/UserService';
-import TenantService from '@/services/TenantService';
-import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
 import { BRAND, NEUTRAL } from '@/styles/customTheme';
 import CommonButton from './CommonButton';
 import CommonTextField from './CommonTextField';
@@ -110,11 +108,6 @@ export const EnrolLearningPathModal: React.FC<EnrolLearningPathModalProps> = ({
   const fetchGroups = useCallback(async () => {
     setLoadingGroups(true);
     try {
-      const tenantId =
-        (typeof window !== 'undefined' && localStorage.getItem('tenantId')) ||
-        TenantService.getTenantId() ||
-        SWADHAAR_TENANT_ID;
-
       const payload = {
         limit: 50,
         offset: 0,

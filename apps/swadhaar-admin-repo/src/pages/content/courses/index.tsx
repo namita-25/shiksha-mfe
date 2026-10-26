@@ -118,9 +118,11 @@ export default function CoursesPage() {
 
   // Fetch tab counts for All, Published, and Drafts
   useEffect(() => {
-    fetchCourseTabCounts(debouncedSearch).then((counts) => {
-      setTabCounts(counts);
-    });
+    fetchCourseTabCounts(debouncedSearch)
+      .then((counts) => {
+        setTabCounts(counts);
+      })
+      .catch((err) => console.error('Failed to load course counts:', err));
   }, [debouncedSearch]);
 
   // Fetch courses from Aspire LMS search API
@@ -154,7 +156,7 @@ export default function CoursesPage() {
       }
 
       setCourses(content);
-      const activeCount = response.count !== undefined ? response.count : content.length;
+      const activeCount = response.count ?? content.length;
       setTotalCount(activeCount);
       setTabCounts((prev) => ({
         ...prev,

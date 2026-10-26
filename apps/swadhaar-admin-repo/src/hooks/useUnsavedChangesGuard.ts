@@ -18,7 +18,6 @@ export const useUnsavedChangesGuard = (
     // 1. Handle browser tab closure, reload, or external navigation
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = message;
       return message;
     };
 
@@ -30,7 +29,7 @@ export const useUnsavedChangesGuard = (
       if (!confirmed) {
         router.events.emit('routeChangeError');
         // Next.js recognizes this error throw to cancel route transitions
-        throw 'routeChange aborted by user due to unsaved changes.';
+        throw new Error('routeChange aborted by user due to unsaved changes.');
       }
     };
 

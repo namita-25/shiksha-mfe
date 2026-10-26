@@ -44,6 +44,44 @@ export interface CohortItem {
   rawCohort?: any;
 }
 
+const toDisplayStatus = (status?: string): CohortItem['status'] => {
+  const rawStatus = (status || 'active').toLowerCase();
+  if (rawStatus === 'draft') return 'Draft';
+  if (rawStatus === 'archived') return 'Archived';
+  return 'Active';
+};
+
+const toIsoDate = (value: string | number | Date): string => new Date(value).toISOString().split('T')[0];
+
+const formatCohortStartDate = (cohort: any): string => {
+  if (cohort.cohort_startDate) return toIsoDate(cohort.cohort_startDate);
+  if (cohort.createdAt) return toIsoDate(cohort.createdAt);
+  return '-';
+};
+
+const isActiveFilter = (value?: string): value is string => Boolean(value) && value !== 'all';
+
+const matchesSearch = (cohort: CohortItem, search?: string): boolean => {
+  const term = search?.toLowerCase().trim();
+  if (!term) return true;
+  return [cohort.name, cohort.branch, cohort.trainer, cohort.location].some((field) =>
+    field.toLowerCase().includes(term)
+  );
+};
+
+/** True when no filter is set, or one of the cohort's fields (or its location text) matches it. */
+const matchesLocationFilter = (cohort: CohortItem, filterValue: string | undefined, fields: (string | undefined)[]) => {
+  if (!isActiveFilter(filterValue)) return true;
+  const value = filterValue.toLowerCase();
+  return fields.some((field) => field?.toLowerCase() === value) || cohort.location.toLowerCase().includes(value);
+};
+
+const matchesCohortFilters = (cohort: CohortItem, filters: SDBVFilterValues): boolean =>
+  matchesSearch(cohort, filters.search) &&
+  matchesLocationFilter(cohort, filters.state, [cohort.state]) &&
+  matchesLocationFilter(cohort, filters.district, [cohort.district]) &&
+  matchesLocationFilter(cohort, filters.branch || filters.block, [cohort.block, cohort.branch]);
+
 const extractLocation = (customFields?: any[]) => {
   let state = '';
   let district = '';
@@ -129,15 +167,8 @@ export default function CohortsPage() {
         const cid = cohort.cohortId;
         const loc = extractLocation(cohort.customFields);
 
-        const rawStatus = (cohort.status || 'active').toLowerCase();
-        const displayStatus: 'Active' | 'Draft' | 'Archived' =
-          rawStatus === 'draft' ? 'Draft' : rawStatus === 'archived' ? 'Archived' : 'Active';
-
-        const formattedDate = cohort.cohort_startDate
-          ? new Date(cohort.cohort_startDate).toISOString().split('T')[0]
-          : cohort.createdAt
-          ? new Date(cohort.createdAt).toISOString().split('T')[0]
-          : '-';
+        const displayStatus = toDisplayStatus(cohort.status);
+        const formattedDate = formatCohortStartDate(cohort);
 
         return {
           id: cid,
@@ -174,48 +205,10 @@ export default function CohortsPage() {
   }, [fetchCohorts]);
 
   // Client-side search and filtering across loaded cohorts
-  const displayedCohorts = useMemo(() => {
-    return cohorts.filter((cohort) => {
-      // 1. Text search
-      if (filters.search?.trim()) {
-        const term = filters.search.toLowerCase().trim();
-        const matchesName = cohort.name.toLowerCase().includes(term);
-        const matchesBranch = cohort.branch.toLowerCase().includes(term);
-        const matchesTrainer = cohort.trainer.toLowerCase().includes(term);
-        const matchesLocation = cohort.location.toLowerCase().includes(term);
-        if (!matchesName && !matchesBranch && !matchesTrainer && !matchesLocation) {
-          return false;
-        }
-      }
-      // 2. State filter
-      if (filters.state && filters.state !== 'all') {
-        const s = filters.state.toLowerCase();
-        if (cohort.state?.toLowerCase() !== s && !cohort.location.toLowerCase().includes(s)) {
-          return false;
-        }
-      }
-      // 3. District filter
-      if (filters.district && filters.district !== 'all') {
-        const d = filters.district.toLowerCase();
-        if (cohort.district?.toLowerCase() !== d && !cohort.location.toLowerCase().includes(d)) {
-          return false;
-        }
-      }
-      // 4. Branch / Block filter
-      const branchFilter = filters.branch || filters.block;
-      if (branchFilter && branchFilter !== 'all') {
-        const b = branchFilter.toLowerCase();
-        if (
-          cohort.block?.toLowerCase() !== b &&
-          cohort.branch?.toLowerCase() !== b &&
-          !cohort.location.toLowerCase().includes(b)
-        ) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [cohorts, filters]);
+  const displayedCohorts = useMemo(
+    () => cohorts.filter((cohort) => matchesCohortFilters(cohort, filters)),
+    [cohorts, filters]
+  );
 
   const handleConfirmDelete = async () => {
     if (!deletingCohort) return;
@@ -514,7 +507,7 @@ export default function CohortsPage() {
         title="Archive Group"
         subtitle={`Are you sure you want to archive group "${deletingCohort?.name}"?`}
         confirmLabel={deleteLoading ? 'Archiving...' : 'Archive Group'}
-        confirmVariant="error"
+        confirmVariant="danger"
         confirmDisabled={deleteLoading}
         loading={deleteLoading}
         onConfirm={handleConfirmDelete}

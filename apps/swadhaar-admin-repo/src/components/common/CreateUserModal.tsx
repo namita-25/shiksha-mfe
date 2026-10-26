@@ -1,15 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import { useTranslation } from 'next-i18next';
 import MasterDataService, { LocationOption } from '@/services/MasterDataService';
 import TenantService from '@/services/TenantService';
-import {
-  createUserAccount,
-  CreateUserPayload,
-  updateUserAccount,
-  UpdateUserPayload,
-  getUserDetailsInfo,
-} from '@/services/UserService';
+import { createUserAccount, updateUserAccount, getUserDetailsInfo } from '@/services/UserService';
 import { showToastMessage } from '@/components/Toastify';
 import { SWADHAAR_TENANT_ID } from '@/utils/app.constant';
 import { NEUTRAL } from '@/styles/customTheme';
@@ -82,9 +76,72 @@ const formatGender = (gender?: any) => {
   return GENDER_NOT_SELECTED;
 };
 
-/** Payload gender: lower-cased selection, defaulting to 'male' when nothing is selected. */
-const toPayloadGender = (gender: string) =>
-  gender && gender !== GENDER_NOT_SELECTED ? gender.toLowerCase() : 'male';
+const cleanPlaceholder = (value: any, placeholder: string): string =>
+  value && value !== placeholder ? toStr(value) : '';
+
+const phoneFromUsername = (username: string, fallback: string): string =>
+  PHONE_REGEX.test(username) ? username : fallback;
+
+const employeeIdFromUsername = (username: string, fallback: string): string =>
+  !PHONE_REGEX.test(username) && username ? username : fallback;
+
+const findCustomFieldValue = (customFields: any[], matches: (cf: any) => boolean): string => {
+  const field = customFields.find(matches);
+  return field?.value?.[0] ? toStr(field.value[0]) : '';
+};
+
+const hasLabelOrName = (cf: any, names: string[]): boolean =>
+  names.includes(cf.label?.toLowerCase()) || names.includes(cf.name?.toLowerCase());
+
+/** Builds the form state from a row of the users list (initial prefill). */
+const formStateFromInitialData = (initialData: any): FormState => {
+  const rawUsername = toStr(initialData.username);
+  return {
+    fullName: toStr(initialData.fullName || initialData.name),
+    employeeId: toStr(initialData.employeeId) || employeeIdFromUsername(rawUsername, ''),
+    email: cleanPlaceholder(toStr(initialData.email), '-'),
+    phone: toStr(initialData.phone || initialData.mobile) || phoneFromUsername(rawUsername, ''),
+    gender: formatGender(initialData.gender),
+    state: toStr(initialData.state),
+    district: toStr(initialData.district),
+    branch: cleanPlaceholder(initialData.branch, '[Branch]'),
+    program: cleanPlaceholder(initialData.program, '[Program]'),
+    role: cleanPlaceholder(initialData.role, '-'),
+  };
+};
+
+/** Overlays the full server profile on top of the current form state. */
+const mergeServerUserIntoForm = (prev: FormState, user: any): FormState => {
+  const nameFromParts = [user.firstName, user.middleName, user.lastName].map(toStr).filter(Boolean).join(' ');
+  const computedName = toStr(user.name) || nameFromParts || prev.fullName;
+  const uEmail = toStr(user.email);
+  const uUsername = toStr(user.username);
+  const computedPhone = toStr(user.mobile || user.phone) || phoneFromUsername(uUsername, prev.phone);
+  const computedEmpId = toStr(user.employeeId) || employeeIdFromUsername(uUsername, prev.employeeId);
+  const computedGender = formatGender(user.gender);
+  const computedRole = toStr(user.role || user.tenantData?.[0]?.roleName) || prev.role;
+  const customFields: any[] = Array.isArray(user.customFields) ? user.customFields : [];
+
+  const stateVal = findCustomFieldValue(
+    customFields,
+    (cf) => cf.fieldId === STATE_FIELD_ID || hasLabelOrName(cf, ['state'])
+  );
+  const districtVal = findCustomFieldValue(customFields, (cf) => hasLabelOrName(cf, ['district']));
+  const branchVal = findCustomFieldValue(customFields, (cf) => hasLabelOrName(cf, ['branch', 'block']));
+
+  return {
+    fullName: computedName || prev.fullName,
+    employeeId: computedEmpId || prev.employeeId,
+    email: uEmail && uEmail !== '-' ? uEmail : prev.email,
+    phone: computedPhone || prev.phone,
+    gender: computedGender === GENDER_NOT_SELECTED ? prev.gender : computedGender,
+    state: stateVal || prev.state,
+    district: districtVal || prev.district,
+    branch: branchVal || prev.branch,
+    program: toStr(user.program) || prev.program,
+    role: computedRole && computedRole !== '-' ? computedRole : prev.role,
+  };
+};
 
 const SECTION_TITLE_SX = {
   fontSize: '11px',
@@ -165,129 +222,27 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   // Reset or initialize on open
   useEffect(() => {
-    if (open) {
-      if (initialData && isEdit) {
-        const rawEmail = toStr(initialData.email);
-        const cleanEmail = rawEmail && rawEmail !== '-' ? rawEmail : '';
-        const rawPhone = toStr(initialData.phone || initialData.mobile);
-        const rawUsername = toStr(initialData.username);
-        const cleanPhone =
-          rawPhone || (PHONE_REGEX.test(rawUsername) ? rawUsername : '');
-        const rawEmpId = toStr(initialData.employeeId);
-        const cleanEmpId =
-          rawEmpId || (!PHONE_REGEX.test(rawUsername) && rawUsername ? rawUsername : '');
-        const cleanBranch =
-          initialData.branch && initialData.branch !== '[Branch]'
-            ? toStr(initialData.branch)
-            : '';
-        const cleanProgram =
-          initialData.program && initialData.program !== '[Program]'
-            ? toStr(initialData.program)
-            : '';
-        const cleanRole =
-          initialData.role && initialData.role !== '-' ? toStr(initialData.role) : '';
-
-        setFormData({
-          fullName: toStr(initialData.fullName || initialData.name),
-          employeeId: cleanEmpId,
-          email: cleanEmail,
-          phone: cleanPhone,
-          gender: formatGender(initialData.gender),
-          state: toStr(initialData.state),
-          district: toStr(initialData.district),
-          branch: cleanBranch,
-          program: cleanProgram,
-          role: cleanRole,
-        });
-
-        // Call getUserDetailsInfo to fetch complete profile data from server
-        const targetUserId = toStr(initialData.userId || initialData.id);
-        if (targetUserId) {
-          getUserDetailsInfo(targetUserId)
-            .then((res: any) => {
-              const user = res?.result?.userData || res?.userData || res?.result || res;
-              if (user) {
-                setFormData((prev) => {
-                  const fn = toStr(user.firstName);
-                  const mn = toStr(user.middleName);
-                  const ln = toStr(user.lastName);
-                  const computedName =
-                    toStr(user.name) || [fn, mn, ln].filter(Boolean).join(' ') || prev.fullName;
-                  const uEmail = toStr(user.email);
-                  const computedEmail = uEmail && uEmail !== '-' ? uEmail : prev.email;
-                  const uPhone = toStr(user.mobile || user.phone);
-                  const uUsername = toStr(user.username);
-                  const computedPhone =
-                    uPhone || (PHONE_REGEX.test(uUsername) ? uUsername : prev.phone);
-                  const uEmpId = toStr(user.employeeId);
-                  const computedEmpId =
-                    uEmpId ||
-                    (!PHONE_REGEX.test(uUsername) && uUsername
-                      ? uUsername
-                      : prev.employeeId);
-                  const computedGender = formatGender(user.gender);
-                  const computedRole =
-                    toStr(user.role || user.tenantData?.[0]?.roleName) || prev.role;
-
-                  let sVal = prev.state;
-                  let dVal = prev.district;
-                  let bVal = prev.branch;
-
-                  if (Array.isArray(user.customFields)) {
-                    const sField = user.customFields.find(
-                      (cf: any) =>
-                        cf.fieldId === STATE_FIELD_ID ||
-                        cf.label?.toLowerCase() === 'state' ||
-                        cf.name?.toLowerCase() === 'state'
-                    );
-                    if (sField && sField.value?.[0]) {
-                      sVal = toStr(sField.value[0]);
-                    }
-                    const dField = user.customFields.find(
-                      (cf: any) =>
-                        cf.label?.toLowerCase() === 'district' ||
-                        cf.name?.toLowerCase() === 'district'
-                    );
-                    if (dField && dField.value?.[0]) {
-                      dVal = toStr(dField.value[0]);
-                    }
-                    const bField = user.customFields.find(
-                      (cf: any) =>
-                        cf.label?.toLowerCase() === 'branch' ||
-                        cf.label?.toLowerCase() === 'block' ||
-                        cf.name?.toLowerCase() === 'branch' ||
-                        cf.name?.toLowerCase() === 'block'
-                    );
-                    if (bField && bField.value?.[0]) {
-                      bVal = toStr(bField.value[0]);
-                    }
-                  }
-
-                  return {
-                    fullName: computedName || prev.fullName,
-                    employeeId: computedEmpId || prev.employeeId,
-                    email: computedEmail,
-                    phone: computedPhone || prev.phone,
-                    gender: computedGender === GENDER_NOT_SELECTED ? prev.gender : computedGender,
-                    state: sVal || prev.state,
-                    district: dVal || prev.district,
-                    branch: bVal || prev.branch,
-                    program: toStr(user.program) || prev.program,
-                    role:
-                      computedRole && computedRole !== '-' ? computedRole : prev.role,
-                  };
-                });
-              }
-            })
-            .catch((err) => {
-              console.warn('Could not fetch user details for prefill:', err);
-            });
-        }
-      } else {
-        setFormData(initialFormState);
-      }
-      setErrors({});
+    if (!open) return;
+    setErrors({});
+    if (!(initialData && isEdit)) {
+      setFormData(initialFormState);
+      return;
     }
+    setFormData(formStateFromInitialData(initialData));
+
+    // Call getUserDetailsInfo to fetch complete profile data from server
+    const targetUserId = toStr(initialData.userId || initialData.id);
+    if (!targetUserId) return;
+    getUserDetailsInfo(targetUserId)
+      .then((res: any) => {
+        const user = res?.result?.userData || res?.userData || res?.result || res;
+        if (user) {
+          setFormData((prev) => mergeServerUserIntoForm(prev, user));
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch user details for prefill:', err);
+      });
   }, [open, initialData, isEdit]);
 
   // Match state label or value with states list once loaded

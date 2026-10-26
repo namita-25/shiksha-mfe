@@ -1,0 +1,2 @@
+# Design prototypes are reference material, not app code (kept locally, excluded from analysis)
+doc/*.html

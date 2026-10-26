@@ -89,8 +89,8 @@ export const getFiltersForTab = (tab: ContentTabType, status?: string[]): Record
  */
 export const formatDurationString = (item: any): string => {
   if (item.duration) {
-    const totalSecs = parseInt(String(item.duration), 10);
-    if (!isNaN(totalSecs) && totalSecs > 0) {
+    const totalSecs = Number.parseInt(String(item.duration), 10);
+    if (!Number.isNaN(totalSecs) && totalSecs > 0) {
       const mins = Math.floor(totalSecs / 60);
       const secs = totalSecs % 60;
       return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -98,10 +98,23 @@ export const formatDurationString = (item: any): string => {
     return String(item.duration);
   }
   if (item.description) {
-    const match = item.description.match(/(\d+:\d+|\d+\s*min)/i);
+    const match = item.description.match(/(\d{1,4}:\d{1,2}|\d{1,4} {0,3}min)/i);
     if (match) return match[1];
   }
   return '—';
+};
+
+/**
+ * Duration value to prefill in edit forms: keeps human-readable values ("1:43", "5 min"),
+ * otherwise formats seconds, falling back to the raw value (or '' when there is none).
+ */
+export const resolveEditableDuration = (item: any): string => {
+  const formatted = formatDurationString(item);
+  const hasFormatted = formatted !== '—';
+  if (!item.duration) return hasFormatted ? formatted : '';
+  const raw = String(item.duration);
+  if (raw.includes(':') || raw.includes('min')) return raw;
+  return hasFormatted ? formatted : raw;
 };
 
 /**
@@ -141,10 +154,10 @@ export const inferCourseUsage = (item: any): string => {
   if (/course\s*0/i.test(text) || /स्वाधार\s*फिनएक्सेस/i.test(text)) {
     return 'Course 0 · 0.1';
   }
-  if (/course\s*1\s*(\.|·|-)\s*1\.?2/i.test(text) || /budget/i.test(text) || /बजट/i.test(text)) {
+  if (/course\s*1\s*[.·-]\s*1\.?2/i.test(text) || /budget/i.test(text) || /बजट/i.test(text)) {
     return 'Course 1 · 1.2';
   }
-  if (/course\s*1\s*(\.|·|-)\s*1\.?3/i.test(text) || /chhoti\s*bachat/i.test(text)) {
+  if (/course\s*1\s*[.·-]\s*1\.?3/i.test(text) || /chhoti\s*bachat/i.test(text)) {
     return 'Course 1 · 1.3';
   }
   if (
@@ -173,8 +186,8 @@ export const searchContentLibrary = async (
       request: {
         filters: tabFilters,
         query: params.query || '',
-        limit: params.limit !== undefined ? params.limit : 20,
-        offset: params.offset !== undefined ? params.offset : 0,
+        limit: params.limit ?? 20,
+        offset: params.offset ?? 0,
       },
     };
 
@@ -223,12 +236,7 @@ export const searchContentLibrary = async (
       );
     }
 
-    const calculatedCount =
-      result.count !== undefined
-        ? result.count
-        : result.QuestionSet?.length !== undefined
-        ? result.QuestionSet.length
-        : filteredList.length;
+    const calculatedCount = result.count ?? result.QuestionSet?.length ?? filteredList.length;
 
     return {
       count: calculatedCount,

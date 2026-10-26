@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { post, put, patch } from './RestClient';
+import { post, put } from './RestClient';
 
 export interface CohortCustomField {
   fieldId: string;
@@ -41,7 +41,7 @@ export interface CohortSearchParams {
   filters: {
     type?: string;
     tenantId?: string;
-    status?: string;
+    status?: string | string[];
     name?: string;
     [key: string]: any;
   };

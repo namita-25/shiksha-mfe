@@ -31,8 +31,8 @@ export default function ReportsPage() {
       </Box>
 
       <Grid container spacing={3}>
-        {reports.map((rep, idx) => (
-          <Grid item xs={12} sm={6} key={idx}>
+        {reports.map((rep) => (
+          <Grid item xs={12} sm={6} key={rep.title}>
             <Card sx={{ borderRadius: '12px', border: '1px solid #E5E7EB', boxShadow: 'none' }}>
               <CardContent sx={{ p: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>

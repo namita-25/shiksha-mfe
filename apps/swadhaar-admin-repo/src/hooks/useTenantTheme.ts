@@ -42,7 +42,7 @@ export const useTenantTheme = () => {
       }
     };
 
-    applyTheme();
+    applyTheme().catch((err) => console.error('Error applying tenant theme:', err));
   }, []);
 
   return { branding, isLoading };

@@ -54,69 +54,101 @@ export interface MemberRowItem {
   status: string;
 }
 
-const mapMemberToRow = (user: any, index: number): MemberRowItem => {
-  const userId = user.userId || user.id || `member-${index}`;
-  const fn = user.firstName ? String(user.firstName).trim() : '';
-  const mn = user.middleName ? String(user.middleName).trim() : '';
-  const ln = user.lastName ? String(user.lastName).trim() : '';
-  const uUsername = user.username ? String(user.username).trim() : '';
-  const fullName = [fn, mn, ln].filter(Boolean).join(' ') || user.name || uUsername || '-';
-  const email = user.email && user.email !== '-' ? String(user.email).trim() : (uUsername || '-');
-  const role = user.role || user.membershipRole || 'Student';
-  const status = (user.status || 'active').toLowerCase();
+const MEMBER_STATUS_STYLES: Record<string, { backgroundColor: string; color: string }> = {
+  active: { backgroundColor: '#ECFDF5', color: '#047857' },
+  applied: { backgroundColor: '#EFF6FF', color: '#1D4ED8' },
+};
+const DEFAULT_MEMBER_STATUS_STYLE = { backgroundColor: '#F3F4F6', color: '#4B5563' };
 
-  const cFields = Array.isArray(user.customField)
-    ? user.customField
-    : Array.isArray(user.customFields)
-      ? user.customFields
-      : [];
+const getMemberStatusStyle = (status: string) => MEMBER_STATUS_STYLES[status] ?? DEFAULT_MEMBER_STATUS_STYLE;
 
-  let state = user.state ? String(user.state).trim() : '';
-  let district = user.district ? String(user.district).trim() : (user.city ? String(user.city).trim() : '');
-  let branch = user.branch ? String(user.branch).trim() : '';
-  let program = user.program ? String(user.program).trim() : '';
+const getQueryParam = (value: string | string[] | undefined): string => {
+  if (typeof value === 'string') return value;
+  return Array.isArray(value) ? value[0] : '';
+};
 
-  for (const cf of cFields) {
+const toGroupStatus = (status?: string): 'Active' | 'Draft' | 'Archived' => {
+  const rawStatus = (status || 'active').toLowerCase();
+  if (rawStatus === 'draft') return 'Draft';
+  if (rawStatus === 'archived') return 'Archived';
+  return 'Active';
+};
+
+const trimmedOrEmpty = (value?: string | number | null): string => (value ? String(value).trim() : '');
+
+const getMemberCustomFields = (user: any): any[] => {
+  if (Array.isArray(user.customField)) return user.customField;
+  if (Array.isArray(user.customFields)) return user.customFields;
+  return [];
+};
+
+const memberFieldValue = (cf: any): string => {
+  const rawVal = cf.value ?? cf.code ?? cf.selectedValues?.[0]?.value;
+  const val = Array.isArray(rawVal) ? rawVal[0] : rawVal;
+  return typeof val === 'string' ? val.trim() : '';
+};
+
+interface MemberLocation {
+  state: string;
+  district: string;
+  branch: string;
+  program: string;
+}
+
+/** Fills empty location fields from the member's custom fields (first match wins). */
+const fillMemberLocation = (initial: MemberLocation, customFields: any[]): MemberLocation => {
+  const result = { ...initial };
+  for (const cf of customFields) {
     const label = (cf.label || cf.name || '').toLowerCase();
-    const rawVal = cf.value ?? cf.code ?? cf.selectedValues?.[0]?.value;
-    const val = Array.isArray(rawVal) ? rawVal[0] : rawVal;
-    if (val && typeof val === 'string' && val.trim()) {
-      const trimmed = val.trim();
-      if (!state && (label === 'state' || label.includes('choose your state'))) {
-        state = trimmed;
-      }
-      if (!district && (label === 'city' || label === 'district')) {
-        district = trimmed;
-      }
-      if (!branch && (label.includes('branch') || label.includes('block') || label.includes('institution'))) {
-        if (!trimmed.startsWith('http')) branch = trimmed;
-      }
-      if (!program && (label.includes('program') || label.includes('course') || label.includes('field of study'))) {
-        program = trimmed;
-      }
+    const value = memberFieldValue(cf);
+    if (!value) continue;
+    if (!result.state && (label === 'state' || label.includes('choose your state'))) result.state = value;
+    if (!result.district && (label === 'city' || label === 'district')) result.district = value;
+    if (!result.branch && ['branch', 'block', 'institution'].some((hint) => label.includes(hint)) && !value.startsWith('http')) {
+      result.branch = value;
+    }
+    if (!result.program && ['program', 'course', 'field of study'].some((hint) => label.includes(hint))) {
+      result.program = value;
     }
   }
+  return result;
+};
 
-  const locParts = [state, district].filter(Boolean);
-  const stateDistrict = locParts.length > 0 ? locParts.join(' · ') : '-';
+const mapMemberToRow = (user: any, index: number): MemberRowItem => {
+  const userId = user.userId || user.id || `member-${index}`;
+  const uUsername = trimmedOrEmpty(user.username);
+  const nameParts = [user.firstName, user.middleName, user.lastName].map(trimmedOrEmpty);
+  const fullName = nameParts.filter(Boolean).join(' ') || user.name || uUsername || '-';
+  const email = user.email && user.email !== '-' ? String(user.email).trim() : uUsername || '-';
+
+  const location = fillMemberLocation(
+    {
+      state: trimmedOrEmpty(user.state),
+      district: trimmedOrEmpty(user.district) || trimmedOrEmpty(user.city),
+      branch: trimmedOrEmpty(user.branch),
+      program: trimmedOrEmpty(user.program),
+    },
+    getMemberCustomFields(user)
+  );
+  const locParts = [location.state, location.district].filter(Boolean);
 
   return {
     id: userId,
     userId,
     fullName,
     email,
-    role,
-    stateDistrict,
-    branch: branch || district || '-',
-    program: program || '-',
-    status,
+    role: user.role || user.membershipRole || 'Student',
+    stateDistrict: locParts.length > 0 ? locParts.join(' · ') : '-',
+    branch: location.branch || location.district || '-',
+    program: location.program || '-',
+    status: (user.status || 'active').toLowerCase(),
   };
 };
 
 export default function GroupDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
-  const cohortId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+  const cohortId = getQueryParam(id);
 
   const [cohort, setCohort] = useState<any>(null);
   const [members, setMembers] = useState<MemberRowItem[]>([]);
@@ -231,7 +263,7 @@ export default function GroupDetailsPage() {
   };
 
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
+    setRowsPerPage(Number.parseInt(event.target.value, 10));
     setPage(0);
   };
 
@@ -324,14 +356,141 @@ export default function GroupDetailsPage() {
   };
 
   const groupName = cohort?.name || 'Group Details';
-  const rawStatus = (cohort?.status || 'active').toLowerCase();
-  const groupStatus: 'Active' | 'Draft' | 'Archived' =
-    rawStatus === 'draft' ? 'Draft' : rawStatus === 'archived' ? 'Archived' : 'Active';
+  const groupStatus = toGroupStatus(cohort?.status);
 
   // Reviewers extracted from member list
   const reviewerMembers = useMemo(() => {
     return members.filter((m) => m.role.toLowerCase() === 'reviewer');
   }, [members]);
+
+  const renderMembersBody = () => {
+    if (loading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
+            <CircularProgress size={30} sx={{ color: 'primary.main', mb: 1 }} />
+            <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
+              Loading cohort members...
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    if (members.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
+            <Typography sx={{ fontSize: '14px', color: '#6B7280' }}>
+              No members found for this group.
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    return members.map((row) => {
+      const isSelected = selectedIds.includes(row.id);
+      return (
+        <TableRow
+          key={row.id}
+          hover
+          selected={isSelected}
+          sx={{
+            '&:last-child td, &:last-child th': { border: 0 },
+            '&.Mui-selected': { backgroundColor: 'primary.50' },
+          }}
+        >
+          <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #F3F4F6' }}>
+            <Checkbox
+              size="small"
+              checked={isSelected}
+              onChange={() => handleSelectRow(row.id)}
+              sx={{
+                color: '#9CA3AF',
+                '&.Mui-checked': { color: 'primary.main' },
+              }}
+            />
+          </TableCell>
+
+          {/* 1. Full name */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            <Box
+              sx={{ cursor: 'pointer', display: 'inline-block' }}
+              onClick={() => router.push(`/users/${row.userId}`)}
+            >
+              <Typography
+                sx={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  whiteSpace: 'nowrap',
+                  '&:hover': {
+                    textDecoration: 'underline',
+                    color: '#B85D1B',
+                  },
+                }}
+              >
+                {row.fullName}
+              </Typography>
+            </Box>
+          </TableCell>
+
+          {/* 2. Email (login ID) */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            <Tooltip title={row.email}>
+              <Typography
+                sx={{
+                  fontSize: '12.5px',
+                  color: '#374151',
+                  maxWidth: 160,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {row.email}
+              </Typography>
+            </Tooltip>
+          </TableCell>
+
+          {/* 3. Role */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            <Typography sx={{ fontSize: '12.5px', color: '#4B5563' }}>
+              {row.role}
+            </Typography>
+          </TableCell>
+
+          {/* 4. State · District */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            <Typography sx={{ fontSize: '12.5px', color: '#4B5563', whiteSpace: 'nowrap' }}>
+              {row.stateDistrict}
+            </Typography>
+          </TableCell>
+
+          {/* 5. Branch */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            <Typography sx={{ fontSize: '12.5px', color: '#4B5563', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {row.branch}
+            </Typography>
+          </TableCell>
+
+          {/* 6. Status */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            <Chip
+              label={row.status.charAt(0).toUpperCase() + row.status.slice(1)}
+              size="small"
+              sx={{
+                fontWeight: 600,
+                fontSize: '11px',
+                borderRadius: '12px',
+                height: '22px',
+                ...getMemberStatusStyle(row.status),
+              }}
+            />
+          </TableCell>
+        </TableRow>
+      );
+    })
+  };
 
   return (
     <Box sx={{ py: 1.5, px: { xs: 1, md: 2 } }}>
@@ -629,139 +788,7 @@ export default function GroupDetailsPage() {
                 </TableHead>
 
                 <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
-                        <CircularProgress size={30} sx={{ color: 'primary.main', mb: 1 }} />
-                        <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
-                          Loading cohort members...
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : members.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
-                        <Typography sx={{ fontSize: '14px', color: '#6B7280' }}>
-                          No members found for this group.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    members.map((row) => {
-                      const isSelected = selectedIds.includes(row.id);
-                      return (
-                        <TableRow
-                          key={row.id}
-                          hover
-                          selected={isSelected}
-                          sx={{
-                            '&:last-child td, &:last-child th': { border: 0 },
-                            '&.Mui-selected': { backgroundColor: 'primary.50' },
-                          }}
-                        >
-                          <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #F3F4F6' }}>
-                            <Checkbox
-                              size="small"
-                              checked={isSelected}
-                              onChange={() => handleSelectRow(row.id)}
-                              sx={{
-                                color: '#9CA3AF',
-                                '&.Mui-checked': { color: 'primary.main' },
-                              }}
-                            />
-                          </TableCell>
-
-                          {/* 1. Full name */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Box
-                              sx={{ cursor: 'pointer', display: 'inline-block' }}
-                              onClick={() => router.push(`/users/${row.userId}`)}
-                            >
-                              <Typography
-                                sx={{
-                                  fontSize: '13px',
-                                  fontWeight: 600,
-                                  color: 'primary.main',
-                                  whiteSpace: 'nowrap',
-                                  '&:hover': {
-                                    textDecoration: 'underline',
-                                    color: '#B85D1B',
-                                  },
-                                }}
-                              >
-                                {row.fullName}
-                              </Typography>
-                            </Box>
-                          </TableCell>
-
-                          {/* 2. Email (login ID) */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Tooltip title={row.email}>
-                              <Typography
-                                sx={{
-                                  fontSize: '12.5px',
-                                  color: '#374151',
-                                  maxWidth: 160,
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {row.email}
-                              </Typography>
-                            </Tooltip>
-                          </TableCell>
-
-                          {/* 3. Role */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Typography sx={{ fontSize: '12.5px', color: '#4B5563' }}>
-                              {row.role}
-                            </Typography>
-                          </TableCell>
-
-                          {/* 4. State · District */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Typography sx={{ fontSize: '12.5px', color: '#4B5563', whiteSpace: 'nowrap' }}>
-                              {row.stateDistrict}
-                            </Typography>
-                          </TableCell>
-
-                          {/* 5. Branch */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Typography sx={{ fontSize: '12.5px', color: '#4B5563', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {row.branch}
-                            </Typography>
-                          </TableCell>
-
-                          {/* 6. Status */}
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
-                            <Chip
-                              label={row.status.charAt(0).toUpperCase() + row.status.slice(1)}
-                              size="small"
-                              sx={{
-                                fontWeight: 600,
-                                fontSize: '11px',
-                                borderRadius: '12px',
-                                height: '22px',
-                                backgroundColor:
-                                  row.status === 'active'
-                                    ? '#ECFDF5'
-                                    : row.status === 'applied'
-                                      ? '#EFF6FF'
-                                      : '#F3F4F6',
-                                color:
-                                  row.status === 'active'
-                                    ? '#047857'
-                                    : row.status === 'applied'
-                                      ? '#1D4ED8'
-                                      : '#4B5563',
-                              }}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
+                  {renderMembersBody()}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -955,7 +982,7 @@ export default function GroupDetailsPage() {
         title="Archive Group"
         subtitle={`Are you sure you want to archive "${groupName}"?`}
         confirmLabel={actionLoading ? 'Archiving...' : 'Archive Group'}
-        confirmVariant="error"
+        confirmVariant="danger"
         confirmDisabled={actionLoading}
         loading={actionLoading}
         onConfirm={handleConfirmDeleteCohort}
@@ -972,7 +999,7 @@ export default function GroupDetailsPage() {
         title="Remove from Group"
         subtitle={`Remove ${selectedIds.length} member(s) from this group?`}
         confirmLabel={actionLoading ? 'Removing...' : 'Remove Members'}
-        confirmVariant="error"
+        confirmVariant="danger"
         confirmDisabled={actionLoading}
         loading={actionLoading}
         onConfirm={handleConfirmRemoveMembers}

@@ -25,7 +25,8 @@ export type LifecycleState =
   | 'deleted';
 
 interface LifecycleChipProps {
-  state: LifecycleState | string;
+  /** A LifecycleState or any other backend status string. */
+  state: string;
   size?: 'small' | 'medium';
 }
 

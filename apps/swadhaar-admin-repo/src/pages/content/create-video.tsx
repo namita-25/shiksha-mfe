@@ -12,9 +12,6 @@ import {
   Select,
   MenuItem,
   Radio,
-  RadioGroup,
-  FormControlLabel,
-  Tooltip,
   Alert,
   Chip,
 } from '@mui/material';
@@ -27,10 +24,15 @@ import {
   createContent,
   updateContent,
   inferCourseUsage,
-  formatDurationString,
+  resolveEditableDuration,
 } from '@/services/ContentLibraryService';
 import { detectLanguage } from '@/services/CourseService';
 import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
+
+const toLanguageOption = (language: string): 'Hindi' | 'English' => (language === 'Hindi' ? 'Hindi' : 'English');
+
+const detectSourceType = (url: string): 'link' | 'upload' =>
+  url.includes('youtube') || url.includes('youtu.be') || url.startsWith('http') ? 'link' : 'upload';
 
 export default function CreateVideoPage() {
   const router = useRouter();
@@ -94,27 +96,16 @@ export default function CreateVideoPage() {
             const loadedTitle = content.name || content.title || '';
             const loadedDesc = content.description || '';
             const loadedUrl = content.artifactUrl || content.downloadUrl || content.previewUrl || '';
-            const loadedDur = content.duration
-              ? (String(content.duration).includes(':') || String(content.duration).includes('min')
-                  ? String(content.duration)
-                  : formatDurationString(content) !== '—'
-                  ? formatDurationString(content)
-                  : String(content.duration))
-              : formatDurationString(content) !== '—'
-              ? formatDurationString(content)
-              : '';
+            const loadedDur = resolveEditableDuration(content);
             const loadedLang = detectLanguage(loadedTitle, content.language || content.languageCode);
-            const loadedSrc =
-              loadedUrl.includes('youtube') || loadedUrl.includes('youtu.be') || loadedUrl.startsWith('http')
-                ? 'link'
-                : 'upload';
+            const loadedSrc = detectSourceType(loadedUrl);
             const courseUsage = (router.query.usedIn as string) || inferCourseUsage(content);
 
             setTitle(loadedTitle);
             setDescription(loadedDesc);
             setVideoUrl(loadedUrl);
             setDuration(loadedDur);
-            setLanguage(loadedLang === 'Hindi' ? 'Hindi' : 'English');
+            setLanguage(toLanguageOption(loadedLang));
             setSourceType(loadedSrc);
             setUsedIn(courseUsage);
 
@@ -122,7 +113,7 @@ export default function CreateVideoPage() {
               title: loadedTitle,
               description: loadedDesc,
               duration: loadedDur,
-              language: loadedLang === 'Hindi' ? 'Hindi' : 'English',
+              language: toLanguageOption(loadedLang),
               videoUrl: loadedUrl,
               sourceType: loadedSrc,
             });

@@ -1,6 +1,3 @@
-import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { get } from './RestClient';
-
 export interface NavItemConfig {
   label: string;
   path: string;
@@ -18,37 +15,39 @@ export interface UserProfileSummary {
   tenantId: string;
 }
 
+const readUserProfile = (): UserProfileSummary => {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('adminInfo');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          userId: parsed.userId || parsed.id || 'admin-01',
+          name: parsed.name || parsed.username || 'Administrator',
+          username: parsed.username || 'admin',
+          roles: Array.isArray(parsed.roles) ? parsed.roles : [parsed.role || 'Admin'],
+          tenantId: parsed.tenantId || 'swadhaar-tenant',
+        };
+      } catch {
+        // fallback
+      }
+    }
+  }
+
+  return {
+    userId: 'admin-01',
+    name: 'Administrator',
+    username: 'admin',
+    roles: ['Super Admin', 'Admin'],
+    tenantId: 'swadhaar-tenant',
+  };
+};
+
 export const LayoutService = {
   /**
    * Fetch authenticated user profile and roles
    */
-  getUserProfile: async (): Promise<UserProfileSummary> => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('adminInfo');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          return {
-            userId: parsed.userId || parsed.id || 'admin-01',
-            name: parsed.name || parsed.username || 'Administrator',
-            username: parsed.username || 'admin',
-            roles: Array.isArray(parsed.roles) ? parsed.roles : [parsed.role || 'Admin'],
-            tenantId: parsed.tenantId || 'swadhaar-tenant',
-          };
-        } catch {
-          // fallback
-        }
-      }
-    }
-
-    return {
-      userId: 'admin-01',
-      name: 'Administrator',
-      username: 'admin',
-      roles: ['Super Admin', 'Admin'],
-      tenantId: 'swadhaar-tenant',
-    };
-  },
+  getUserProfile: (): Promise<UserProfileSummary> => Promise.resolve(readUserProfile()),
 
   /**
    * Return dynamic navigation menu filtered by active roles

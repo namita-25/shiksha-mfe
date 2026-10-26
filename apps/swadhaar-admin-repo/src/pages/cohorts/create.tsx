@@ -24,7 +24,6 @@ import {
   Select,
   MenuItem,
   FormControl,
-  Divider,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -71,6 +70,141 @@ const DEFAULT_FILTERS: SDBVFilterValues = {
   village: 'all',
   program: 'all',
   role: 'all',
+};
+
+const isActiveFilter = (value?: string): value is string => Boolean(value) && value !== 'all';
+
+const USER_FILTER_KEYS = ['role', 'state', 'district', 'branch', 'program'] as const;
+
+const buildUserSearchPayload = (filters: SDBVFilterValues, page: number, rowsPerPage: number) => {
+  const filterObj: Record<string, string[]> = {
+    status: isActiveFilter(filters.status) ? [filters.status.toLowerCase()] : ['active'],
+  };
+  USER_FILTER_KEYS.forEach((key) => {
+    const value = filters[key];
+    if (isActiveFilter(value)) {
+      filterObj[key] = [value];
+    }
+  });
+
+  const payload: Record<string, any> = {
+    limit: rowsPerPage,
+    offset: page * rowsPerPage,
+    filters: filterObj,
+    sort: ['name', 'asc'],
+  };
+  const search = filters.search?.trim();
+  if (search) {
+    payload.search = search;
+  }
+  return payload;
+};
+
+const trimmedOrEmpty = (value?: string | number | null): string => (value ? String(value).trim() : '');
+
+interface UserLocation {
+  state: string;
+  district: string;
+  branch: string;
+}
+
+/** Overrides location fields with matching custom field values (last match wins, as before). */
+const applyLocationCustomFields = (initial: UserLocation, customFields: unknown): UserLocation => {
+  const result = { ...initial };
+  if (!Array.isArray(customFields)) return result;
+  for (const cf of customFields) {
+    const label = (cf.label || cf.name || '').toLowerCase();
+    const val = cf.selectedValues?.[0]?.value || cf.value?.[0] || cf.value;
+    if (typeof val !== 'string' || !val.trim()) continue;
+    if (label.includes('state')) result.state = val;
+    if (label.includes('district') || label.includes('city')) result.district = val;
+    if (label.includes('branch') || label.includes('block')) result.branch = val;
+  }
+  return result;
+};
+
+const mapUserToRow = (u: any, idx: number): UserRow => {
+  const nameParts = [u.firstName, u.middleName, u.lastName].map(trimmedOrEmpty);
+  const location = applyLocationCustomFields(
+    { state: u.state || '', district: u.district || u.city || '', branch: u.branch || u.block || '' },
+    u.customFields
+  );
+  const locParts = [location.state, location.district].filter(Boolean);
+
+  return {
+    userId: u.userId || u.id || `user-${idx}`,
+    name: nameParts.filter(Boolean).join(' ') || u.name || u.username || '-',
+    email: u.email && u.email !== '-' ? u.email : u.username || '-',
+    role: u.role || u.tenantData?.[0]?.roleName || 'Student',
+    stateDistrict: locParts.length > 0 ? locParts.join(' · ') : '-',
+    branch: location.branch || '-',
+    rawUser: u,
+  };
+};
+
+const COHORT_LOCATION_FIELDS = [
+  ['state', SWADHAAR_FIELD_IDS.STATE],
+  ['district', SWADHAAR_FIELD_IDS.DISTRICT],
+  ['branch', SWADHAAR_FIELD_IDS.BRANCH],
+  ['program', SWADHAAR_FIELD_IDS.PROGRAM],
+] as const;
+
+const buildCohortCustomFields = (filters: SDBVFilterValues) =>
+  COHORT_LOCATION_FIELDS.filter(([key]) => isActiveFilter(filters[key])).map(([key, fieldId]) => ({
+    fieldId,
+    value: [filters[key] as string],
+  }));
+
+/** Creates the cohort and returns its id (throws when the API does not return one). */
+const createCohortFromForm = async (
+  groupName: string,
+  groupDescription: string,
+  groupStatus: string,
+  filters: SDBVFilterValues
+): Promise<string> => {
+  const customFields = buildCohortCustomFields(filters);
+  const cohortPayload: any = {
+    name: groupName.trim(),
+    status: groupStatus.toLowerCase(),
+    type: 'COHORT',
+    cohort_type: 'batch',
+    customFields: customFields.length > 0 ? customFields : undefined,
+  };
+  if (groupDescription.trim()) {
+    cohortPayload.description = groupDescription.trim();
+  }
+
+  const createRes = await createCohort(cohortPayload);
+  const cohortId =
+    createRes?.result?.cohortId || createRes?.result?.id || createRes?.cohortId || createRes?.data?.cohortId;
+  if (!cohortId) {
+    throw new Error('Failed to retrieve newly created cohort ID.');
+  }
+  return cohortId;
+};
+
+/** Enrolls learners and reviewers into the cohort (one bulk call per role). */
+const enrollMembers = async (cohortId: string, members: SelectedMember[]) => {
+  const learners = members.filter((m) => m.roleInGroup === 'Learner').map((m) => m.userId);
+  const reviewers = members.filter((m) => m.roleInGroup === 'Reviewer').map((m) => m.userId);
+
+  if (learners.length > 0) {
+    await bulkCreateCohortMembers({ userId: learners, cohortId: [cohortId], role: 'Student' });
+  }
+  if (reviewers.length > 0) {
+    await bulkCreateCohortMembers({ userId: reviewers, cohortId: [cohortId], role: 'Reviewer' });
+  }
+};
+
+const getSubmitIcon = (submitting: boolean, isAddMembersMode: boolean) => {
+  if (submitting) return <CircularProgress size={16} color="inherit" />;
+  return isAddMembersMode ? <PersonAddOutlinedIcon /> : <GroupAddOutlinedIcon />;
+};
+
+const getSubmitLabel = (submitting: boolean, isAddMembersMode: boolean, selectedCount: number): string => {
+  if (submitting) return 'Processing...';
+  if (isAddMembersMode) return `Enroll ${selectedCount} Member(s)`;
+  return selectedCount > 0 ? `Create & Enroll ${selectedCount} Member(s)` : 'Create Group';
 };
 
 export default function CreateCohortPage() {
@@ -145,39 +279,7 @@ export default function CreateCohortPage() {
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const filterObj: Record<string, any> = {
-        status:
-          filters.status && filters.status !== 'all'
-            ? [filters.status.toLowerCase()]
-            : ['active'],
-      };
-
-      if (filters.role && filters.role !== 'all') {
-        filterObj.role = [filters.role];
-      }
-      if (filters.state && filters.state !== 'all') {
-        filterObj.state = [filters.state];
-      }
-      if (filters.district && filters.district !== 'all') {
-        filterObj.district = [filters.district];
-      }
-      if (filters.branch && filters.branch !== 'all') {
-        filterObj.branch = [filters.branch];
-      }
-      if (filters.program && filters.program !== 'all') {
-        filterObj.program = [filters.program];
-      }
-
-      const payload: any = {
-        limit: rowsPerPage,
-        offset: page * rowsPerPage,
-        filters: filterObj,
-        sort: ['name', 'asc'],
-      };
-
-      if (filters.search && filters.search.trim()) {
-        payload.search = filters.search.trim();
-      }
+      const payload = buildUserSearchPayload(filters, page, rowsPerPage);
 
       const response = await getUserList(payload);
       const rawList = response?.result?.getUserDetails || [];
@@ -188,44 +290,7 @@ export default function CreateCohortPage() {
 
       setTotalCount(total);
 
-      const mapped: UserRow[] = rawList.map((u: any, idx: number) => {
-        const uid = u.userId || u.id || `user-${idx}`;
-        const fn = u.firstName ? String(u.firstName).trim() : '';
-        const mn = u.middleName ? String(u.middleName).trim() : '';
-        const ln = u.lastName ? String(u.lastName).trim() : '';
-        const name = [fn, mn, ln].filter(Boolean).join(' ') || u.name || u.username || '-';
-        const email = u.email && u.email !== '-' ? u.email : (u.username || '-');
-        const role = u.role || u.tenantData?.[0]?.roleName || 'Student';
-
-        let userState = u.state || '';
-        let userDistrict = u.district || u.city || '';
-        let userBranch = u.branch || u.block || '';
-
-        if (Array.isArray(u.customFields)) {
-          for (const cf of u.customFields) {
-            const label = (cf.label || cf.name || '').toLowerCase();
-            const val = cf.selectedValues?.[0]?.value || cf.value?.[0] || cf.value;
-            if (typeof val === 'string' && val.trim()) {
-              if (label.includes('state')) userState = val;
-              if (label.includes('district') || label.includes('city')) userDistrict = val;
-              if (label.includes('branch') || label.includes('block')) userBranch = val;
-            }
-          }
-        }
-
-        const locParts = [userState, userDistrict].filter(Boolean);
-        const stateDistrict = locParts.length > 0 ? locParts.join(' · ') : '-';
-
-        return {
-          userId: uid,
-          name,
-          email,
-          role,
-          stateDistrict,
-          branch: userBranch || '-',
-          rawUser: u,
-        };
-      });
+      const mapped: UserRow[] = rawList.map(mapUserToRow);
 
       setUsers(mapped);
     } catch (err) {
@@ -328,70 +393,14 @@ export default function CreateCohortPage() {
 
     setSubmitting(true);
     try {
-      let finalCohortId = targetCohortId;
-
-      // Step 1: If creating a new cohort, call createCohort
-      if (!isAddMembersMode) {
-        const customFields: Array<{ fieldId: string; value: string[] }> = [];
-
-        if (filters.state && filters.state !== 'all') {
-          customFields.push({ fieldId: SWADHAAR_FIELD_IDS.STATE, value: [filters.state] });
-        }
-        if (filters.district && filters.district !== 'all') {
-          customFields.push({ fieldId: SWADHAAR_FIELD_IDS.DISTRICT, value: [filters.district] });
-        }
-        if (filters.branch && filters.branch !== 'all') {
-          customFields.push({ fieldId: SWADHAAR_FIELD_IDS.BRANCH, value: [filters.branch] });
-        }
-        if (filters.program && filters.program !== 'all') {
-          customFields.push({ fieldId: SWADHAAR_FIELD_IDS.PROGRAM, value: [filters.program] });
-        }
-
-        const cohortPayload: any = {
-          name: groupName.trim(),
-          status: groupStatus.toLowerCase(),
-          type: 'COHORT',
-          cohort_type: 'batch',
-          customFields: customFields.length > 0 ? customFields : undefined,
-        };
-
-        if (groupDescription.trim()) {
-          cohortPayload.description = groupDescription.trim();
-        }
-
-        const createRes = await createCohort(cohortPayload);
-        finalCohortId =
-          createRes?.result?.cohortId ||
-          createRes?.result?.id ||
-          createRes?.cohortId ||
-          createRes?.data?.cohortId;
-
-        if (!finalCohortId) {
-          throw new Error('Failed to retrieve newly created cohort ID.');
-        }
-      }
+      const finalCohortId = isAddMembersMode
+        ? targetCohortId
+        : await createCohortFromForm(groupName, groupDescription, groupStatus, filters);
 
       // Step 2: Enroll selected members
       const membersArray = Array.from(selectedMembers.values());
-      if (membersArray.length > 0 && finalCohortId) {
-        const learners = membersArray.filter((m) => m.roleInGroup === 'Learner').map((m) => m.userId);
-        const reviewers = membersArray.filter((m) => m.roleInGroup === 'Reviewer').map((m) => m.userId);
-
-        if (learners.length > 0) {
-          await bulkCreateCohortMembers({
-            userId: learners,
-            cohortId: [finalCohortId],
-            role: 'Student',
-          });
-        }
-
-        if (reviewers.length > 0) {
-          await bulkCreateCohortMembers({
-            userId: reviewers,
-            cohortId: [finalCohortId],
-            role: 'Reviewer',
-          });
-        }
+      if (finalCohortId) {
+        await enrollMembers(finalCohortId, membersArray);
       }
 
       setFeedback({
@@ -423,9 +432,116 @@ export default function CreateCohortPage() {
   };
 
   const selectedCount = selectedMembers.size;
+  const isSubmitDisabled =
+    submitting || (isAddMembersMode ? selectedCount === 0 : !groupName.trim());
   const pageTitle = isAddMembersMode
     ? `Add Members: ${existingCohort?.name || 'Group'}`
     : 'Create New Group';
+
+  const renderUsersBody = () => {
+    if (loadingUsers) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6 }}>
+            <CircularProgress size={28} sx={{ color: 'primary.main', mb: 1 }} />
+            <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
+              Loading users directory...
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    if (users.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6 }}>
+            <Typography sx={{ fontSize: '13.5px', color: '#6B7280' }}>
+              No users found matching the filter criteria.
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+    return users.map((row) => {
+      const isSelected = selectedMembers.has(row.userId);
+      return (
+        <TableRow
+          key={row.userId}
+          hover
+          selected={isSelected}
+          onClick={() => handleToggleUser(row)}
+          sx={{
+            cursor: 'pointer',
+            '&.Mui-selected': { backgroundColor: 'primary.50' },
+            '&:last-child td': { border: 0 },
+          }}
+        >
+          <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #F3F4F6' }}>
+            <Checkbox
+              size="small"
+              checked={isSelected}
+              onChange={() => handleToggleUser(row)}
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                color: '#9CA3AF',
+                '&.Mui-checked': { color: 'primary.main' },
+              }}
+            />
+          </TableCell>
+
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
+            <Typography
+              sx={{
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#111827',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {row.name}
+            </Typography>
+          </TableCell>
+
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
+            <Typography
+              sx={{
+                fontSize: '12.5px',
+                color: '#4B5563',
+                maxWidth: 160,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {row.email}
+            </Typography>
+          </TableCell>
+
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
+            <Typography sx={{ fontSize: '12.5px', color: '#6B7280' }}>
+              {row.role}
+            </Typography>
+          </TableCell>
+
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
+            <Typography
+              sx={{
+                fontSize: '12px',
+                color: '#6B7280',
+                maxWidth: 150,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {row.branch !== '-' ? `${row.branch} · ` : ''}
+              {row.stateDistrict}
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    })
+  };
 
   return (
     <Box sx={{ py: 1.5, px: { xs: 1, md: 2 } }}>
@@ -601,104 +717,7 @@ export default function CreateCohortPage() {
                 </TableHead>
 
                 <TableBody>
-                  {loadingUsers ? (
-                    <TableRow>
-                      <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6 }}>
-                        <CircularProgress size={28} sx={{ color: 'primary.main', mb: 1 }} />
-                        <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
-                          Loading users directory...
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : users.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} sx={{ textAlign: 'center', py: 6 }}>
-                        <Typography sx={{ fontSize: '13.5px', color: '#6B7280' }}>
-                          No users found matching the filter criteria.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    users.map((row) => {
-                      const isSelected = selectedMembers.has(row.userId);
-                      return (
-                        <TableRow
-                          key={row.userId}
-                          hover
-                          selected={isSelected}
-                          onClick={() => handleToggleUser(row)}
-                          sx={{
-                            cursor: 'pointer',
-                            '&.Mui-selected': { backgroundColor: 'primary.50' },
-                            '&:last-child td': { border: 0 },
-                          }}
-                        >
-                          <TableCell padding="checkbox" sx={{ borderBottom: '1px solid #F3F4F6' }}>
-                            <Checkbox
-                              size="small"
-                              checked={isSelected}
-                              onChange={() => handleToggleUser(row)}
-                              onClick={(e) => e.stopPropagation()}
-                              sx={{
-                                color: '#9CA3AF',
-                                '&.Mui-checked': { color: 'primary.main' },
-                              }}
-                            />
-                          </TableCell>
-
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
-                            <Typography
-                              sx={{
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                color: '#111827',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {row.name}
-                            </Typography>
-                          </TableCell>
-
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
-                            <Typography
-                              sx={{
-                                fontSize: '12.5px',
-                                color: '#4B5563',
-                                maxWidth: 160,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {row.email}
-                            </Typography>
-                          </TableCell>
-
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
-                            <Typography sx={{ fontSize: '12.5px', color: '#6B7280' }}>
-                              {row.role}
-                            </Typography>
-                          </TableCell>
-
-                          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.2 }}>
-                            <Typography
-                              sx={{
-                                fontSize: '12px',
-                                color: '#6B7280',
-                                maxWidth: 150,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {row.branch !== '-' ? `${row.branch} · ` : ''}
-                              {row.stateDistrict}
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
+                  {renderUsersBody()}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -710,7 +729,7 @@ export default function CreateCohortPage() {
               onPageChange={(_, newPage) => setPage(newPage)}
               rowsPerPage={rowsPerPage}
               onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
+                setRowsPerPage(Number.parseInt(e.target.value, 10));
                 setPage(0);
               }}
               rowsPerPageOptions={[10, 25, 50]}
@@ -966,21 +985,9 @@ export default function CreateCohortPage() {
 
             <Button
               variant="contained"
-              disabled={
-                submitting ||
-                (!isAddMembersMode && !groupName.trim()) ||
-                (isAddMembersMode && selectedCount === 0)
-              }
+              disabled={isSubmitDisabled}
               onClick={handleSubmit}
-              startIcon={
-                submitting ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : isAddMembersMode ? (
-                  <PersonAddOutlinedIcon />
-                ) : (
-                  <GroupAddOutlinedIcon />
-                )
-              }
+              startIcon={getSubmitIcon(submitting, isAddMembersMode)}
               sx={{
                 backgroundColor: '#D4752A',
                 color: '#FFFFFF',
@@ -993,13 +1000,7 @@ export default function CreateCohortPage() {
                 '&:disabled': { backgroundColor: '#E5E7EB', color: '#9CA3AF' },
               }}
             >
-              {submitting
-                ? 'Processing...'
-                : isAddMembersMode
-                ? `Enroll ${selectedCount} Member(s)`
-                : selectedCount > 0
-                ? `Create & Enroll ${selectedCount} Member(s)`
-                : 'Create Group'}
+              {getSubmitLabel(submitting, isAddMembersMode, selectedCount)}
             </Button>
           </Box>
         </Grid>

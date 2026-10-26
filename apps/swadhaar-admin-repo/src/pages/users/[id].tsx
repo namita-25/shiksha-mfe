@@ -7,8 +7,6 @@ import {
   Chip,
   Card,
   Grid,
-  Divider,
-  Tooltip,
   CircularProgress,
   Breadcrumbs,
   Link as MuiLink,
@@ -22,20 +20,140 @@ import {
   Alert,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import nextI18NextConfig from '../../../next-i18next.config.js';
 import { getUserDetailsInfo, updateUserStatus, deleteUserAccount } from '@/services/UserService';
 import CreateUserModal from '@/components/common/CreateUserModal';
+
+const EMPTY_PARSED_USER = {
+  fullName: '-',
+  initials: 'U',
+  email: '-',
+  phone: '-',
+  empId: '-',
+  gender: '-',
+  state: '-',
+  district: '-',
+  branch: '-',
+  program: '-',
+  role: 'Student',
+  status: 'active',
+};
+
+const getQueryParam = (value: string | string[] | undefined): string => {
+  if (typeof value === 'string') return value;
+  return Array.isArray(value) ? value[0] : '';
+};
+
+const trimmedOrEmpty = (value?: string | number | null): string => (value ? String(value).trim() : '');
+
+const BRANCH_LABEL_HINTS = ['university', 'college', 'branch', 'line 1', 'line 2'];
+const PROGRAM_LABEL_HINTS = ['field(s) of study', 'field of study', 'course', 'level of education'];
+
+interface LocationFields {
+  state: string;
+  district: string;
+  branch: string;
+  program: string;
+}
+
+/** Returns the trimmed string value of a custom field, or '' when it has none. */
+const customFieldValue = (cf: any): string => {
+  const rawVal = cf.value ?? cf.code;
+  const val = Array.isArray(rawVal) ? rawVal[0] : rawVal;
+  return typeof val === 'string' ? val.trim() : '';
+};
+
+/** Fills empty location fields from the user's custom fields (first match wins). */
+const fillLocationFromCustomFields = (initial: LocationFields, customFields: any[]): LocationFields => {
+  const result = { ...initial };
+  for (const cf of customFields) {
+    const label = (cf.label || cf.name || '').toLowerCase();
+    const value = customFieldValue(cf);
+    if (!value) continue;
+    if (!result.state && label.includes('state')) result.state = value;
+    if (!result.district && (label === 'city' || label === 'district')) result.district = value;
+    if (!result.branch && BRANCH_LABEL_HINTS.some((hint) => label.includes(hint)) && !value.startsWith('http')) {
+      result.branch = value;
+    }
+    if (!result.program && (label === 'program' || PROGRAM_LABEL_HINTS.some((hint) => label.includes(hint)))) {
+      result.program = value;
+    }
+  }
+  return result;
+};
+
+const getCustomFields = (userData: any): any[] => {
+  if (Array.isArray(userData.customFields)) return userData.customFields;
+  if (Array.isArray(userData.customField)) return userData.customField;
+  return [];
+};
+
+const getInitials = (firstName: string, lastName: string, username?: string): string => {
+  const firstInitial = firstName.charAt(0) || username?.charAt(0) || 'U';
+  return (firstInitial + lastName.charAt(0)).toUpperCase();
+};
+
+const parseUserDetails = (userData: any) => {
+  if (!userData) return EMPTY_PARSED_USER;
+
+  const fn = trimmedOrEmpty(userData.firstName);
+  const mn = trimmedOrEmpty(userData.middleName);
+  const ln = trimmedOrEmpty(userData.lastName);
+  const fullName = [fn, mn, ln].filter(Boolean).join(' ') || userData.name || userData.username || '-';
+  const role = userData.role || userData.tenantData?.[0]?.roleName || 'Student';
+  const gender = userData.gender ? userData.gender.charAt(0).toUpperCase() + userData.gender.slice(1) : '-';
+  const isPhoneUsername = /^\d{10}$/.test(userData.username);
+
+  const location = fillLocationFromCustomFields(
+    {
+      state: trimmedOrEmpty(userData.state),
+      district: trimmedOrEmpty(userData.district) || trimmedOrEmpty(userData.city),
+      branch: trimmedOrEmpty(userData.branch),
+      program: trimmedOrEmpty(userData.program),
+    },
+    getCustomFields(userData)
+  );
+
+  return {
+    fullName,
+    initials: getInitials(fn, ln, userData.username),
+    email: userData.email || userData.username || '-',
+    phone: userData.mobile || userData.phone || '-',
+    empId: userData.employeeId || (isPhoneUsername ? '-' : userData.username),
+    gender,
+    state: location.state || userData.currentCountry || userData.country || '-',
+    district: location.district || '-',
+    branch: location.branch || '-',
+    program: location.program || role,
+    role,
+    status: (userData.status || 'active').toLowerCase(),
+  };
+};
+
+const dashToEmpty = (value: string): string => (value === '-' ? '' : value);
+
+/** Maps the parsed profile to CreateUserModal's edit prefill shape ('-' placeholders become ''). */
+const toEditInitialData = (userId: string, parsedUser: typeof EMPTY_PARSED_USER) => ({
+  userId,
+  fullName: dashToEmpty(parsedUser.fullName),
+  email: dashToEmpty(parsedUser.email),
+  phone: dashToEmpty(parsedUser.phone),
+  employeeId: dashToEmpty(parsedUser.empId),
+  gender: dashToEmpty(parsedUser.gender),
+  role: parsedUser.role,
+  state: dashToEmpty(parsedUser.state),
+  district: dashToEmpty(parsedUser.district),
+  branch: dashToEmpty(parsedUser.branch),
+  program: dashToEmpty(parsedUser.program),
+  status: parsedUser.status,
+});
 
 export default function UserDetailsPage() {
   const router = useRouter();
   const { id } = router.query;
-  const userId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+  const userId = getQueryParam(id);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [userData, setUserData] = useState<any>(null);
@@ -88,124 +206,7 @@ export default function UserDetailsPage() {
   }, [userId, fetchUserDetails]);
 
   // Extract parsed fields from userData
-  const parsedUser = useMemo(() => {
-    if (!userData) {
-      return {
-        fullName: '-',
-        initials: 'U',
-        email: '-',
-        phone: '-',
-        empId: '-',
-        gender: '-',
-        state: '-',
-        district: '-',
-        branch: '-',
-        program: '-',
-        role: 'Student',
-        status: 'active',
-      };
-    }
-
-    const fn = userData.firstName ? String(userData.firstName).trim() : '';
-    const mn = userData.middleName ? String(userData.middleName).trim() : '';
-    const ln = userData.lastName ? String(userData.lastName).trim() : '';
-    const fullName = [fn, mn, ln].filter(Boolean).join(' ') || userData.name || userData.username || '-';
-
-    const firstInitial = fn ? fn.charAt(0) : userData.username ? userData.username.charAt(0) : 'U';
-    const lastInitial = ln ? ln.charAt(0) : '';
-    const initials = (firstInitial + lastInitial).toUpperCase();
-
-    const email = userData.email || userData.username || '-';
-    const phone = userData.mobile || userData.phone || '-';
-
-    // Employee ID
-    const rawEmpId = userData.employeeId;
-    const empId = rawEmpId || (!/^\d{10}$/.test(userData.username) ? userData.username : '-');
-
-    const gender = userData.gender
-      ? userData.gender.charAt(0).toUpperCase() + userData.gender.slice(1)
-      : '-';
-
-    const role =
-      userData.role ||
-      userData.tenantData?.[0]?.roleName ||
-      'Student';
-
-    const status = (userData.status || 'active').toLowerCase();
-
-    // Extract custom fields
-    const cFields = Array.isArray(userData.customFields)
-      ? userData.customFields
-      : Array.isArray(userData.customField)
-        ? userData.customField
-        : [];
-
-    let state = userData.state ? String(userData.state).trim() : '';
-    let district = userData.district
-      ? String(userData.district).trim()
-      : userData.city
-        ? String(userData.city).trim()
-        : '';
-    let branch = userData.branch ? String(userData.branch).trim() : '';
-    let program = userData.program ? String(userData.program).trim() : '';
-
-    for (const cf of cFields) {
-      const label = (cf.label || cf.name || '').toLowerCase();
-      const rawVal = cf.value ?? cf.code;
-      const val = Array.isArray(rawVal) ? rawVal[0] : rawVal;
-      if (val && typeof val === 'string' && val.trim()) {
-        const trimmed = val.trim();
-        if (!state && (label === 'state' || label.includes('state'))) {
-          state = trimmed;
-        }
-        if (!district && (label === 'city' || label === 'district')) {
-          district = trimmed;
-        }
-        if (
-          !branch &&
-          (label.includes('university') ||
-            label.includes('college') ||
-            label.includes('branch') ||
-            label.includes('line 1') ||
-            label.includes('line 2'))
-        ) {
-          if (!trimmed.startsWith('http')) {
-            branch = trimmed;
-          }
-        }
-        if (
-          !program &&
-          (label.includes('field(s) of study') ||
-            label.includes('field of study') ||
-            label.includes('course') ||
-            label === 'program' ||
-            label.includes('level of education'))
-        ) {
-          program = trimmed;
-        }
-      }
-    }
-
-    if (!state) state = userData.currentCountry || userData.country || '-';
-    if (!district) district = '-';
-    if (!branch) branch = '-';
-    if (!program) program = role;
-
-    return {
-      fullName,
-      initials,
-      email,
-      phone,
-      empId,
-      gender,
-      state,
-      district,
-      branch,
-      program,
-      role,
-      status,
-    };
-  }, [userData]);
+  const parsedUser = useMemo(() => parseUserDetails(userData), [userData]);
 
   const userCohorts = useMemo(() => {
     if (!userData) return [];
@@ -691,9 +692,9 @@ export default function UserDetailsPage() {
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {userCohorts.length > 0 ? (
-                userCohorts.map((c: any, idx: number) => (
+                userCohorts.map((c: any) => (
                   <Box
-                    key={c.cohortId || idx}
+                    key={c.cohortId || c.name || c.cohortName}
                     sx={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -800,8 +801,8 @@ export default function UserDetailsPage() {
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.8 }}>
               {reviewGroups.length > 0 ? (
-                reviewGroups.map((rg: any, idx: number) => (
-                  <Box key={idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                reviewGroups.map((rg: any) => (
+                  <Box key={rg.cohortId || rg.name} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
                       <Typography
                         sx={{
@@ -1302,20 +1303,7 @@ export default function UserDetailsPage() {
             fetchUserDetails();
           }}
           isEdit={true}
-          initialData={{
-            userId,
-            fullName: parsedUser.fullName !== '-' ? parsedUser.fullName : '',
-            email: parsedUser.email !== '-' ? parsedUser.email : '',
-            phone: parsedUser.phone !== '-' ? parsedUser.phone : '',
-            employeeId: parsedUser.empId !== '-' ? parsedUser.empId : '',
-            gender: parsedUser.gender !== '-' ? parsedUser.gender : '',
-            role: parsedUser.role,
-            state: parsedUser.state !== '-' ? parsedUser.state : '',
-            district: parsedUser.district !== '-' ? parsedUser.district : '',
-            branch: parsedUser.branch !== '-' ? parsedUser.branch : '',
-            program: parsedUser.program !== '-' ? parsedUser.program : '',
-            status: parsedUser.status,
-          }}
+          initialData={toEditInitialData(userId, parsedUser)}
         />
       )}
     </Box>

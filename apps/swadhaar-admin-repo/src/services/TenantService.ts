@@ -119,9 +119,7 @@ class TenantService {
   public async getTenantBranding(tenantId?: string): Promise<TenantBranding> {
     const targetTenantId = tenantId || this.getTenantId();
     try {
-      const base = typeof window !== 'undefined'
-        ? (window as any).__ENV?.NEXT_PUBLIC_MIDDLEWARE_URL || process.env.NEXT_PUBLIC_MIDDLEWARE_URL
-        : process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
+      const base = process.env.NEXT_PUBLIC_MIDDLEWARE_URL;
 
       if (base) {
         const response = await fetch(`${base}/tenant/branding/${targetTenantId}`, {

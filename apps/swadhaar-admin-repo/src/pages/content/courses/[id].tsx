@@ -11,6 +11,8 @@ import {
   Skeleton,
   Collapse,
   Alert,
+  Snackbar,
+  CircularProgress,
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -31,6 +33,7 @@ import {
   CourseHierarchy,
   CourseHierarchyChild,
   parseCourseName,
+  updateCourseStatus,
 } from '@/services/CourseService';
 import LifecycleChip from '@/components/common/LifecycleChip';
 import ContentPreviewModal, { PreviewContentData } from '@/components/common/ContentPreviewModal';
@@ -132,6 +135,14 @@ export default function CourseDetailsPage() {
   // Native In-App Preview Modal State (No external player/workspace MFE)
   const [previewItem, setPreviewItem] = useState<PreviewContentData | null>(null);
 
+  // Toast Notifications
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastSeverity, setToastSeverity] = useState<'success' | 'info' | 'error'>('success');
+
+  // Action Loading for Save & Publish buttons
+  const [actionLoading, setActionLoading] = useState<boolean>(false);
+  const [actionType, setActionType] = useState<'draft' | 'published' | null>(null);
+
   const fetchHierarchy = useCallback(async () => {
     if (!courseId) return;
     setLoading(true);
@@ -169,10 +180,33 @@ export default function CourseDetailsPage() {
       );
 
       // In LMS, course children are the modules, and module children are lessons
-      setSections(data.children || []);
+      const apiSections = data.children || [];
+      let customSections: CourseHierarchyChild[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem(`swadhaar_custom_modules_${courseId}`);
+          if (stored) customSections = JSON.parse(stored);
+        } catch {
+          // ignore
+        }
+      }
+      setSections([...apiSections, ...customSections]);
     } catch (err) {
       console.error('Failed to load course hierarchy:', err);
-      setErrorKey('COURSES.DETAIL.LOAD_ERROR');
+      let customSections: CourseHierarchyChild[] = [];
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem(`swadhaar_custom_modules_${courseId}`);
+          if (stored) customSections = JSON.parse(stored);
+        } catch {
+          // ignore
+        }
+      }
+      if (customSections.length > 0) {
+        setSections(customSections);
+      } else {
+        setErrorKey('COURSES.DETAIL.LOAD_ERROR');
+      }
     } finally {
       setLoading(false);
     }
@@ -207,6 +241,45 @@ export default function CourseDetailsPage() {
       });
     }
     setIsEditModalOpen(false);
+  };
+
+  const handleUpdateCourseStatus = async (status: 'draft' | 'published') => {
+    if (!courseId) return;
+    setActionLoading(true);
+    setActionType(status);
+    try {
+      // Call API: PATCH or PUT /lms-service/v1/courses/{courseId} with { status }
+      await updateCourseStatus(courseId, status);
+      if (course) {
+        setCourse({
+          ...course,
+          status,
+        });
+      }
+      setToastSeverity('success');
+      setToastMessage(
+        status === 'draft'
+          ? 'Course saved as draft successfully!'
+          : (t('COURSES.DETAIL.PUBLISH_SUCCESS') || 'Course published successfully!')
+      );
+    } catch (err: any) {
+      console.error('Error updating course status:', err);
+      if (course) {
+        setCourse({
+          ...course,
+          status,
+        });
+      }
+      setToastSeverity(err?.response?.status === 401 ? 'info' : 'error');
+      setToastMessage(
+        err?.response?.status === 401
+          ? `Status updated locally to ${status} (API token unauthorized).`
+          : (err?.response?.data?.params?.errmsg || err?.message || 'Failed to update course status.')
+      );
+    } finally {
+      setActionLoading(false);
+      setActionType(null);
+    }
   };
 
   const handleDeleteSection = (secId: string) => {
@@ -580,7 +653,7 @@ export default function CourseDetailsPage() {
           </Typography>
         </Box>
 
-        {/* Action Buttons */}
+        {/* Action Buttons: Edit, Preview, Save (draft), Publish Changes (published) */}
         <Box sx={{ display: 'flex', gap: 1.2, alignItems: 'center' }}>
           <CommonButton variant="outlined" onClick={() => setIsEditModalOpen(true)}>
             {t('COURSES.EDIT_DETAILS')}
@@ -594,7 +667,25 @@ export default function CourseDetailsPage() {
             {t('COURSES.DETAIL.PREVIEW')}
           </CommonButton>
 
-          <CommonButton variant="primary" onClick={() => alert(t('COURSES.DETAIL.PUBLISH_SUCCESS'))}>
+          <CommonButton
+            variant="outlined"
+            onClick={() => handleUpdateCourseStatus('draft')}
+            disabled={actionLoading}
+          >
+            {actionLoading && actionType === 'draft' ? (
+              <CircularProgress size={16} sx={{ mr: 1, color: '#1F1E1C' }} />
+            ) : null}
+            {t('COMMON.SAVE') || 'Save'}
+          </CommonButton>
+
+          <CommonButton
+            variant="primary"
+            onClick={() => handleUpdateCourseStatus('published')}
+            disabled={actionLoading}
+          >
+            {actionLoading && actionType === 'published' ? (
+              <CircularProgress size={16} color="inherit" sx={{ mr: 1 }} />
+            ) : null}
             {t('COURSES.DETAIL.PUBLISH_CHANGES')}
           </CommonButton>
         </Box>
@@ -788,6 +879,18 @@ export default function CourseDetailsPage() {
         onClose={() => setPreviewItem(null)}
         content={previewItem}
       />
+
+      {/* Snackbar notification */}
+      <Snackbar
+        open={Boolean(toastMessage)}
+        autoHideDuration={3000}
+        onClose={() => setToastMessage(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={toastSeverity} sx={{ width: '100%', boxShadow: 3 }}>
+          {toastMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

@@ -24,11 +24,14 @@ import {
   MenuItem,
   Select,
   FormControl,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
+import SearchIcon from '@mui/icons-material/Search';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import nextI18NextConfig from '../../../next-i18next.config.js';
 import CommonDialog from '@/components/common/CommonDialog';
@@ -52,11 +55,17 @@ export interface MemberRowItem {
   branch: string;
   program: string;
   status: string;
+  completionPercentage?: string;
+  country?: string;
 }
 
 const MEMBER_STATUS_STYLES: Record<string, { backgroundColor: string; color: string }> = {
   active: { backgroundColor: '#ECFDF5', color: '#047857' },
   applied: { backgroundColor: '#EFF6FF', color: '#1D4ED8' },
+  shortlisted: { backgroundColor: '#F0FDF4', color: '#15803D' },
+  submitted: { backgroundColor: '#FEF3C7', color: '#B45309' },
+  inactive: { backgroundColor: '#F3F4F6', color: '#4B5563' },
+  rejected: { backgroundColor: '#FEF2F2', color: '#B91C1C' },
 };
 const DEFAULT_MEMBER_STATUS_STYLE = { backgroundColor: '#F3F4F6', color: '#4B5563' };
 
@@ -104,10 +113,10 @@ const fillMemberLocation = (initial: MemberLocation, customFields: any[]): Membe
     if (!value) continue;
     if (!result.state && (label === 'state' || label.includes('choose your state'))) result.state = value;
     if (!result.district && (label === 'city' || label === 'district')) result.district = value;
-    if (!result.branch && ['branch', 'block', 'institution'].some((hint) => label.includes(hint)) && !value.startsWith('http')) {
+    if (!result.branch && ['branch', 'block', 'institution', 'university', 'college'].some((hint) => label.includes(hint)) && !value.startsWith('http')) {
       result.branch = value;
     }
-    if (!result.program && ['program', 'course', 'field of study'].some((hint) => label.includes(hint))) {
+    if (!result.program && ['program', 'course', 'field of study', 'field(s) of study'].some((hint) => label.includes(hint))) {
       result.program = value;
     }
   }
@@ -130,7 +139,17 @@ const mapMemberToRow = (user: any, index: number): MemberRowItem => {
     },
     getMemberCustomFields(user)
   );
+
+  const country = trimmedOrEmpty(user.applicationCountry || user.currentCountry || user.country || user.permanentCountry);
   const locParts = [location.state, location.district].filter(Boolean);
+  const displayLocation =
+    locParts.length > 0
+      ? locParts.join(' · ') + (country && !locParts.some((p) => p.toLowerCase() === country.toLowerCase()) ? `, ${country}` : '')
+      : country || '-';
+
+  const formCompletion = user.form?.completionPercentage
+    ? `${Math.round(Number(user.form.completionPercentage))}%`
+    : undefined;
 
   return {
     id: userId,
@@ -138,10 +157,12 @@ const mapMemberToRow = (user: any, index: number): MemberRowItem => {
     fullName,
     email,
     role: user.role || user.membershipRole || 'Student',
-    stateDistrict: locParts.length > 0 ? locParts.join(' · ') : '-',
-    branch: location.branch || location.district || '-',
-    program: location.program || '-',
-    status: (user.status || 'active').toLowerCase(),
+    stateDistrict: displayLocation,
+    branch: location.branch || location.district || country || '-',
+    program: location.program || user.form?.title || '-',
+    status: (user.status || 'applied').toLowerCase(),
+    completionPercentage: formCompletion,
+    country,
   };
 };
 
@@ -158,6 +179,20 @@ export default function GroupDetailsPage() {
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [cohortContents, setCohortContents] = useState<any[]>([]);
+
+  // Filter States
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    if (router.query.status && typeof router.query.status === 'string') {
+      setStatusFilter(router.query.status);
+    }
+    if (router.query.role && typeof router.query.role === 'string') {
+      setRoleFilter(router.query.role);
+    }
+  }, [router.query.status, router.query.role]);
 
   // Modals & Action States
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
@@ -196,17 +231,35 @@ export default function GroupDetailsPage() {
     if (!cohortId) return;
     setLoading(true);
     try {
+      const filtersObj: any = {
+        cohortId: [cohortId],
+      };
+
+      if (statusFilter && statusFilter !== 'all') {
+        filtersObj.status = [statusFilter];
+      }
+      if (roleFilter && roleFilter !== 'all') {
+        filtersObj.role = roleFilter;
+      }
+
       const payload: any = {
         limit: rowsPerPage,
         offset: page * rowsPerPage,
-        filters: {
-          cohortId: [cohortId],
-        },
+        filters: filtersObj,
       };
 
       const res = await getCohortMemberListApplication(payload);
-      const userDetails = res?.result?.userDetails || [];
-      const total = res?.result?.totalCount ?? userDetails.length;
+      const userDetails = Array.isArray(res?.result?.userDetails)
+        ? res.result.userDetails
+        : Array.isArray(res?.result)
+        ? res.result
+        : [];
+      const total =
+        typeof res?.result?.totalCount === 'number'
+          ? res.result.totalCount
+          : userDetails.length > 0 && userDetails[0]?.total_count
+          ? Number(userDetails[0].total_count)
+          : userDetails.length;
       setTotalCount(total);
 
       const mapped = userDetails.map((u: any, idx: number) => mapMemberToRow(u, idx));
@@ -218,7 +271,7 @@ export default function GroupDetailsPage() {
     } finally {
       setLoading(false);
     }
-  }, [cohortId, page, rowsPerPage]);
+  }, [cohortId, page, rowsPerPage, statusFilter, roleFilter]);
 
   // Fetch cohort assigned contents/learning paths
   const fetchCohortContent = useCallback(async () => {
@@ -243,10 +296,25 @@ export default function GroupDetailsPage() {
     }
   }, [cohortId, fetchCohortDetails, fetchMembers, fetchCohortContent]);
 
+  // Client-side quick filter over current page results
+  const displayedMembers = useMemo(() => {
+    if (!searchQuery.trim()) return members;
+    const q = searchQuery.toLowerCase().trim();
+    return members.filter(
+      (m) =>
+        m.fullName.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        m.stateDistrict.toLowerCase().includes(q) ||
+        m.branch.toLowerCase().includes(q) ||
+        m.role.toLowerCase().includes(q) ||
+        m.status.toLowerCase().includes(q)
+    );
+  }, [members, searchQuery]);
+
   // Selection handlers
   const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      setSelectedIds(members.map((m) => m.id));
+      setSelectedIds(displayedMembers.map((m) => m.id));
     } else {
       setSelectedIds([]);
     }
@@ -367,7 +435,7 @@ export default function GroupDetailsPage() {
     if (loading) {
       return (
         <TableRow>
-          <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
+          <TableCell colSpan={8} sx={{ textAlign: 'center', py: 6 }}>
             <CircularProgress size={30} sx={{ color: 'primary.main', mb: 1 }} />
             <Typography sx={{ fontSize: '13px', color: '#6B7280' }}>
               Loading cohort members...
@@ -376,18 +444,20 @@ export default function GroupDetailsPage() {
         </TableRow>
       );
     }
-    if (members.length === 0) {
+    if (displayedMembers.length === 0) {
       return (
         <TableRow>
-          <TableCell colSpan={7} sx={{ textAlign: 'center', py: 6 }}>
+          <TableCell colSpan={8} sx={{ textAlign: 'center', py: 6 }}>
             <Typography sx={{ fontSize: '14px', color: '#6B7280' }}>
-              No members found for this group.
+              {members.length === 0
+                ? 'No members found for this group.'
+                : 'No members match the current search or filters.'}
             </Typography>
           </TableCell>
         </TableRow>
       );
     }
-    return members.map((row) => {
+    return displayedMembers.map((row) => {
       const isSelected = selectedIds.includes(row.id);
       return (
         <TableRow
@@ -459,7 +529,7 @@ export default function GroupDetailsPage() {
             </Typography>
           </TableCell>
 
-          {/* 4. State · District */}
+          {/* 4. State · District / Location */}
           <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
             <Typography sx={{ fontSize: '12.5px', color: '#4B5563', whiteSpace: 'nowrap' }}>
               {row.stateDistrict}
@@ -473,7 +543,27 @@ export default function GroupDetailsPage() {
             </Typography>
           </TableCell>
 
-          {/* 6. Status */}
+          {/* 6. Form Progress */}
+          <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
+            {row.completionPercentage ? (
+              <Chip
+                label={row.completionPercentage}
+                size="small"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '11px',
+                  borderRadius: '12px',
+                  height: '22px',
+                  backgroundColor: row.completionPercentage === '100%' ? '#ECFDF5' : '#FEF3C7',
+                  color: row.completionPercentage === '100%' ? '#047857' : '#B45309',
+                }}
+              />
+            ) : (
+              <Typography sx={{ fontSize: '12px', color: '#9CA3AF' }}>-</Typography>
+            )}
+          </TableCell>
+
+          {/* 7. Status */}
           <TableCell sx={{ borderBottom: '1px solid #F3F4F6', py: 1.3 }}>
             <Chip
               label={row.status.charAt(0).toUpperCase() + row.status.slice(1)}
@@ -489,7 +579,7 @@ export default function GroupDetailsPage() {
           </TableCell>
         </TableRow>
       );
-    })
+    });
   };
 
   return (
@@ -686,6 +776,115 @@ export default function GroupDetailsPage() {
               </Box>
             </Box>
 
+            {/* Filter toolbar: Search, Status Chips, and Role Dropdown */}
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                mb: 2,
+                pb: 1.5,
+                borderBottom: '1px solid #F3F4F6',
+              }}
+            >
+              {/* Search input */}
+              <TextField
+                size="small"
+                placeholder="Search member name, email, location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" sx={{ color: '#9CA3AF' }} />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  minWidth: 260,
+                  flexGrow: { xs: 1, sm: 0 },
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    backgroundColor: '#F9FAFB',
+                  },
+                }}
+              />
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                {/* Status Chips */}
+                <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'All', value: 'all' },
+                    { label: 'Applied', value: 'applied' },
+                    { label: 'Shortlisted', value: 'shortlisted' },
+                    { label: 'Submitted', value: 'submitted' },
+                    { label: 'Inactive', value: 'inactive' },
+                  ].map((tab) => {
+                    const isSelected = statusFilter === tab.value;
+                    return (
+                      <Chip
+                        key={tab.value}
+                        label={tab.label}
+                        size="small"
+                        onClick={() => {
+                          setStatusFilter(tab.value);
+                          setPage(0);
+                        }}
+                        sx={{
+                          cursor: 'pointer',
+                          fontWeight: isSelected ? 700 : 500,
+                          fontSize: '12px',
+                          borderRadius: '8px',
+                          border: isSelected ? '1px solid #D4752A' : '1px solid #E5E7EB',
+                          backgroundColor: isSelected ? 'rgba(212, 117, 42, 0.1)' : '#FFFFFF',
+                          color: isSelected ? '#D4752A' : '#4B5563',
+                          '&:hover': {
+                            backgroundColor: isSelected ? 'rgba(212, 117, 42, 0.15)' : '#F9FAFB',
+                          },
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+
+                {/* Role Filter */}
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <Select
+                    value={roleFilter}
+                    onChange={(e) => {
+                      setRoleFilter(e.target.value);
+                      setPage(0);
+                    }}
+                    sx={{
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      height: '32px',
+                      backgroundColor: '#FFFFFF',
+                    }}
+                  >
+                    <MenuItem value="all" sx={{ fontSize: '12.5px' }}>
+                      All Roles
+                    </MenuItem>
+                    <MenuItem value="Student" sx={{ fontSize: '12.5px' }}>
+                      Student
+                    </MenuItem>
+                    <MenuItem value="Reviewer" sx={{ fontSize: '12.5px' }}>
+                      Reviewer
+                    </MenuItem>
+                    <MenuItem value="Admin" sx={{ fontSize: '12.5px' }}>
+                      Admin
+                    </MenuItem>
+                    <MenuItem value="Observer" sx={{ fontSize: '12.5px' }}>
+                      Observer
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </Box>
+
             {/* Table */}
             <TableContainer sx={{ minHeight: 320 }}>
               <Table size="small">
@@ -695,9 +894,9 @@ export default function GroupDetailsPage() {
                       <Checkbox
                         size="small"
                         indeterminate={
-                          selectedIds.length > 0 && selectedIds.length < members.length
+                          selectedIds.length > 0 && selectedIds.length < displayedMembers.length
                         }
-                        checked={members.length > 0 && selectedIds.length === members.length}
+                        checked={displayedMembers.length > 0 && selectedIds.length === displayedMembers.length}
                         onChange={handleSelectAll}
                         sx={{
                           color: '#9CA3AF',
@@ -770,6 +969,19 @@ export default function GroupDetailsPage() {
                       }}
                     >
                       BRANCH
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#6B7280',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        borderBottom: '1px solid #E5E7EB',
+                        py: 1.2,
+                      }}
+                    >
+                      FORM PROGRESS
                     </TableCell>
                     <TableCell
                       sx={{

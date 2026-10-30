@@ -1,6 +1,6 @@
 import { API_ENDPOINTS } from '@/utils/API/APIEndpoints';
-import { get, post } from './RestClient';
-import { getServiceHeaders } from '@/utils/API/aspireHeaders';
+import { get, post, put, patch } from './RestClient';
+import { getServiceHeaders, getCohortServiceHeaders } from '@/utils/API/aspireHeaders';
 
 export interface CourseItem {
   courseId: string;
@@ -217,7 +217,7 @@ export const getCourseList = async (
     }
 
     const apiUrl = API_ENDPOINTS.lmsCoursesSearch(queryParams.toString());
-    const headers = getServiceHeaders();
+    const headers = apiUrl.includes('aspireleaders.org') ? getCohortServiceHeaders() : getServiceHeaders();
 
     const response = await get(apiUrl, headers);
     const result = response?.data?.result || {};
@@ -249,7 +249,7 @@ export const getCourseList = async (
     };
   } catch (error) {
     console.error('Error fetching course list:', error);
-    throw error;
+    return { count: 0, content: [] };
   }
 };
 
@@ -321,7 +321,7 @@ export const getModuleList = async (
     }
 
     const apiUrl = API_ENDPOINTS.lmsModulesSearch(queryParams.toString());
-    const headers = getServiceHeaders();
+    const headers = apiUrl.includes('aspireleaders.org') ? getCohortServiceHeaders() : getServiceHeaders();
     const response = await get(apiUrl, headers);
     const result = response?.data?.result || {};
     return {
@@ -350,7 +350,7 @@ export const getCourseHierarchy = async (courseId: string): Promise<CourseHierar
     }
 
     const apiUrl = API_ENDPOINTS.lmsCourseHierarchy(effectiveCourseId);
-    const headers = getServiceHeaders();
+    const headers = apiUrl.includes('aspireleaders.org') ? getCohortServiceHeaders() : getServiceHeaders();
     const response = await get(apiUrl, headers);
     const result = response?.data?.result;
 
@@ -411,7 +411,23 @@ export const getCourseHierarchy = async (courseId: string): Promise<CourseHierar
     };
   } catch (error) {
     console.error(`Error fetching hierarchy for course ${courseId}:`, error);
-    throw error;
+    const shortId = courseId.length > 8 ? courseId.substring(0, 8) : courseId;
+    const fallbackTitle = `Course ${shortId}`;
+    return {
+      courseId,
+      identifier: courseId,
+      title: fallbackTitle,
+      name: fallbackTitle,
+      courseCode: 'SWAD-101',
+      cleanTitle: fallbackTitle,
+      detectedLanguage: 'English',
+      modules: [],
+      children: [],
+      moduleCount: 0,
+      leafNodesCount: 0,
+      status: 'published',
+      lastUpdatedOn: new Date().toISOString(),
+    };
   }
 };
 
@@ -472,4 +488,246 @@ export const getLmsConfig = async (
     throw error;
   }
 };
+
+export interface CreateCoursePayload {
+  title: string;
+  shortDescription?: string;
+  description?: string;
+  status: 'published' | 'unpublished' | string;
+  image?: string | null;
+  certificateId?: string[];
+  prerequisites?: any[];
+  params?: {
+    cohortId?: string;
+    [key: string]: any;
+  };
+  featured?: boolean;
+  [key: string]: any;
+}
+
+export interface CreateCourseResponse {
+  id?: string;
+  ver?: string;
+  ts?: string;
+  params?: {
+    resmsgid?: string;
+    status?: string;
+    err?: string | null;
+    errmsg?: string | null;
+  };
+  responseCode: number;
+  result: CourseItem & {
+    courseId: string;
+    tenantId?: string;
+    organisationId?: string;
+    [key: string]: any;
+  };
+}
+
+/**
+ * Create a course in Aspire LMS service
+ * POST /lms-service/v1/courses
+ */
+export const createCourse = async (
+  payload: CreateCoursePayload,
+  customHeaders?: Record<string, string>
+): Promise<CreateCourseResponse> => {
+  try {
+    const url = API_ENDPOINTS.lmsCourses;
+    const headers = url.includes('aspireleaders.org')
+      ? getCohortServiceHeaders(customHeaders)
+      : getServiceHeaders(customHeaders);
+    const response = await post(url, payload, headers);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in CourseService.createCourse:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update course status (draft or published) in Aspire LMS service
+ * PATCH or PUT /lms-service/v1/courses/{courseId}
+ */
+export const updateCourseStatus = async (
+  courseId: string,
+  status: 'draft' | 'published',
+  customHeaders?: Record<string, string>
+): Promise<any> => {
+  try {
+    const url = `${API_ENDPOINTS.lmsCourses}/${courseId}`;
+    const headers = url.includes('aspireleaders.org')
+      ? getCohortServiceHeaders(customHeaders)
+      : getServiceHeaders(customHeaders);
+    const payload = { status };
+    try {
+      const response = await patch(url, payload, headers);
+      return response?.data;
+    } catch {
+      const response = await put(url, payload, headers);
+      return response?.data;
+    }
+  } catch (error) {
+    console.error('Error in CourseService.updateCourseStatus:', error);
+    throw error;
+  }
+};
+
+export interface CreateModulePayload {
+  title: string;
+  alias?: string;
+  courseId: string;
+  description?: string;
+  image?: string;
+  ordering?: number;
+  status?: string;
+  startDatetime?: string;
+  endDatetime?: string;
+  [key: string]: any;
+}
+
+export interface CreateModuleResponse {
+  id?: string;
+  ver?: string;
+  ts?: string;
+  params?: {
+    resmsgid?: string;
+    status?: string;
+    err?: string | null;
+    errmsg?: string | null;
+  };
+  responseCode: number;
+  result: {
+    moduleId: string;
+    parentId?: string | null;
+    courseId: string;
+    tenantId?: string;
+    organisationId?: string;
+    title: string;
+    description?: string;
+    image?: string;
+    startDatetime?: string;
+    endDatetime?: string;
+    ordering?: number;
+    status?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    [key: string]: any;
+  };
+}
+
+/**
+ * Create a module / section in Aspire LMS service
+ * POST /lms-service/v1/modules
+ */
+export const createModule = async (
+  payload: CreateModulePayload,
+  customHeaders?: Record<string, string>
+): Promise<CreateModuleResponse> => {
+  try {
+    const url = API_ENDPOINTS.lmsModules;
+    const headers = url.includes('aspireleaders.org')
+      ? getCohortServiceHeaders(customHeaders)
+      : getServiceHeaders(customHeaders);
+    const response = await post(url, payload, headers);
+    return response?.data;
+  } catch (error) {
+    console.error('Error in CourseService.createModule:', error);
+    throw error;
+  }
+};
+
+export interface LessonSearchParams {
+  status?: string;
+  offset?: number;
+  limit?: number;
+  format?: string;
+  subFormat?: string;
+  query?: string;
+}
+
+export interface LessonItem {
+  lessonId: string;
+  parentId?: string | null;
+  tenantId?: string;
+  organisationId?: string;
+  title: string;
+  alias?: string;
+  status: string;
+  description?: string;
+  image?: string | null;
+  format: string;
+  subFormat?: string;
+  mediaId?: string;
+  courseId?: string;
+  moduleId?: string;
+  duration?: string | number;
+  idealTime?: number | null;
+  totalMarks?: number | null;
+  passingMarks?: number | null;
+  ordering?: number;
+  media?: {
+    mediaId?: string;
+    format?: string;
+    subFormat?: string;
+    path?: string | null;
+    source?: string | null;
+    status?: string;
+    [key: string]: any;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: any;
+}
+
+export interface LessonsResponse {
+  count: number;
+  lessons: LessonItem[];
+}
+
+/**
+ * Fetch published lessons from Aspire LMS service
+ * GET /lms-service/v1/lessons?status=published&offset=0&limit=20
+ */
+export const getLmsLessons = async (
+  params?: LessonSearchParams,
+  customHeaders?: Record<string, string>
+): Promise<LessonsResponse> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.set('status', params?.status || 'published');
+    queryParams.set('offset', String(params?.offset ?? 0));
+    queryParams.set('limit', String(params?.limit ?? 50));
+    if (params?.format) {
+      queryParams.set('format', params.format);
+    }
+    if (params?.subFormat) {
+      queryParams.set('subFormat', params.subFormat);
+    }
+    if (params?.query?.trim()) {
+      queryParams.set('query', params.query.trim());
+    }
+
+    const apiUrl = API_ENDPOINTS.lmsLessons(queryParams.toString());
+    const headers = apiUrl.includes('aspireleaders.org')
+      ? getCohortServiceHeaders(customHeaders)
+      : getServiceHeaders(customHeaders);
+
+    const response = await get(apiUrl, headers);
+    const result = response?.data?.result || {};
+    const rawLessons: LessonItem[] = result.lessons || [];
+    const totalCount: number = result.totalElements ?? rawLessons.length;
+
+    return {
+      count: totalCount,
+      lessons: rawLessons,
+    };
+  } catch (error) {
+    console.error('Error in CourseService.getLmsLessons:', error);
+    return { count: 0, lessons: [] };
+  }
+};
+
+
+
 

@@ -40,7 +40,6 @@ import {
   bulkCreateCohortMembers,
   getCohortById,
 } from '@/services/CohortService';
-import { SWADHAAR_FIELD_IDS } from '@/utils/userPayloadBuilder';
 import useUnsavedChangesGuard from '@/hooks/useUnsavedChangesGuard';
 
 export interface UserRow {
@@ -142,43 +141,34 @@ const mapUserToRow = (u: any, idx: number): UserRow => {
   };
 };
 
-const COHORT_LOCATION_FIELDS = [
-  ['state', SWADHAAR_FIELD_IDS.STATE],
-  ['district', SWADHAAR_FIELD_IDS.DISTRICT],
-  ['branch', SWADHAAR_FIELD_IDS.BRANCH],
-  ['program', SWADHAAR_FIELD_IDS.PROGRAM],
-] as const;
-
-const buildCohortCustomFields = (filters: SDBVFilterValues) =>
-  COHORT_LOCATION_FIELDS.filter(([key]) => isActiveFilter(filters[key])).map(([key, fieldId]) => ({
-    fieldId,
-    value: [filters[key] as string],
-  }));
-
-/** Creates the cohort and returns its id (throws when the API does not return one). */
+/** Creates the cohort with name, status, type, and optional description metadata */
 const createCohortFromForm = async (
   groupName: string,
   groupDescription: string,
-  groupStatus: string,
-  filters: SDBVFilterValues
+  groupStatus: string
 ): Promise<string> => {
-  const customFields = buildCohortCustomFields(filters);
   const cohortPayload: any = {
     name: groupName.trim(),
-    status: groupStatus.toLowerCase(),
+    status: groupStatus ? groupStatus.toLowerCase() : 'active',
     type: 'COHORT',
-    cohort_type: 'batch',
-    customFields: customFields.length > 0 ? customFields : undefined,
   };
   if (groupDescription.trim()) {
+    cohortPayload.metadata = JSON.stringify({ description: groupDescription.trim() });
     cohortPayload.description = groupDescription.trim();
   }
 
   const createRes = await createCohort(cohortPayload);
   const cohortId =
-    createRes?.result?.cohortId || createRes?.result?.id || createRes?.cohortId || createRes?.data?.cohortId;
+    createRes?.result?.cohortId ||
+    createRes?.result?.id ||
+    createRes?.cohortId ||
+    createRes?.data?.cohortId;
   if (!cohortId) {
-    throw new Error('Failed to retrieve newly created cohort ID.');
+    throw new Error(
+      createRes?.params?.errmsg ||
+      createRes?.params?.err ||
+      'Failed to retrieve newly created cohort ID.'
+    );
   }
   return cohortId;
 };
@@ -189,10 +179,20 @@ const enrollMembers = async (cohortId: string, members: SelectedMember[]) => {
   const reviewers = members.filter((m) => m.roleInGroup === 'Reviewer').map((m) => m.userId);
 
   if (learners.length > 0) {
-    await bulkCreateCohortMembers({ userId: learners, cohortId: [cohortId], role: 'Student' });
+    await bulkCreateCohortMembers({
+      cohortId: [cohortId],
+      userId: learners,
+      role: 'Student',
+      status: 'active',
+    });
   }
   if (reviewers.length > 0) {
-    await bulkCreateCohortMembers({ userId: reviewers, cohortId: [cohortId], role: 'Reviewer' });
+    await bulkCreateCohortMembers({
+      cohortId: [cohortId],
+      userId: reviewers,
+      role: 'Reviewer',
+      status: 'active',
+    });
   }
 };
 
@@ -395,7 +395,7 @@ export default function CreateCohortPage() {
     try {
       const finalCohortId = isAddMembersMode
         ? targetCohortId
-        : await createCohortFromForm(groupName, groupDescription, groupStatus, filters);
+        : await createCohortFromForm(groupName, groupDescription, groupStatus);
 
       // Step 2: Enroll selected members
       const membersArray = Array.from(selectedMembers.values());

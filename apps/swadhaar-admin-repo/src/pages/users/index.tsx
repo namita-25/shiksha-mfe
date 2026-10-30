@@ -263,7 +263,7 @@ export default function UsersPage() {
         limit: rowsPerPage,
         offset: page * rowsPerPage,
         filters: {
-          role: filters.role && filters.role !== 'all' ? [filters.role] : [DEFAULT_ROLE],
+          // role: filters.role && filters.role !== 'all' ? [filters.role] : [DEFAULT_ROLE],
           status:
             filters.status && filters.status !== 'all'
               ? [filters.status.toLowerCase()]

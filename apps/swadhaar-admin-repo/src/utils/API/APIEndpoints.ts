@@ -1,5 +1,7 @@
-const baseurl = (process.env.NEXT_PUBLIC_MIDDLEWARE_URL || 'https://swadhaar-middleware-qa.tekdinext.com').replace(/\/+$/, '');
-const lmsBase = (process.env.NEXT_PUBLIC_LMS_SERVICE_URL || `${baseurl}/lms-service/v1`).replace(/\/+$/, '');
+const baseurl = "https://interface.tekdinext.com/interface";
+// || 'https://swadhaar-middleware-qa.tekdinext.com').replace(/\/+$/, '');
+const cohortBaseUrl = (process.env.NEXT_PUBLIC_COHORT_BASE_URL || 'https://middleware-qa.aspireleaders.org').replace(/\/+$/, '');
+const lmsBase = "https://middleware-qa.aspireleaders.org/lms-service/v1";
 const assessmentBase = (process.env.NEXT_PUBLIC_ASSESSMENT_SERVICE_URL || `${baseurl}/assessment/v1`).replace(/\/+$/, '');
 const certificateBase = (process.env.NEXT_PUBLIC_CERTIFICATE_SERVICE_URL || `${baseurl}/importuserspecific/certificate`).replace(/\/+$/, '');
 
@@ -11,6 +13,7 @@ const toQueryString = (queryString = ''): string => {
 export const API_ENDPOINTS = {
   // Base URLs
   baseurl,
+  cohortBaseUrl,
   lmsBase,
   assessmentBase,
   certificateBase,
@@ -38,17 +41,17 @@ export const API_ENDPOINTS = {
   accountLogin: `${baseurl}/account/login`,
   authRefresh: `${baseurl}/account/auth/refresh`,
   authLogout: `${baseurl}/account/auth/logout`,
-  userAuth: `${baseurl}/user/auth`,
-  sendOTP: `${baseurl}/user/send-otp`,
-  verifyOTP: `${baseurl}/user/verify-otp`,
-  resetPassword: `${baseurl}/user/reset-password`,
-  suggestUsername: `${baseurl}/user/suggestUsername`,
+  userAuth: `${baseurl}/v1/user/auth`,
+  sendOTP: `${baseurl}/v1/user/send-otp`,
+  verifyOTP: `${baseurl}/v1/user/verify-otp`,
+  resetPassword: `${baseurl}/v1/user/reset-password`,
+  suggestUsername: `${baseurl}/v1/user/suggestUsername`,
 
   // User Management
-  adminUserList: `${baseurl}/user/list`,
-  userList: process.env.NEXT_PUBLIC_USER_LIST_URL || `${baseurl}/user/v1/list`,
+  adminUserList: `${baseurl}/v1/user/list`,
+  userList: `${baseurl}/v1/user/list`,
   userRead: (userId: string | string[], fieldValue: boolean = true) =>
-    `${process.env.NEXT_PUBLIC_USER_READ_URL || `${baseurl}/user/v1/read`}/${userId}?fieldvalue=${fieldValue}`,
+    `${baseurl}/user/v1/read/${userId}?fieldvalue=${fieldValue}`,
   userUpdate: (userId: string) => `${baseurl}/user/update/${userId}`,
 
   // Fields / Master Data
@@ -57,16 +60,16 @@ export const API_ENDPOINTS = {
   fieldUpdate: (fieldId: string) => `${baseurl}/fields/update/${fieldId}`,
 
   // Cohorts
-  myCohorts: (userId: string | string[]) => `${baseurl}/cohort/mycohorts/${userId}`,
-  cohortSearch: process.env.NEXT_PUBLIC_COHORT_SEARCH_URL || `${baseurl}/user/v1/cohort/search`,
-  cohortMemberListApplication: process.env.NEXT_PUBLIC_COHORT_MEMBER_APPLICATION_URL || `${baseurl}/user/v1/cohortmember/list-application`,
-  cohortContentSearch: `${baseurl}/user/cohortcontent/search`,
-  cohortMemberList: `${baseurl}/cohortmember/list`,
-  cohortCreate: `${baseurl}/cohort/create`,
-  cohortUpdate: (cohortId: string) => `${baseurl}/cohort/update/${cohortId}`,
-  cohortUpdateUser: (userId?: string) => `${baseurl}/cohort/update/${userId}`,
-  cohortMemberBulkCreate: `${baseurl}/cohortmember/bulkCreate`,
-  cohortMemberUpdate: (membershipId: string | number) => `${baseurl}/cohortmember/update/${membershipId}`,
+  myCohorts: (userId: string | string[]) => `${cohortBaseUrl}/cohort/mycohorts/${userId}`,
+  cohortSearch: `${cohortBaseUrl}/user/v1/cohort/search`,
+  cohortMemberListApplication: `${cohortBaseUrl}/user/v1/cohortmember/list-application`,
+  cohortContentSearch: `${cohortBaseUrl}/user/cohortcontent/search`,
+  cohortMemberList: `${cohortBaseUrl}/user/v1/cohortmember/list`,
+  cohortCreate: `${cohortBaseUrl}/user/v1/cohort/create`,
+  cohortUpdate: (cohortId: string) => `${cohortBaseUrl}/user/v1/cohort/update/${cohortId}`,
+  cohortUpdateUser: (userId?: string) => `${cohortBaseUrl}/user/v1/cohort/update/${userId}`,
+  cohortMemberBulkCreate: `${cohortBaseUrl}/user/v1/cohortmember/bulkCreate`,
+  cohortMemberUpdate: (membershipId: string | number) => `${cohortBaseUrl}/user/v1/cohortmember/update/${membershipId}`,
 
   // Tenants
   tenantRead: `${baseurl}/tenant/read`,
@@ -92,8 +95,11 @@ export const API_ENDPOINTS = {
   downloadCertificate: `${baseurl}/tracking/certificate/render`,
 
   // LMS Service
+  lmsCourses: `${lmsBase}/courses`,
   lmsCoursesSearch: (queryString = '') => `${lmsBase}/courses/search${toQueryString(queryString)}`,
+  lmsModules: `${lmsBase}/modules`,
   lmsModulesSearch: (queryString = '') => `${lmsBase}/modules/search${toQueryString(queryString)}`,
+  lmsLessons: (queryString = '') => `${lmsBase}/lessons${toQueryString(queryString)}`,
   lmsCourseHierarchy: (courseId: string) => `${lmsBase}/courses/${courseId}/hierarchy`,
   lmsEnrollments: (userId: string) => `${baseurl}/enrollments?userId=${userId}`,
   lmsLessonAttempt: (lessonId: string, userId: string) => `${baseurl}/tracking/lesson/attempt/${lessonId}?userId=${userId}`,
